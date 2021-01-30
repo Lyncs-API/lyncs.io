@@ -7,15 +7,13 @@ __all__ = [
 
 import pickle
 import numpy
-from .format import Format
+from .format import Format, Formats
 
-formats = []
+formats = Formats()
 
 
 def register(name, *args, **kwargs):
-    if name in formats:
-        raise ValueError("A format with the same name already exists")
-    formats.append(Format(name, *args, **kwargs))
+    formats[name] = Format(name, *args, **kwargs)
 
 
 def swap(fnc):
@@ -40,7 +38,7 @@ register(
         "clime": "lyncs_clime",
     },
     description="LQCD lime format",
-    encapsulated=True,
+    archive=True,
 )
 
 register(
@@ -59,7 +57,7 @@ register(
         "h5py": "h5py",
     },
     description="HDF5 file format",
-    encapsulated=True,
+    archive=True,
 )
 
 register(

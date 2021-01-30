@@ -4,6 +4,9 @@ Base class for file formats
 
 from dataclasses import dataclass
 from importlib import import_module
+from collections import OrderedDict
+from io import FileIO
+from os import PathLike
 
 
 @dataclass
@@ -11,7 +14,7 @@ class Format:
     name: str
     modules: dict
     extensions: list
-    encapsulated: bool = False
+    archive: bool = False
     binary: bool = True
     description: str = ""
 
@@ -91,3 +94,45 @@ class Format:
             return True
 
         return False
+
+
+class Formats(OrderedDict):
+    def get_format(self, format=None, filename=None):
+        "Return the appropriate format checking the format string or the filename extension."
+
+        # 1. Using format
+        if format:
+            if isinstance(format, Format):
+                return format
+            if not isinstance(format, str):
+                raise TypeError("Format should be a string.")
+
+            if format in self:
+                return self[format]
+
+            raise ValueError(f"Unknown format {format}")
+
+        # 2. Using filename (checking extension)
+        if isinstance(filename, PathLike):
+            filename = filename.__fspath__()
+        if isinstance(filename, FileIO):
+            filename = filename.name
+        if isinstance(filename, bytes):
+            filename = filename.decode()
+        if isinstance(filename, str):
+            for frmt in self.values():
+                if frmt.check_filename(filename):
+                    return frmt
+
+        raise ValueError(
+            """
+            Format could not be deduce from the filename. Please specify a format.
+            Available formats are {self}.
+            """
+        )
+
+    def __str__(self):
+        return ", ".join(self.keys())
+
+    def doc(self):
+        return ", ".join(self.keys())
