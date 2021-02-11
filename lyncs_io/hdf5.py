@@ -1,0 +1,96 @@
+"""
+Interface for HDF5 format based on h5py
+"""
+
+__all__ = [
+    "load",
+    "save",
+]
+
+from h5py import File, Dataset, Group
+from .archive import split_filename, default_names, Data, Loader, Archive
+from .convert import to_array, from_array
+
+
+def _load_dataset(dts, **kwargs):
+    assert isinstance(dts, Dataset)
+    return from_array(dts[:], dict(dts.attrs))
+
+
+def _load(h5f, depth=1, **kwargs):
+    if isinstance(h5f, Group):
+        return {
+            key: _load(val, depth=depth - 1) if depth > 0 else None
+            for key, val in h5f.items()
+        }
+
+    if isinstance(h5f, Dataset):
+        attrs = dict(h5f.attrs)
+        attrs["shape"] = h5f.shape
+        attrs["dtype"] = h5f.dtype
+        return Data(attrs)
+
+    raise TypeError(f"Unsupported {type(h5f)}")
+
+
+def load(filename, key=None, **kwargs):
+    "Load function for HDF5"
+    filename, key = split_filename(filename, key)
+
+    loader = Loader(load, filename, kwargs=kwargs)
+
+    with File(filename, "r") as h5f:
+        if key:
+            h5f = h5f[key]
+
+        if isinstance(h5f, Dataset):
+            return _load_dataset(h5f, **kwargs)
+
+        if isinstance(h5f, Group):
+            return Archive(
+                _load(h5f, **kwargs),
+                loader=loader,
+                path=key,
+            )
+
+        raise TypeError(f"Unsupported {type(h5f)}")
+
+
+def _write_dataset(grp, key, data, **kwargs):
+    "Writes a dataset in the group"
+    if not key:
+        for name in default_names():
+            if name not in grp:
+                key=name
+                break
+
+    if key in grp:
+        # TBD: If key is a group do we want to write inside it
+        #      OR overwrite it? Latter is the current behaviour
+        #
+        # if isinstance(grp[key], Group):
+        #     return _write_dataset(grp[key], "", data, **kwargs)
+        del grp[key]
+
+    data, attrs = to_array(data)
+    grp.create_dataset(key, data=data)
+
+    for attr, val in attrs.items():
+        grp[key].attrs[attr] = val
+
+
+def split_key(key):
+    "Splits the key in group & dataset"
+    tmp = key.lstrip("/").split("/")
+    return "/" + "/".join(tmp[:-1]), tmp[-1]
+
+
+def save(data, filename, key=None, **kwargs):
+    "Save function for HDF5"
+    filename, key = split_filename(filename, key)
+    key = key or "/"
+
+    with File(filename, "a") as h5f:
+        group, dataset = split_key(key)
+        h5f = h5f.require_group(group)
+        return _write_dataset(h5f, dataset, data, **kwargs)

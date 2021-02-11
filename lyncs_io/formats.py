@@ -5,6 +5,7 @@ __all__ = [
     "formats",
 ]
 
+from functools import wraps
 import pickle
 import numpy
 from .format import Format, Formats
@@ -13,11 +14,15 @@ formats = Formats()
 
 
 def register(name, *args, **kwargs):
+    "Adds a format to the list of formats"
     formats[name] = Format(name, *args, **kwargs)
 
 
 def swap(fnc):
-    return lambda fname, data, *args, **kwargs: fnc(data, fname, *args, **kwargs)
+    "Returns a wrapper that swaps the first two arguments of the function"
+    return wraps(fnc)(
+        lambda fname, data, *args, **kwargs: fnc(data, fname, *args, **kwargs)
+    )
 
 
 register(
@@ -54,7 +59,7 @@ register(
     "hdf5",
     extensions=["h5", "hdf5"],
     modules={
-        "h5py": "h5py",
+        "h5py": ".hdf5",
     },
     description="HDF5 file format",
     archive=True,
@@ -67,4 +72,13 @@ register(
         "numpy": {"load": numpy.load, "save": swap(numpy.save)},
     },
     description="Numpy binary format",
+)
+
+register(
+    "numpyz",
+    extensions=["npz"],
+    modules={
+        "numpy": {"load": numpy.load, "save": swap(numpy.save)},
+    },
+    description="Numpy zip format",
 )
