@@ -11,6 +11,19 @@ from os import PathLike
 
 @dataclass
 class Format:
+    """
+    Format class
+
+    Attributes
+    ----------
+    - name: name of the format
+    - modules: list of modules that implement the format
+    - extensions: list of extensions used by the format
+    - archive: whether the format is used for archiving
+    - binary: whether the format stores the data as binary
+    - description: a description of the format
+    """
+
     name: str
     modules: dict
     extensions: list
@@ -19,6 +32,7 @@ class Format:
     description: str = ""
 
     def load(self, filename, module=None, **kwargs):
+        "Calls the load function of the format. The module used can be changed."
         fnc = self.get_func(module, "load")
         assert callable(fnc), "Got a non-callable function"
 
@@ -28,6 +42,7 @@ class Format:
             return fnc(self.ropen(filename), **kwargs)
 
     def save(self, data, filename, module=None, **kwargs):
+        "Calls the save function of the format. The module used can be changed."
         fnc = self.get_func(module, "save", "dump")
         assert callable(fnc), "Got a non-callable function"
 
@@ -45,6 +60,7 @@ class Format:
         return open(filename, "a" + "b" if self.binary else "")
 
     def get_module(self, module):
+        "Translates the given module (e.g. str) to an effective module"
         if module is None:
             # Returning the first working module
             for mod in self.modules:
@@ -58,11 +74,15 @@ class Format:
             module = self.modules[module]
 
         if isinstance(module, str):
-            return import_module(self)
+            return import_module(module, "lyncs_io")
 
         return module
 
     def get_func(self, module, *names):
+        """
+        Gets the required function from the module.
+        Multiple aliases of the function name can be given.
+        """
         module = self.get_module(module)
 
         if callable(module):
@@ -87,6 +107,9 @@ class Format:
         return str(self.name)
 
     def check_filename(self, filename):
+        """
+        Bool, check if the filename extension is appropriate for the format.
+        """
         assert isinstance(filename, str)
 
         ext = filename.split("/")[-1].split(".")[-1]
@@ -97,6 +120,8 @@ class Format:
 
 
 class Formats(OrderedDict):
+    "Collection of formats"
+
     def get_format(self, format=None, filename=None):
         "Return the appropriate format checking the format string or the filename extension."
 
@@ -135,4 +160,6 @@ class Formats(OrderedDict):
         return ", ".join(self.keys())
 
     def doc(self):
-        return ", ".join(self.keys())
+        "Returns a documentation describing the available formats"
+        # TODO
+        return str(self)
