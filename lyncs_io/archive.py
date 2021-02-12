@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 from dataclasses import dataclass
 from pathlib import Path
+from io import FileIO
 from os import PathLike
 
 
@@ -191,16 +192,33 @@ class Archive(Mapping):
         return repr(self._dict)
 
 
+def to_path(filename):
+    "Returns a Path from the filename"
+    if isinstance(filename, FileIO):
+        filename = filename.name
+    if isinstance(filename, bytes):
+        filename = filename.decode()
+    return Path(filename)
+
+
 def split_filename(filename, key=None):
     "Splits the actual filename from the content to be accessed."
     if key:
         return filename, key
 
-    if not isinstance(filename, (PathLike, bytes, str)):
+    try:
+        path = to_path(filename)
+    except TypeError:
         return filename, key
 
-    path = Path(filename)
-    return filename, key
+    while not path.parent.is_dir():
+        if key:
+            key = f"{path.name}/{key}"
+        else:
+            key = path.name
+        path = path.parent
+
+    return path, key
 
 
 def default_names(i=0):
