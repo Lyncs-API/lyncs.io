@@ -44,6 +44,12 @@ class Data:
     attrs: dict
     value: Any = None
 
+    def __repr__(self):
+        attrs = ", ".join(
+            (f"{key}={val}" for key, val in self.attrs.items() if key[0] != "_")
+        )
+        return f"Data({attrs})"
+
 
 @dataclass
 class Archive(Mapping):
@@ -63,6 +69,10 @@ class Archive(Mapping):
     path: str
     parent: Any = None
 
+    def __post_init__(self):
+        if not self.path:
+            self.path = ""
+
     def load(self, key, **kwargs):
         "Loads key from the file"
         return self.loader(f"{self.path}/{key}", **kwargs)
@@ -76,6 +86,46 @@ class Archive(Mapping):
         return {
             key: self._dict[key] for key in self if isinstance(self._dict[key], Data)
         }
+
+    @property
+    def key(self):
+        "Returns the current key of the archive"
+        return self.path.split("/")[-1]
+
+    def tree(self):
+        "Tree representation of the archive"
+        try:
+            from IPython.lib.pretty import pretty
+
+            return pretty(self)
+        except:
+            raise ImportError("tree requires IPython")
+
+    def _repr_pretty_(self, printer=None, cycle=False):
+        if cycle:
+            keys = self.keys()
+            keys = repr(next(keys)) + ", ..." if next(keys) else ""
+            printer.text(f"Archive({keys})")
+            return
+
+        ind = 4
+        for key in self:
+            if len(self) > 1:
+                printer.break_()
+            else:
+                printer.breakable("")
+            val = self._dict[key]
+
+            if isinstance(val, Data):
+                printer.text(f"{key} -> {val}")
+                continue
+            if not val:
+                printer.text(f"{key}/...")
+                continue
+            assert isinstance(val, dict)
+            printer.begin_group(ind, key + "/")
+            self[key]._repr_pretty_(printer)
+            printer.end_group(ind)
 
     def __len__(self):
         return len(self._dict)
@@ -136,6 +186,9 @@ class Archive(Mapping):
         if others:
             return val[others]
         return val
+
+    def __repr__(self):
+        return repr(self._dict)
 
 
 def split_filename(filename, key=None):
