@@ -5,8 +5,7 @@ Base class for file formats
 from dataclasses import dataclass
 from importlib import import_module
 from collections import OrderedDict
-from io import FileIO
-from os import PathLike
+from .archive import to_path, split_filename
 
 
 @dataclass
@@ -122,32 +121,56 @@ class Format:
 class Formats(OrderedDict):
     "Collection of formats"
 
+    def from_format(self, format):
+        "Returns a format from the given format"
+        if isinstance(format, Format):
+            return format
+        if not isinstance(format, str):
+            raise TypeError("Format should be a string.")
+
+        if format in self:
+            return self[format]
+
+        raise ValueError(f"Unknown format {format}")
+
+    def from_suffix(self, *suffixes):
+        "Returns a format from the given suffix"
+        suffix = ""
+        for part in reversed(suffixes):
+            suffix += part
+            for format in self.values():
+                if suffix[1:] in format.extensions:
+                    return format
+        raise ValueError(f"Could not deduce the format from the suffix: {suffix}")
+
+    def from_path(self, path):
+        "Returns a format from the given path"
+        path = to_path(path)
+        err = "Could not deduce the format from the path"
+
+        if path.parent.is_dir():
+            if path.suffix:
+                return self.from_suffix(*path.suffixes)
+            if path.exists():
+                raise ValueError(err)
+            matches = tuple(path.parent.glob(path.name + ".*"))
+            if not matches or len(matches) > 1:
+                raise ValueError(err)
+            return self.from_path(matches[0])
+
+        path, _ = split_filename(path)
+        return self.from_path(path)
+
     def get_format(self, format=None, filename=None):
         "Return the appropriate format checking the format string or the filename extension."
 
         # 1. Using format
         if format:
-            if isinstance(format, Format):
-                return format
-            if not isinstance(format, str):
-                raise TypeError("Format should be a string.")
+            return self.from_format(format)
 
-            if format in self:
-                return self[format]
-
-            raise ValueError(f"Unknown format {format}")
-
-        # 2. Using filename (checking extension)
-        if isinstance(filename, PathLike):
-            filename = filename.__fspath__()
-        if isinstance(filename, FileIO):
-            filename = filename.name
-        if isinstance(filename, bytes):
-            filename = filename.decode()
-        if isinstance(filename, str):
-            for frmt in self.values():
-                if frmt.check_filename(filename):
-                    return frmt
+        # 2. Using filename
+        if filename:
+            return self.from_path(filename)
 
         raise ValueError(
             """
