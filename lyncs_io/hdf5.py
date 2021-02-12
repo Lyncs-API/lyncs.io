@@ -61,7 +61,7 @@ def _write_dataset(grp, key, data, **kwargs):
     if not key:
         for name in default_names():
             if name not in grp:
-                key=name
+                key = name
                 break
 
     if key in grp:
