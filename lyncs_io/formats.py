@@ -6,6 +6,7 @@ __all__ = [
 ]
 
 from functools import wraps
+from io import IOBase
 import pickle
 import numpy
 from .format import Format, Formats
@@ -13,9 +14,12 @@ from .format import Format, Formats
 formats = Formats()
 
 
-def register(name, *args, **kwargs):
+def register(*names, **kwargs):
     "Adds a format to the list of formats"
-    formats[name] = Format(name, *args, **kwargs)
+    assert names
+    fmt = Format(names[0], alias=names[1:], **kwargs)
+    for name in names:
+        formats[name.lower()] = fmt
 
 
 def swap(fnc):
@@ -25,16 +29,89 @@ def swap(fnc):
     )
 
 
+def open_file(fnc, arg=0, flag="rb"):
+    "Returns a wrapper that opens the file (at position arg) if needed"
+
+    @wraps(fnc)
+    def wrapped(*args, **kwargs):
+        if len(args) <= arg:
+            raise ValueError(f"filename not found at position {arg}")
+        if isinstance(args[arg], IOBase):
+            return fnc(*args, **kwargs)
+        args = list(args)
+        with open(args[arg], flag) as fptr:
+            args[arg] = fptr
+            return fnc(*args, **kwargs)
+
+
 register(
     "pickle",
     extensions=["pkl"],
-    modules={
-        "pickle": pickle,
-        "dill": "dill",
-    },
+    load=open_file(pickle.load, 0, "rb"),
+    save=open_file(pickle.dump, 1, "wb"),
     description="Python's pickle file format",
 )
 
+
+try:
+    import dill
+
+    register(
+        "dill",
+        extensions=["pkl", "dll"],
+        load=open_file(dill.load, 0, "rb"),
+        save=open_file(dill.dump, 1, "wb"),
+        description="Alternative to Python's pickle file format. Supports lambda functions.",
+    )
+except ImportError:
+    pass
+
+try:
+    import numpy
+
+    register(
+        "ASCII",
+        extensions=["txt"],
+        load=numpy.loadtxt,
+        save=swap(numpy.savetxt),
+        description="ASCII, human-readable format. Limited to 1D or 2D arrays.",
+    )
+
+    register(
+        "Numpy",
+        extensions=["npy"],
+        load=numpy.load,
+        save=swap(numpy.save),
+        description="Numpy binary format",
+    )
+
+    register(
+        "NumpyZ",
+        extensions=["npz"],
+        load=numpy.load,
+        save=swap(numpy.save),
+        description="Numpy zip format",
+        archive=True,
+    )
+except ImportError:
+    pass
+
+try:
+    from . import hdf5
+
+    register(
+        "HDF5",
+        extensions=["h5", "hdf5"],
+        load=hdf5.load,
+        save=hdf5.save,
+        description="HDF5 file format",
+        archive=True,
+    )
+except ImportError:
+    pass
+
+
+"""
 register(
     "lime",
     extensions=["lime"],
@@ -45,40 +122,4 @@ register(
     description="LQCD lime format",
     archive=True,
 )
-
-register(
-    "ascii",
-    extensions=["txt"],
-    modules={
-        "numpy": {"load": numpy.loadtxt, "save": swap(numpy.savetxt)},
-    },
-    description="ASCII format. Not recommended!",
-)
-
-register(
-    "hdf5",
-    extensions=["h5", "hdf5"],
-    modules={
-        "h5py": ".hdf5",
-    },
-    description="HDF5 file format",
-    archive=True,
-)
-
-register(
-    "numpy",
-    extensions=["npy"],
-    modules={
-        "numpy": {"load": numpy.load, "save": swap(numpy.save)},
-    },
-    description="Numpy binary format",
-)
-
-register(
-    "numpyz",
-    extensions=["npz"],
-    modules={
-        "numpy": {"load": numpy.load, "save": swap(numpy.save)},
-    },
-    description="Numpy zip format",
-)
+"""

@@ -12,7 +12,7 @@ __all__ = [
 from .formats import formats
 
 
-def load(filename, format=None, module=None, **kwargs):
+def load(filename, format=None, **kwargs):
     """
     Loads data from a file.
 
@@ -25,16 +25,12 @@ def load(filename, format=None, module=None, **kwargs):
         on the format and the module.
     format: str, Format
         One of the implemented formats. See documentation for more details.
-    module: str, module, tuple, callable
-        What module to use for the reading. See documentation for more details.
     """
 
-    return formats.get_format(format, filename=filename).load(
-        filename, module=module, **kwargs
-    )
+    return formats.get_format(format, filename=filename).load(filename, **kwargs)
 
 
-def save(obj, filename, format=None, module=None, **kwargs):
+def save(obj, filename, format=None, **kwargs):
     """
     Saves data into a file.
 
@@ -44,13 +40,9 @@ def save(obj, filename, format=None, module=None, **kwargs):
         The filename of the data file to write. It can also be a file-like object.
     format: str, Format
         One of the implemented formats. See documentation for more details.
-    module: str, module, tuple, callable
-        What module to use for the reading. See documentation for more details.
     """
 
-    return formats.get_format(format, filename=filename).save(
-        obj, filename, module=module, **kwargs
-    )
+    return formats.get_format(format, filename=filename).save(obj, filename, **kwargs)
 
 
 dump = save
