@@ -76,6 +76,7 @@ except ImportError:
 
 try:
     import numpy
+    from . import numpyz
 
     register(
         "ASCII",
@@ -96,8 +97,8 @@ try:
     register(
         "NumpyZ",
         extensions=["npz"],
-        load=numpy.load,
-        save=swap(numpy.save),
+        load=numpyz.load,
+        save=numpyz.save,
         description="Numpy zip format",
         archive=True,
     )

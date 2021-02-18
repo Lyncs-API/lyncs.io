@@ -15,3 +15,8 @@ def test_numpy():
         io.save(arr, ftmp)
         assert (arr == io.load(ftmp)).all()
         assert (arr == io.load(ftmp, format="ascii")).all()
+
+        ftmp = tmp + "/foo.npz"
+        io.save(arr, ftmp)
+        assert (arr == io.load(ftmp)["arr_0"]).all()
+        assert (arr == io.load(ftmp + "/arr_0", format="numpyz")).all()
