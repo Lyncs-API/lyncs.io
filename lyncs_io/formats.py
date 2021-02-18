@@ -8,7 +8,7 @@ __all__ = [
 from functools import wraps
 from io import IOBase
 import pickle
-import numpy
+import json
 from .format import Format, Formats
 
 formats = Formats()
@@ -49,9 +49,17 @@ register(
     extensions=["pkl"],
     load=open_file(pickle.load, 0, "rb"),
     save=open_file(pickle.dump, 1, "wb"),
-    description="Python's pickle file format",
+    description="Python's pickle file format. See https://docs.python.org/3/library/pickle.html.",
 )
 
+# TODO: add collection of JSON encoders, e.g. numpyencoder
+register(
+    "JSON",
+    extensions=["json"],
+    load=open_file(json.load, 0, "rb"),
+    save=open_file(json.dump, 1, "wb"),
+    description="Python's JSON file format. See https://docs.python.org/3/library/json.html.",
+)
 
 try:
     import dill
