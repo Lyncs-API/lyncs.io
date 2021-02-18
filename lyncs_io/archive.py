@@ -67,7 +67,7 @@ class Archive(Mapping):
 
     _dict: dict
     loader: Loader
-    path: str
+    path: str = None
     parent: Any = None
 
     def __post_init__(self):

@@ -14,7 +14,7 @@ def get_attrs(data):
     """
     return {
         "_lyncs_io": __version__,
-        "created": datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "type": repr(type(data)),
     }
 
