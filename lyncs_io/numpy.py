@@ -3,7 +3,9 @@ Customizing support for numpy-z
 """
 
 __all__ = [
-    "loadz",
+    "load",
+    "save",
+    "loadtxt" "savetxt" "loadz",
     "savez",
 ]
 
@@ -12,6 +14,12 @@ from numpy.lib.npyio import NpzFile
 from numpy.lib.format import read_magic, _check_version, _read_array_header
 from lyncs_utils import is_keyword
 from .archive import split_filename, Data, Loader, Archive
+from .utils import swap
+
+load = numpy.load
+save = swap(numpy.save)
+loadtxt = numpy.loadtxt
+savetxt = swap(numpy.savetxt)
 
 
 def _get_data(npz, key):

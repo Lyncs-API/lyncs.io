@@ -52,22 +52,22 @@ except ImportError:
     pass
 
 try:
-    import numpy as np
     from . import numpy
 
     register(
         "ASCII",
+        "txt",
         extensions=["txt"],
-        load=np.loadtxt,
-        save=swap(np.savetxt),
+        load=numpy.loadtxt,
+        save=numpy.savetxt,
         description="ASCII, human-readable format. Limited to 1D or 2D arrays.",
     )
 
     register(
         "Numpy",
         extensions=["npy"],
-        load=np.load,
-        save=swap(np.save),
+        load=numpy.load,
+        save=numpy.save,
         description="Numpy binary format",
     )
 
