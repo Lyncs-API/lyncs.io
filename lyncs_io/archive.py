@@ -5,10 +5,9 @@ Archive class and utils
 from collections.abc import Mapping
 from typing import Any
 from dataclasses import dataclass
-from pathlib import Path
-from io import FileIO
-from os import PathLike
 from .header import Header
+from .utils import to_path
+
 
 @dataclass
 class Loader:
@@ -192,15 +191,6 @@ class Archive(Mapping):
         return repr(self._dict)
 
 
-def to_path(filename):
-    "Returns a Path from the filename"
-    if isinstance(filename, FileIO):
-        filename = filename.name
-    if isinstance(filename, bytes):
-        filename = filename.decode()
-    return Path(filename)
-
-
 def split_filename(filename, key=None):
     "Splits the actual filename from the content to be accessed."
     if key:
@@ -219,9 +209,3 @@ def split_filename(filename, key=None):
         path = path.parent
 
     return path, key
-
-
-def default_names(i=0):
-    "Infinite generator of default names ('arrN') for entries of an archive."
-    yield f"arr{i}"
-    yield from default_names(i + 1)

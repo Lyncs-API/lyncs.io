@@ -5,7 +5,8 @@ Base class for file formats
 from dataclasses import dataclass
 from importlib import import_module
 from collections import OrderedDict
-from .archive import to_path, split_filename
+from .archive import split_filename
+from .utils import to_path
 
 
 def NIE(*args, **kwargs):

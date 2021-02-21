@@ -8,8 +8,9 @@ __all__ = [
 ]
 
 from h5py import File, Dataset, Group
-from .archive import split_filename, default_names, Data, Loader, Archive
+from .archive import split_filename, Data, Loader, Archive
 from .convert import to_array, from_array
+from .utils import default_names
 
 
 def _load_dataset(dts, **kwargs):

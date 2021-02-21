@@ -3,7 +3,8 @@ Function utils
 """
 
 from functools import wraps
-from io import IOBase
+from io import IOBase, FileIO
+from pathlib import Path
 
 
 def swap(fnc):
@@ -26,3 +27,20 @@ def open_file(fnc, arg=0, flag="rb"):
         with open(args[arg], flag) as fptr:
             args[arg] = fptr
             return fnc(*args, **kwargs)
+
+    return wrapped
+
+
+def to_path(filename):
+    "Returns a Path from the filename"
+    if isinstance(filename, FileIO):
+        filename = filename.name
+    if isinstance(filename, bytes):
+        filename = filename.decode()
+    return Path(filename)
+
+
+def default_names(i=0):
+    "Infinite generator of default names ('arrN') for entries of an archive."
+    yield f"arr{i}"
+    yield from default_names(i + 1)
