@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from io import FileIO
 from os import PathLike
-
+from .header import Header
 
 @dataclass
 class Loader:
@@ -38,18 +38,18 @@ class Data:
 
     Attributes
     ----------
-    - attrs: a dictionary that describes the content
+    - header: a dictionary that describes the content
     - value: the value of the data (None if not loaded)
     """
 
-    attrs: dict
+    header: Header
     value: Any = None
 
     def __repr__(self):
-        attrs = ", ".join(
-            (f"{key}={val}" for key, val in self.attrs.items() if key[0] != "_")
+        header = ", ".join(
+            (f"{key}={val}" for key, val in self.header.items() if key[0] != "_")
         )
-        return f"Data({attrs})"
+        return f"Data({header})"
 
 
 @dataclass

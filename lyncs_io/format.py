@@ -8,6 +8,11 @@ from collections import OrderedDict
 from .archive import to_path, split_filename
 
 
+def NIE(*args, **kwargs):
+    "Raises not implemented error"
+    raise NotImplementedError("This function is not avaiable")
+
+
 @dataclass
 class Format:
     """
@@ -27,9 +32,10 @@ class Format:
 
     name: str
     alias: list
-    load: callable
-    save: callable
     extensions: list
+    load: callable = NIE
+    save: callable = NIE
+    head: callable = NIE
     archive: bool = False
     description: str = ""
 
