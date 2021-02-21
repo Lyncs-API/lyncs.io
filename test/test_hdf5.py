@@ -22,3 +22,7 @@ def test_numpy():
         assert (arr == io.load(ftmp)["arr0"]).all()
         io.save(arr * 2, ftmp)
         assert (arr * 2 == io.load(ftmp)["arr1"]).all()
+
+        # Testing Head
+        assert list(io.load(ftmp).keys()) == list(io.head(ftmp).keys())
+        assert io.load(ftmp)["arr0"].shape == io.head(ftmp)["arr0"]["shape"]

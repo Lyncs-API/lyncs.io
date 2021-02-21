@@ -90,6 +90,7 @@ try:
     register(
         "HDF5",
         extensions=["h5", "hdf5"],
+        head=hdf5.head,
         load=hdf5.load,
         save=hdf5.save,
         description="HDF5 file format",

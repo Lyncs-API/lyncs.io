@@ -3,6 +3,7 @@ Interface for HDF5 format based on h5py
 """
 
 __all__ = [
+    "head",
     "load",
     "save",
 ]
@@ -10,15 +11,24 @@ __all__ = [
 from h5py import File, Dataset, Group
 from .archive import split_filename, Data, Loader, Archive
 from .convert import to_array, from_array
+from .header import Header
 from .utils import default_names
 
 
-def _load_dataset(dts, **kwargs):
+def _load_dataset(dts, header_only=False, **kwargs):
     assert isinstance(dts, Dataset)
-    return from_array(dts[:], dict(dts.attrs))
+
+    attrs = Header(dts.attrs)
+    attrs["shape"] = dts.shape
+    attrs["dtype"] = dts.dtype
+
+    if header_only:
+        return attrs
+
+    return from_array(dts[:], attrs)
 
 
-def _load(h5f, depth=1, **kwargs):
+def _load(h5f, depth=1, header_only=False, **kwargs):
     if isinstance(h5f, Group):
         return {
             key: _load(val, depth=depth - 1) if depth > 0 else None
@@ -26,10 +36,10 @@ def _load(h5f, depth=1, **kwargs):
         }
 
     if isinstance(h5f, Dataset):
-        attrs = dict(h5f.attrs)
-        attrs["shape"] = h5f.shape
-        attrs["dtype"] = h5f.dtype
-        return Data(attrs)
+        header = _load_dataset(h5f, header_only=True, **kwargs)
+        if header_only:
+            return header
+        return Data(header)
 
     raise TypeError(f"Unsupported {type(h5f)}")
 
@@ -55,6 +65,11 @@ def load(filename, key=None, **kwargs):
             )
 
         raise TypeError(f"Unsupported {type(h5f)}")
+
+
+def head(*args, **kwargs):
+    "Head function for HDF5"
+    return load(*args, header_only=True, **kwargs)
 
 
 def _write_dataset(grp, key, data, **kwargs):
