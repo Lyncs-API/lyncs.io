@@ -1,11 +1,11 @@
 """
-Header class, a dictionary that contains infomation about the file content
+Header class, a dictionary that contains information about the file content
 """
 
 
 class Header(dict):
     """
-    Header class, a dictionary that contains infomation about the file content
+    Header class, a dictionary that contains information about the file content
     """
 
     def is_proper(self):

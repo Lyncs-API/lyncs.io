@@ -66,6 +66,7 @@ try:
     register(
         "Numpy",
         extensions=["npy"],
+        head=numpy.head,
         load=numpy.load,
         save=numpy.save,
         description="Numpy binary format",
@@ -74,6 +75,7 @@ try:
     register(
         "NumpyZ",
         extensions=["npz"],
+        head=numpy.headz,
         load=numpy.loadz,
         save=numpy.savez,
         description="Numpy zip format",

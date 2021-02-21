@@ -3,9 +3,13 @@ Customizing support for numpy-z
 """
 
 __all__ = [
+    "head",
     "load",
     "save",
-    "loadtxt" "savetxt" "loadz",
+    "loadtxt",
+    "savetxt",
+    "headz",
+    "loadz",
     "savez",
 ]
 
@@ -14,7 +18,8 @@ from numpy.lib.npyio import NpzFile
 from numpy.lib.format import read_magic, _check_version, _read_array_header
 from lyncs_utils import is_keyword
 from .archive import split_filename, Data, Loader, Archive
-from .utils import swap
+from .header import Header
+from .utils import swap, open_file
 
 load = numpy.load
 save = swap(numpy.save)
@@ -22,15 +27,13 @@ loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
 
 
-def _get_data(npz, key):
-    "Reads the header of a numpy file"
+def _get_head(npy):
+    "Returns the header of a numpy file"
+    version = read_magic(npy)
+    _check_version(version)
+    shape, fortran_order, dtype = _read_array_header(npy, version)
 
-    with npz.zip.open(key + ".npy") as tmp:
-        version = read_magic(tmp)
-        _check_version(version)
-        shape, fortran_order, dtype = _read_array_header(tmp, version)
-
-    return Data(
+    return Header(
         {
             "shape": shape,
             "dtype": dtype,
@@ -38,6 +41,28 @@ def _get_data(npz, key):
             "_fortran_order": fortran_order,
         }
     )
+
+
+head = open_file(_get_head)
+
+
+def _get_headz(npz, key):
+    "Reads the header of a numpy file"
+
+    with npz.zip.open(key + ".npy") as npy:
+        return _get_head(npy)
+
+
+def headz(filename, key=None, **kwargs):
+    "Numpy-z head function"
+
+    filename, key = split_filename(filename, key)
+
+    with numpy.load(filename, **kwargs) as npz:
+        assert isinstance(npz, NpzFile), "Broken support for Numpy-z"
+        if key:
+            return _get_headz(npz, key.lstrip("/"))
+        return Archive({key: _get_headz(npz, key) for key in npz})
 
 
 def loadz(filename, key=None, **kwargs):
@@ -51,7 +76,7 @@ def loadz(filename, key=None, **kwargs):
         assert isinstance(npz, NpzFile), "Broken support for Numpy-z"
         if key:
             return npz[key.lstrip("/")]
-        return Archive({key: _get_data(npz, key) for key in npz}, loader=loader)
+        return Archive({key: Data(_get_headz(npz, key)) for key in npz}, loader=loader)
 
 
 def savez(data, filename, key=None, compressed=False, **kwargs):
@@ -60,10 +85,10 @@ def savez(data, filename, key=None, compressed=False, **kwargs):
     # TODO: numpy overwrites files. Support to numpy-z should be done through zip format
     filename, key = split_filename(filename, key)
 
-    savez = numpy.savez if not compressed else numpy.savez_compressed
+    _savez = numpy.savez if not compressed else numpy.savez_compressed
 
     if key:
         if not is_keyword(key):
             raise ValueError("Numpy-z supports only keys that are a valid keyword")
-        return savez(filename, **{key: data}, **kwargs)
-    return savez(filename, data, **kwargs)
+        return _savez(filename, **{key: data}, **kwargs)
+    return _savez(filename, data, **kwargs)

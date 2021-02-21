@@ -65,7 +65,7 @@ class Archive(Mapping):
     """
 
     _dict: dict
-    loader: Loader
+    loader: Loader = None
     path: str = None
     parent: Any = None
 
@@ -75,6 +75,8 @@ class Archive(Mapping):
 
     def load(self, key, **kwargs):
         "Loads key from the file"
+        if not self.loader:
+            raise ValueError("Loader not given")
         return self.loader(f"{self.path}/{key}", **kwargs)
 
     def data(self):
@@ -84,7 +86,9 @@ class Archive(Mapping):
               you need to access the key in the archive.
         """
         return {
-            key: self._dict[key] for key in self if isinstance(self._dict[key], Data)
+            key: self._dict[key]
+            for key in self
+            if isinstance(self._dict[key], (Data, Header))
         }
 
     @property
@@ -116,7 +120,7 @@ class Archive(Mapping):
                 printer.breakable("")
             val = self._dict[key]
 
-            if isinstance(val, Data):
+            if isinstance(val, (Data, Header)):
                 printer.text(f"{key} -> {val}")
                 continue
             if not val:
@@ -175,6 +179,8 @@ class Archive(Mapping):
                 if val.value is None:
                     val.value = self.load(this)
                 val = val.value
+            elif isinstance(val, Header):
+                pass
             else:
                 val = Archive(
                     val, loader=self.loader, path=f"{self.path}/{this}", parent=self
