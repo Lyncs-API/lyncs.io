@@ -75,30 +75,30 @@ except ImportError:
     pass
 
 try:
-    import numpy
-    from . import numpyz
+    import numpy as np
+    from . import numpy
 
     register(
         "ASCII",
         extensions=["txt"],
-        load=numpy.loadtxt,
-        save=swap(numpy.savetxt),
+        load=np.loadtxt,
+        save=swap(np.savetxt),
         description="ASCII, human-readable format. Limited to 1D or 2D arrays.",
     )
 
     register(
         "Numpy",
         extensions=["npy"],
-        load=numpy.load,
-        save=swap(numpy.save),
+        load=np.load,
+        save=swap(np.save),
         description="Numpy binary format",
     )
 
     register(
         "NumpyZ",
         extensions=["npz"],
-        load=numpyz.load,
-        save=numpyz.save,
+        load=numpy.loadz,
+        save=numpy.savez,
         description="Numpy zip format",
         archive=True,
     )

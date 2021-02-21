@@ -3,8 +3,8 @@ Customizing support for numpy-z
 """
 
 __all__ = [
-    "load",
-    "save",
+    "loadz",
+    "savez",
 ]
 
 import numpy
@@ -32,12 +32,12 @@ def _get_data(npz, key):
     )
 
 
-def load(filename, key=None, **kwargs):
+def loadz(filename, key=None, **kwargs):
     "Numpy-z load function"
 
     filename, key = split_filename(filename, key)
 
-    loader = Loader(load, filename, kwargs=kwargs)
+    loader = Loader(loadz, filename, kwargs=kwargs)
 
     with numpy.load(filename, **kwargs) as npz:
         assert isinstance(npz, NpzFile), "Broken support for Numpy-z"
@@ -46,7 +46,7 @@ def load(filename, key=None, **kwargs):
         return Archive({key: _get_data(npz, key) for key in npz}, loader=loader)
 
 
-def save(data, filename, key=None, compressed=False, **kwargs):
+def savez(data, filename, key=None, compressed=False, **kwargs):
     "Numpy-z save function"
 
     # TODO: numpy overwrites files. Support to numpy-z should be done through zip format
