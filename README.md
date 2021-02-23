@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/github/license/Lyncs-API/lyncs.io?logo=github&logoColor=white)](https://github.com/Lyncs-API/lyncs.io/blob/master/LICENSE)
 [![build & test](https://img.shields.io/github/workflow/status/Lyncs-API/lyncs.io/build%20&%20test?logo=github&logoColor=white)](https://github.com/Lyncs-API/lyncs.io/actions)
 [![codecov](https://img.shields.io/codecov/c/github/Lyncs-API/lyncs.io?logo=codecov&logoColor=white)](https://codecov.io/gh/Lyncs-API/lyncs.io)
-[![pylint](https://img.shields.io/badge/pylint%20score-9.9%2F10-green?logo=python&logoColor=white)](http://pylint.pycqa.org/)
+[![pylint](https://img.shields.io/badge/pylint%20score-9.1%2F10-green?logo=python&logoColor=white)](http://pylint.pycqa.org/)
 [![black](https://img.shields.io/badge/code%20style-black-000000.svg?logo=codefactor&logoColor=white)](https://github.com/ambv/black)
 
 Lyncs IO offers two high-level functions `load` and `save` (or `dump` as alias of `save`).
