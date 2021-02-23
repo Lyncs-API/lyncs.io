@@ -199,8 +199,9 @@ class Archive(Mapping):
 
 def split_filename(filename, key=None):
     "Splits the actual filename from the content to be accessed."
-    if key:
-        return filename, key
+    key = key or ""
+    if not isinstance(key, str):
+        raise TypeError("Key is not a string")
 
     try:
         path = to_path(filename)
@@ -214,4 +215,4 @@ def split_filename(filename, key=None):
             key = path.name
         path = path.parent
 
-    return path, key
+    return str(path), key.lstrip("/")
