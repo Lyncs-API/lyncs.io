@@ -37,6 +37,7 @@ def _get_head(npy):
         {
             "shape": shape,
             "dtype": dtype,
+            "_offset": npy.tell(),
             "_numpy_version": version,
             "_fortran_order": fortran_order,
         }
