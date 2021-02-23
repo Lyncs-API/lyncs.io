@@ -9,6 +9,7 @@ import pickle
 import json
 from .format import Format, Formats
 from .utils import swap, open_file
+from . import numpy
 
 formats = Formats()
 
@@ -51,38 +52,33 @@ try:
 except ImportError:
     pass
 
-try:
-    from . import numpy
+register(
+    "ASCII",
+    "txt",
+    extensions=["txt"],
+    load=numpy.loadtxt,
+    save=numpy.savetxt,
+    description="ASCII, human-readable format. Limited to 1D or 2D arrays.",
+)
 
-    register(
-        "ASCII",
-        "txt",
-        extensions=["txt"],
-        load=numpy.loadtxt,
-        save=numpy.savetxt,
-        description="ASCII, human-readable format. Limited to 1D or 2D arrays.",
-    )
+register(
+    "Numpy",
+    extensions=["npy"],
+    head=numpy.head,
+    load=numpy.load,
+    save=numpy.save,
+    description="Numpy binary format",
+)
 
-    register(
-        "Numpy",
-        extensions=["npy"],
-        head=numpy.head,
-        load=numpy.load,
-        save=numpy.save,
-        description="Numpy binary format",
-    )
-
-    register(
-        "NumpyZ",
-        extensions=["npz"],
-        head=numpy.headz,
-        load=numpy.loadz,
-        save=numpy.savez,
-        description="Numpy zip format",
-        archive=True,
-    )
-except ImportError:
-    pass
+register(
+    "NumpyZ",
+    extensions=["npz"],
+    head=numpy.headz,
+    load=numpy.loadz,
+    save=numpy.savez,
+    description="Numpy zip format",
+    archive=True,
+)
 
 try:
     from . import hdf5

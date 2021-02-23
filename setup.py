@@ -9,7 +9,6 @@ setup(
     extras_require={
         "dill": ["dill"],
         "hdf5": ["h5py"],
-        "numpy": ["numpy"],
         "test": ["pytest", "pytest-cov", "ipython"],
     },
 )
