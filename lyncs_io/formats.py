@@ -12,14 +12,7 @@ from .utils import swap, open_file
 from . import numpy
 
 formats = Formats()
-
-
-def register(*names, **kwargs):
-    "Adds a format to the list of formats"
-    assert names
-    fmt = Format(names[0], alias=names[1:], **kwargs)
-    for name in names:
-        formats[name.lower()] = fmt
+register = formats.register
 
 
 register(
@@ -42,15 +35,22 @@ register(
 try:
     import dill
 
-    register(
-        "dill",
-        extensions=["pkl", "dll"],
-        load=open_file(dill.load, 0, "rb"),
-        save=open_file(dill.dump, 1, "wb"),
-        description="Alternative to Python's pickle file format. Supports lambda functions.",
-    )
-except ImportError:
-    pass
+    _ = {
+        "load": open_file(dill.load, 0, "rb"),
+        "save": open_file(dill.dump, 1, "wb"),
+    }
+
+except ImportError as err:
+    _ = {
+        "error": err,
+    }
+
+register(
+    "dill",
+    extensions=["pkl", "dll"],
+    description="Alternative to Python's pickle file format. Supports lambda functions.",
+    **_,
+)
 
 register(
     "ASCII",
@@ -83,18 +83,24 @@ register(
 try:
     from . import hdf5
 
-    register(
-        "HDF5",
-        extensions=["h5", "hdf5"],
-        head=hdf5.head,
-        load=hdf5.load,
-        save=hdf5.save,
-        description="HDF5 file format",
-        archive=True,
-    )
-except ImportError:
-    pass
+    _ = {
+        "head": hdf5.head,
+        "load": hdf5.load,
+        "save": hdf5.save,
+    }
 
+except ImportError as err:
+    _ = {
+        "error": err,
+    }
+
+register(
+    "HDF5",
+    extensions=["h5", "hdf5"],
+    description="HDF5 file format",
+    archive=True,
+    **_,
+)
 
 """
 register(
