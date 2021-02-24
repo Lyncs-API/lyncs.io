@@ -5,6 +5,7 @@ setup(
     install_requires=[
         "lyncs_utils",
         "numpy",
+        "dataclasses",
     ],
     extras_require={
         "dill": ["dill"],
