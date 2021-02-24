@@ -37,6 +37,7 @@ class Format:
     load: callable = NIE
     save: callable = NIE
     head: callable = NIE
+    error: Exception = None
     archive: bool = False
     description: str = ""
 
@@ -53,6 +54,16 @@ class Format:
 
     def __str__(self):
         return str(self.name)
+
+    def check(self):
+        "Checks the format and return itself. Otherwise raises error."
+        if self.error:
+            raise self.error
+        return self
+
+    @property
+    def names(self):
+        return (self.name,) + tuple(self.alias)
 
 
 class Formats(OrderedDict):
@@ -104,11 +115,11 @@ class Formats(OrderedDict):
 
         # 1. Using format
         if format:
-            return self.from_format(format)
+            return self.from_format(format).check()
 
         # 2. Using filename
         if filename:
-            return self.from_path(filename)
+            return self.from_path(filename).check()
 
         raise ValueError(
             """
@@ -116,6 +127,14 @@ class Formats(OrderedDict):
             Available formats are {self}.
             """
         )
+
+    def register(self, *names, **kwargs):
+        "Adds a format to the list of formats"
+        if not names:
+            raise ValueError("Name not given")
+        fmt = Format(names[0], alias=names[1:], **kwargs)
+        for name in names:
+            self[name.lower()] = fmt
 
     def __str__(self):
         return ", ".join(self.keys())
