@@ -13,6 +13,7 @@ __all__ = [
     "savez",
 ]
 
+from io import UnsupportedOperation
 import numpy
 from numpy.lib.npyio import NpzFile
 from numpy.lib.format import read_magic, _check_version, _read_array_header
@@ -27,6 +28,13 @@ loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
 
 
+def _get_offset(npy):
+    try:
+        return npy.tell()
+    except UnsupportedOperation:
+        return None
+
+
 def _get_head(npy):
     "Returns the header of a numpy file"
     version = read_magic(npy)
@@ -37,7 +45,7 @@ def _get_head(npy):
         {
             "shape": shape,
             "dtype": dtype,
-            "_offset": npy.tell(),
+            "_offset": _get_offset(npy),
             "_numpy_version": version,
             "_fortran_order": fortran_order,
         }
