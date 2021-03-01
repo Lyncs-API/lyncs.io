@@ -14,6 +14,7 @@ __all__ = [
 ]
 
 from io import UnsupportedOperation
+from functools import wraps
 import numpy
 from numpy.lib.npyio import NpzFile
 from numpy.lib.format import read_magic, _check_version, _read_array_header
@@ -22,10 +23,24 @@ from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
 
-load = numpy.load
 save = swap(numpy.save)
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
+
+
+@wraps(numpy.load)
+def load(filename, chunks=None, comm=None, **kwargs):
+    """
+    chunks = number of chunks per dir
+    comm = cartesian MPI_Comm
+    """
+    if not chunks:
+        return numpy.load(filename, **kwargs)
+    meta = head(filename)
+    # check if you can chunk the shape
+    # prepare dask array
+    # TODO
+    raise NotImplementedError("chunking not supported yet")
 
 
 def _get_offset(npy):
