@@ -39,24 +39,28 @@ def load(filename, chunks=None, comm=None, **kwargs):
     if comm is None or comm.size == 1:
         return numpy.load(filename, **kwargs)
 
+    # TODO: inspect chunks and determine if data can be distributed on processes
+
     # Open File
     fh = MPI.File.Open(comm, filename, amode=MPI.MODE_RDONLY)
 
     # Each process reads header
     metadata = head(filename)
 
-    # decompose data over 1d for normal communicators
-    sizes, subsizes, starts = domain_decomposition_1d(metadata["shape"], comm)
+    # decompose data over 1d for normal communicator
+    # sizes, subsizes, starts = domain_decomposition_1d(metadata["shape"], comm)
+    # decompose data over cartesian communicator
+    sizes, subsizes, starts = domain_decomposition_cart(metadata["shape"], comm)
 
     mpi_type = MPI._typedict[numpy.dtype(metadata["dtype"]).char]
+
     # construct the filetype, use fixed data-type
     filetype = mpi_type.Create_subarray(sizes, subsizes, starts, order=MPI.ORDER_C)
     filetype.Commit()
 
     # set the file view - skip header
-    pos = (
-        fh.Get_position() + metadata["_offset"]
-    )  # move file pointer to beginning of array data
+    pos = fh.Get_position() + metadata["_offset"]
+    # move file pointer to beginning of array data
     fh.Set_view(pos, mpi_type, filetype, datarep="native")
 
     # allocate space for local_array to hold data read from file
@@ -71,32 +75,53 @@ def load(filename, chunks=None, comm=None, **kwargs):
     return local_array
 
 
-def domain_decomposition_1d(domain, comm):
+def split_work(load, workers, id):
     """
     Performs 1D decomposition of the domain over columns
     """
-    sizes = domain
-    subsizes = list(sizes)
-    starts = [0] * len(sizes)
+    part = int(load / workers)  # uniform distribution
+    rem = load - part * workers
+
+    # reverse round robbin assignment of the remaining work
+    if id >= (workers - rem):
+        part += 1
+        low = part * id - (workers - rem)
+        hi = part * (1 + id) - (workers - rem)
+    else:
+        low = part * id
+        hi = part * (1 + id)
+
+    return low, hi
+
+
+def domain_decomposition_1D(domain, comm):
+
+    subsizes = list(domain)
+    starts = [0] * len(domain)
     dim = 0
 
-    # figure out base and remaining work
-    total_work = sizes[dim]
-    base = int(total_work / comm.size)  # uniformly distributed
-    remain_work = total_work - base * comm.size
+    low, hi = split_work(domain[dim], comm.size, comm.rank)
 
-    # distributes remaining workload in reverse round-robbin
-    if comm.rank >= (comm.size - remain_work):
-        load = base + 1
-        low = load * comm.rank - ((comm.size - remain_work))
-        hi = load * (1 + comm.rank) - (comm.size - remain_work)
-    else:
-        load = base
-        low = load * comm.rank
-        hi = load * (1 + comm.rank)
-
+    sizes = domain
     subsizes[dim] = hi - low
     starts[dim] = low
+
+    return sizes, subsizes, starts
+
+
+def domain_decomposition_cart(domain, comm):
+
+    subsizes = list(domain)
+    starts = [0] * len(domain)
+
+    mpi_dims = MPI.Compute_dims(comm.size, 2)
+    coords = comm.Get_coords(comm.rank)
+    sizes = domain
+
+    for dim in range(len(domain)):
+        low, hi = split_work(domain[dim], mpi_dims[dim], coords[dim])
+        subsizes[dim] = hi - low
+        starts[dim] = low
 
     return sizes, subsizes, starts
 
