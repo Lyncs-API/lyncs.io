@@ -23,7 +23,9 @@ from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
 
-save = swap(numpy.save)
+from mpi4py import MPI
+
+# save = swap(numpy.save)
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
 
@@ -34,12 +36,77 @@ def load(filename, chunks=None, comm=None, **kwargs):
     chunks = number of chunks per dir
     comm = cartesian MPI_Comm
     """
-    if not chunks:
+    if comm is None or comm.size == 1:
         return numpy.load(filename, **kwargs)
-    meta = head(filename)
-    # check if you can chunk the shape
-    # prepare dask array
-    # TODO
+
+    # Open File
+    fh = MPI.File.Open(comm, filename, amode=MPI.MODE_RDONLY)
+
+    # Each process reads header
+    metadata = head(filename)
+
+    # decompose data over 1d for normal communicators
+    sizes, subsizes, starts = domain_decomposition_1d(metadata["shape"], comm)
+
+    mpi_type = MPI._typedict[numpy.dtype(metadata["dtype"]).char]
+    # construct the filetype, use fixed data-type
+    filetype = mpi_type.Create_subarray(sizes, subsizes, starts, order=MPI.ORDER_C)
+    filetype.Commit()
+
+    # set the file view - skip header
+    pos = (
+        fh.Get_position() + metadata["_offset"]
+    )  # move file pointer to beginning of array data
+    fh.Set_view(pos, mpi_type, filetype, datarep="native")
+
+    # allocate space for local_array to hold data read from file
+    local_array = numpy.empty(subsizes, dtype=metadata["dtype"], order="C")
+
+    # collectively read the array from file
+    fh.Read_all(local_array)
+
+    # close the file
+    fh.Close()
+
+    return local_array
+
+
+def domain_decomposition_1d(domain, comm):
+    """
+    Performs 1D decomposition of the domain over columns
+    """
+    sizes = domain
+    subsizes = list(sizes)
+    starts = [0] * len(sizes)
+    dim = 0
+
+    # figure out base and remaining work
+    total_work = sizes[dim]
+    base = int(total_work / comm.size)  # uniformly distributed
+    remain_work = total_work - base * comm.size
+
+    # distributes remaining workload in reverse round-robbin
+    if comm.rank >= (comm.size - remain_work):
+        load = base + 1
+        low = load * comm.rank - ((comm.size - remain_work))
+        hi = load * (1 + comm.rank) - (comm.size - remain_work)
+    else:
+        load = base
+        low = load * comm.rank
+        hi = load * (1 + comm.rank)
+
+    subsizes[dim] = hi - low
+    starts[dim] = low
+
+    return sizes, subsizes, starts
+
+
+@wraps(numpy.save)
+def save(filename, array, comm=None, **kwargs):
+
+    if not chunks:
+        return numpy.save(filename, array, **kwargs)
+
     raise NotImplementedError("chunking not supported yet")
 
 
