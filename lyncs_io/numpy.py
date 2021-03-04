@@ -47,10 +47,12 @@ def load(filename, chunks=None, comm=None, **kwargs):
     # Each process reads header
     metadata = head(filename)
 
-    # decompose data over 1d for normal communicator
-    # sizes, subsizes, starts = domain_decomposition_1d(metadata["shape"], comm)
-    # decompose data over cartesian communicator
-    sizes, subsizes, starts = domain_decomposition_cart(metadata["shape"], comm)
+    if isinstance(comm, MPI.Cartcomm):
+        # decompose data over cartesian communicator
+        sizes, subsizes, starts = domain_decomposition_cart(metadata["shape"], comm)
+    else:
+        # decompose data over 1d for normal communicator
+        sizes, subsizes, starts = domain_decomposition_1D(metadata["shape"], comm)
 
     mpi_type = MPI._typedict[numpy.dtype(metadata["dtype"]).char]
 
