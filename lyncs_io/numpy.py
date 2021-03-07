@@ -23,12 +23,11 @@ from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
 
-from mpi4py import MPI
+import .mpi_io 
 
 # save = swap(numpy.save)
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
-
 
 @wraps(numpy.load)
 def load(filename, chunks=None, comm=None, **kwargs):
@@ -36,10 +35,11 @@ def load(filename, chunks=None, comm=None, **kwargs):
     chunks = number of chunks per dir
     comm = cartesian MPI_Comm
     """
-    if comm is None or comm.size == 1:
-        return numpy.load(filename, **kwargs)
+    from mpi4py import MPI
 
-    # TODO: inspect chunks and determine if data can be distributed on processes
+    if comm is None or comm.size == 1:
+        # serial
+        return numpy.load(filename, **kwargs)
 
     # Open File
     fh = MPI.File.Open(comm, filename, amode=MPI.MODE_RDONLY)
@@ -54,16 +54,16 @@ def load(filename, chunks=None, comm=None, **kwargs):
         # decompose data over 1d for normal communicator
         sizes, subsizes, starts = domain_decomposition_1D(metadata["shape"], comm)
 
-    mpi_type = MPI._typedict[numpy.dtype(metadata["dtype"]).char]
+    etype = mpi_io.to_mpi_type(numpy.dtype(metadata["dtype"]).char)
 
     # construct the filetype, use fixed data-type
-    filetype = mpi_type.Create_subarray(sizes, subsizes, starts, order=MPI.ORDER_C)
+    filetype = etype.Create_subarray(sizes, subsizes, starts, order=MPI.ORDER_C)
     filetype.Commit()
 
     # set the file view - skip header
     pos = fh.Get_position() + metadata["_offset"]
     # move file pointer to beginning of array data
-    fh.Set_view(pos, mpi_type, filetype, datarep="native")
+    fh.Set_view(pos, etype, filetype, datarep="native")
 
     # allocate space for local_array to hold data read from file
     local_array = numpy.empty(subsizes, dtype=metadata["dtype"], order="C")
@@ -75,57 +75,6 @@ def load(filename, chunks=None, comm=None, **kwargs):
     fh.Close()
 
     return local_array
-
-
-def split_work(load, workers, id):
-    """
-    Performs 1D decomposition of the domain over columns
-    """
-    part = int(load / workers)  # uniform distribution
-    rem = load - part * workers
-
-    # reverse round robbin assignment of the remaining work
-    if id >= (workers - rem):
-        part += 1
-        low = part * id - (workers - rem)
-        hi = part * (1 + id) - (workers - rem)
-    else:
-        low = part * id
-        hi = part * (1 + id)
-
-    return low, hi
-
-
-def domain_decomposition_1D(domain, comm):
-
-    subsizes = list(domain)
-    starts = [0] * len(domain)
-    dim = 0
-
-    low, hi = split_work(domain[dim], comm.size, comm.rank)
-
-    sizes = domain
-    subsizes[dim] = hi - low
-    starts[dim] = low
-
-    return sizes, subsizes, starts
-
-
-def domain_decomposition_cart(domain, comm):
-
-    subsizes = list(domain)
-    starts = [0] * len(domain)
-
-    mpi_dims = MPI.Compute_dims(comm.size, 2)
-    coords = comm.Get_coords(comm.rank)
-    sizes = domain
-
-    for dim in range(len(domain)):
-        low, hi = split_work(domain[dim], mpi_dims[dim], coords[dim])
-        subsizes[dim] = hi - low
-        starts[dim] = low
-
-    return sizes, subsizes, starts
 
 
 @wraps(numpy.save)
