@@ -23,11 +23,12 @@ from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
 
-import .mpi_io 
+# import .mpi_io
 
 # save = swap(numpy.save)
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
+
 
 @wraps(numpy.load)
 def load(filename, chunks=None, comm=None, **kwargs):
