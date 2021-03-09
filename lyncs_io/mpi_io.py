@@ -1,12 +1,13 @@
-class MpiIO:
-    def __init__(self, comm, filename, dims=None):
+import numpy
+
+class MpiIO():
+
+    def __init__(self, comm, filename):
 
         from mpi4py import MPI
-
+        
         if isinstance(comm, MPI.Cartcomm):
-            if dims is None:
-                raise ValueError("Dims must be set to use Cartesian topology")
-            self.decomposition = Cartesian(comm=comm, dims=dims)
+            self.decomposition = Cartesian(comm=comm)
         else:
             self.decomposition = Decomposition(comm=comm)
 
@@ -18,30 +19,37 @@ class MpiIO:
 
     def file_open(self, mode):
 
-        amode = __check_file_mode(mode)
-
+        from mpi4py import MPI
+        
+        amode = self.__check_file_mode(mode)
         self.handler = MPI.File.Open(self.comm, self.filename, amode=amode)
 
     def load(self, domain, dtype, order, header_offset):
 
-        if not isinstance(dtype, str):
-            raise ValueError("dtype must be a string")
+        from mpi4py import MPI
+
+        if self.handler is None:
+            self.file_open(MPI.MODE_RDONLY)
+
+        # if not isinstance(dtype, str):
+        #     raise ValueError("dtype must be a string")
 
         sizes, subsizes, starts = self.decomposition.decompose(domain)
 
         # make sure we are receiving a numpy valid type
-        if type(dtype).__module__ == np.__name__:
+        # FIXME: Need to find a way of checking is dtype is a valid string and then pass that through numpy.dtype
+        if type(dtype).__module__ == numpy.__name__:
             etype = self.__dtype_to_mpi(dtype)
         else:
             raise NotImplementedError("Currently not supporting any other types")
-
-        if order.upper == "C":
+        
+        if order.upper() == "C":
             mpi_order = MPI.ORDER_C
         else:
             raise ValueError("Currently noy supporting FORTRAN ordering")
-
+        
         # construct the filetype, use fixed data-type
-        filetype = etype.Create_subarray(sizes, subsizes, starts, order=mpi_order)
+        filetype = etype.Create_subarray(tuple(sizes), list(subsizes), list(starts), order=mpi_order)
         filetype.Commit()
 
         # set the file view - skip header
@@ -51,18 +59,21 @@ class MpiIO:
 
         # allocate space for local_array to hold data read from file
         # FIXME: Depending on how future formats will be used (eg HDF5) this might has to go
-        local_array = numpy.empty(subsizes, dtype=dtype, order=order.upper)
+        local_array = numpy.empty(subsizes, dtype=dtype, order=order.upper())
 
         # collectively read the array from file
         self.handler.Read_all(local_array)
 
         return local_array
 
-    def save(self):
+    def save(self, array, header):
         raise NotImplementedError("MPI-IO Save not implemented yet")
 
-    def file_close():
-        self.hanlder.Close()
+    def file_close(self):
+        self.handler.Close()
+
+    def file_handler(self):
+        return self.handler
 
     def __check_file_mode(self, mode):
 
@@ -77,7 +88,7 @@ class MpiIO:
             MPI.MODE_DELETE_ON_CLOSE: "MPI.MODE_DELETE_ON_CLOSE - delete file on close",
             MPI.MODE_UNIQUE_OPEN: "MPI.MODE_UNIQUE_OPEN - file will not be concurrently opened elsewhere",
             MPI.MODE_SEQUENTIAL: "MPI.MODE_SEQUENTIAL - file will only be accessed sequentially",
-            MPI.MODE_APPEND: "MPI.MODE_APPEND - set initial position of all file pointers to end of file",
+            MPI.MODE_APPEND: "MPI.MODE_APPEND - set initial position of all file pointers to end of file"
         }
 
         if switcher.get(mode) is None:
@@ -98,10 +109,11 @@ class MpiIO:
         m : mpi4py.MPI.Datatype
             MPI data type corresponding to `t`.
         """
+        from mpi4py import MPI
         if hasattr(MPI, "_typedict"):
-            mpi_type = MPI._typedict[np.dtype(t).char]
+            mpi_type = MPI._typedict[numpy.dtype(t).char]
         elif hasattr(MPI, "__TypeDict__"):
-            mpi_type = MPI.__TypeDict__[np.dtype(t).char]
+            mpi_type = MPI.__TypeDict__[numpy.dtype(t).char]
         else:
             raise ValueError("cannot convert type")
         return mpi_type
@@ -109,7 +121,8 @@ class MpiIO:
 
 class Decomposition:
     """
-    One dimensional domain decomposition
+    One dimensional domain decomposition on data domains
+    of arbitrary dimensionality
     """
 
     def __init__(self, comm=None):
@@ -124,29 +137,74 @@ class Decomposition:
         self.rank = self.comm.Get_rank()
 
     def decompose(self, domain, workers=None, id=None):
+        """
+        Decompose data over a 1D communicatior.
+        Only the slowest moving index is decomposed.
+        Parameters
+        ----------
+        domain : list or int
+            Contains the size of domain we are decomposing.
+        workers : int
+            Size of available processing elements.
+        id : int
+            Index of the current processing element.
 
-        if not isinstance(domain, int):
+        Returns:
+        --------
+        size : list
+            global size of the domain
+        subsize : list
+            local size of the domain
+        start : list
+            global starting position 
+        """
+        size = list(domain)
+        subsize = list(domain)
+        start = [0] * len(domain)
+        
+        if (workers is None) or (id is None):
+            workers, id = self.size, self.rank
+
+        if size[0] < workers:
             raise ValueError(
-                "Domain Decomposition in 1D requires domain to be of integral type"
-            )
+                    "Domain size ({}) must be larger than the amount of workers({})".format(size[0], workers)
+                )
 
-        if (workers is not None) and (id is not None):
-            low, hi = self.__split_work(domain, workers, id)
-        else:
-            low, hi = self.__split_work(domain, self.size, self.rank)
+        low, hi = self.__split_work(size[0], workers, id)
 
-        sizes = domain
-        subsizes = hi - low
-        starts = low
-
-        return sizes, subsizes, starts
+        subsize[0] = hi - low
+        start[0] = low
+        
+        return size, subsize, start
 
     def __split_work(self, load, workers, id):
         """
         Uniformly distributes load over the dimension.
         Remaining load is assigned in reverse round robbin manner
+        Parameters
+        ----------
+        load : int
+            load size to be assigned
+        workers : int
+            number of workers total work will be assigned to
+        id : int
+            index of worker for which the load assigned will be calculated for
+
+        Returns:
+        --------
+        low : int
+            low bound of the wokrload assigned to the worker
+        hi : int
+            upper bound of the wokrload assigned to the worker
         """
 
+        if not isinstance(load, int):
+            raise ValueError("load expected to be an integer")
+        if not isinstance(workers, int):
+            raise ValueError("workers expected to be an integer")
+        if not isinstance(id, int):
+            raise ValueError("id expected to be an integer")
+        
         part = int(load / workers)  # uniform distribution
         rem = load - part * workers
 
@@ -168,7 +226,7 @@ class Cartesian(Decomposition):
     of arbitrary dimensionality
     """
 
-    def __init__(self, comm=None, dims=None):
+    def __init__(self, comm=None):
         super().__init__(comm=comm)
 
         from mpi4py import MPI
@@ -176,21 +234,40 @@ class Cartesian(Decomposition):
         if not isinstance(comm, MPI.Cartcomm):
             raise ValueError("Expected a Cartesian MPI communicator")
 
-        self.dims = MPI.Compute_dims(self.size, dims)
+        self.dims = MPI.Compute_dims(self.size, comm.Get_dim())
         self.coords = self.comm.Get_coords(self.rank)
 
     def decompose(self, domain):
+        """
+        Decompose data over a cartesian communicatior.
+        Data domains of higher order compared to communicators order
+        only decomposed on the slow moving indexes.
+        Parameters
+        ----------
+        domain : list
+            Contains the global size domain we are decomposing.
 
+        Returns:
+        --------
+        size : one-dimensional list
+            global size of the dimension
+        subsize : one-dimensional list
+            local size of the dimension
+        start : one-dimensional list
+            global starting position 
+        """
         # TODO: Check that the data domain can be decomposed based on the topology's shape
-
+        
+        sizes = list(domain)
         subsizes = list(domain)
         starts = [0] * len(domain)
-        sizes = domain
-
+        
         # Iterate over the dimensionality of the topology
+        # allows for decomposition of higher order data domains
         for dim in range(len(self.dims)):
-            _, subsizes[dim], starts[dim] = super(Cartesian, self).decompose(
-                domain[dim], workers=self.dims[dim], id=self.coords[dim]
+            _, ssz, st = super(Cartesian, self).decompose(
+                [domain[dim]], workers=self.dims[dim], id=self.coords[dim]
             )
-
+            subsizes[dim], starts[dim] = ssz[0], st[0]
+        
         return sizes, subsizes, starts
