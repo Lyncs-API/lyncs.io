@@ -65,6 +65,10 @@ class MpiIO:
         return local_array
 
     def save(self, array, header):
+
+        if self.handler is None:
+            self.file_open(self.MPI.MODE_CREATE | self.MPI.MODE_WRONLY)
+
         raise NotImplementedError("MPI-IO Save not implemented yet")
 
     def file_close(self):
@@ -173,7 +177,8 @@ class Decomposition:
                 )
             )
 
-        low, hi = self.__split_work(size[0], workers, id)
+        low = self.__split_work(size[0], workers, id)
+        hi = self.__split_work(size[0], workers, id + 1)
 
         subsize[0] = hi - low
         start[0] = low
@@ -190,16 +195,14 @@ class Decomposition:
         load : int
             load size to be assigned
         workers : int
-            number of workers total work will be assigned to
+            total processing elements work will be assigned to
         id : int
-            index of worker for which the load assigned will be calculated for
+            processing element for which the bound is calculated for
 
         Returns:
         --------
-        low : int
+        bound : int
             low bound of the wokrload assigned to the worker
-        hi : int
-            upper bound of the wokrload assigned to the worker
         """
 
         if not isinstance(load, int):
@@ -209,19 +212,16 @@ class Decomposition:
         if not isinstance(id, int):
             raise ValueError("id expected to be an integer")
 
-        part = int(load / workers)  # uniform distribution
-        rem = load - part * workers
+        n = int(load / workers)  # uniform distribution
+        r = load - n * workers
 
-        # reverse round robbin assignment of the remaining work
-        if id >= (workers - rem):
-            part += 1
-            low = part * id - (workers - rem)
-            hi = part * (1 + id) - (workers - rem)
+        # round robbin assignment of the remaining work
+        if id <= r:
+            bound = (n + 1) * id
         else:
-            low = part * id
-            hi = part * (1 + id)
+            bound = (n + 1) * r + n * (id - r)
 
-        return low, hi
+        return bound
 
 
 class Cartesian(Decomposition):
