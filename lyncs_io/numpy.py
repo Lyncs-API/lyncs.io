@@ -17,15 +17,18 @@ from io import UnsupportedOperation
 from functools import wraps
 import numpy
 from numpy.lib.npyio import NpzFile
-from numpy.lib.format import read_magic, _check_version, _read_array_header
+from numpy.lib.format import (
+    read_magic,
+    _check_version,
+    _read_array_header,
+    header_data_from_array_1_0,
+)
 from lyncs_utils import is_keyword
 from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
+from .mpi_io import MpiIO
 
-# import .mpi_io
-
-# save = swap(numpy.save)
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
 
@@ -39,52 +42,39 @@ def load(filename, chunks=None, comm=None, **kwargs):
     from mpi4py import MPI
 
     if comm is None or comm.size == 1:
-        # serial
         return numpy.load(filename, **kwargs)
 
-    # Open File
-    fh = MPI.File.Open(comm, filename, amode=MPI.MODE_RDONLY)
-
-    # Each process reads header
     metadata = head(filename)
+    mpiio = MpiIO(comm, filename)
 
-    if isinstance(comm, MPI.Cartcomm):
-        # decompose data over cartesian communicator
-        sizes, subsizes, starts = domain_decomposition_cart(metadata["shape"], comm)
-    else:
-        # decompose data over 1d for normal communicator
-        sizes, subsizes, starts = domain_decomposition_1D(metadata["shape"], comm)
-
-    etype = mpi_io.to_mpi_type(numpy.dtype(metadata["dtype"]).char)
-
-    # construct the filetype, use fixed data-type
-    filetype = etype.Create_subarray(sizes, subsizes, starts, order=MPI.ORDER_C)
-    filetype.Commit()
-
-    # set the file view - skip header
-    pos = fh.Get_position() + metadata["_offset"]
-    # move file pointer to beginning of array data
-    fh.Set_view(pos, etype, filetype, datarep="native")
-
-    # allocate space for local_array to hold data read from file
-    local_array = numpy.empty(subsizes, dtype=metadata["dtype"], order="C")
-
-    # collectively read the array from file
-    fh.Read_all(local_array)
-
-    # close the file
-    fh.Close()
+    mpiio.file_open(MPI.MODE_RDONLY)
+    local_array = mpiio.load(
+        metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
+    )
+    mpiio.file_close()
 
     return local_array
 
 
 @wraps(numpy.save)
-def save(filename, array, comm=None, **kwargs):
+def save(array, filename, comm=None, **kwargs):
 
-    if not chunks:
+    if comm is None or comm.size == 1:
         return numpy.save(filename, array, **kwargs)
 
-    raise NotImplementedError("chunking not supported yet")
+    mpiio = MpiIO(comm, filename)
+    mpiio.file_open(mpiio.MPI.MODE_CREATE | mpiio.MPI.MODE_WRONLY)
+
+    global_shape, _, _ = mpiio.decomposition.compose(array.shape)
+
+    if mpiio.rank == 0:
+        header = header_data_from_array_1_0(array)
+        header["shape"] = tuple(global_shape)  # needs to be tuple
+
+        _write_array_header(mpiio.handler, header)
+
+    mpiio.save(array)
+    mpiio.file_close()
 
 
 def _get_offset(npy):
@@ -119,6 +109,64 @@ def _get_headz(npz, key):
 
     with npz.zip.open(key + ".npy") as npy:
         return _get_head(npy)
+
+
+def _write_array_header(fp, d, version=None):
+    """Write the header for an array and returns the version used
+    Parameters
+    ----------
+    fp : filelike object
+    d : dict
+        This has the appropriate entries for writing its string representation
+        to the header of the file.
+    version: tuple or None
+        None means use oldest that works
+        explicit version will raise a ValueError if the format does not
+        allow saving this data.  Default: None
+    """
+    import struct
+    from numpy.lib import format as fmt
+
+    header = ["{"]
+    for key, value in sorted(d.items()):
+        # Need to use repr here, since we eval these when reading
+        header.append("'%s': %s, " % (key, repr(value)))
+    header.append("}")
+    header = "".join(header)
+    header = numpy.compat.asbytes(fmt._filter_header(header))
+
+    hlen = len(header) + 1  # 1 for newline
+    padlen_v1 = fmt.ARRAY_ALIGN - (
+        (fmt.MAGIC_LEN + struct.calcsize("<H") + hlen) % fmt.ARRAY_ALIGN
+    )
+    padlen_v2 = fmt.ARRAY_ALIGN - (
+        (fmt.MAGIC_LEN + struct.calcsize("<I") + hlen) % fmt.ARRAY_ALIGN
+    )
+
+    # Which version(s) we write depends on the total header size; v1 has a max of 65535
+    if hlen + padlen_v1 < 2 ** 16 and version in (None, (1, 0)):
+        version = (1, 0)
+        header_prefix = fmt.magic(1, 0) + struct.pack("<H", hlen + padlen_v1)
+        topad = padlen_v1
+    elif hlen + padlen_v2 < 2 ** 32 and version in (None, (2, 0)):
+        version = (2, 0)
+        header_prefix = magic(2, 0) + struct.pack("<I", hlen + padlen_v2)
+        topad = padlen_v2
+    else:
+        msg = "Header length %s too big for version=%s"
+        msg %= (hlen, version)
+        raise ValueError(msg)
+
+    # Pad the header with spaces and a final newline such that the magic
+    # string, the header-length short and the header are aligned on a
+    # ARRAY_ALIGN byte boundary.  This supports memory mapping of dtypes
+    # aligned up to ARRAY_ALIGN on systems like Linux where mmap()
+    # offset must be page-aligned (i.e. the beginning of the file).
+    header = header + b" " * topad + b"\n"
+
+    fp.Write(header_prefix)
+    fp.Write(header)
+    return version
 
 
 def headz(filename, key=None, **kwargs):

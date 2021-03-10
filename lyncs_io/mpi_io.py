@@ -23,7 +23,8 @@ class MpiIO:
 
     def file_open(self, mode):
 
-        amode = self.__check_file_mode(mode)
+        # amode = self.__check_file_mode(mode)
+        amode = mode
         self.handler = self.MPI.File.Open(self.comm, self.filename, amode=amode)
 
     def load(self, domain, dtype, order, header_offset):
@@ -36,6 +37,48 @@ class MpiIO:
 
         sizes, subsizes, starts = self.decomposition.decompose(domain)
 
+        # skip header
+        pos = self.handler.Get_position() + header_offset
+
+        self.set_view(domain, dtype, order, pos, sizes, subsizes, starts)
+
+        # allocate space for local_array to hold data read from file
+        # FIXME: Depending on how future formats will be used (eg HDF5) this might has to go
+        local_array = numpy.empty(subsizes, dtype=dtype, order=order.upper())
+
+        self.handler.Read_all(local_array)
+
+        return local_array
+
+    def save(self, array, header=None):
+        # Assumes header is a dict with "shape" entry
+
+        if self.handler is None:
+            self.file_open(self.MPI.MODE_CREATE | self.MPI.MODE_WRONLY)
+
+        if self.rank == 0:
+            pos = self.handler.Get_position()
+        else:
+            pos = 0
+
+        pos = self.comm.bcast(pos, root=0)
+
+        global_shape, local_shape, local_start = self.decomposition.compose(array.shape)
+
+        self.set_view(
+            array.shape,
+            numpy.array(array).dtype,
+            "C",
+            pos,
+            global_shape,
+            local_shape,
+            local_start,
+        )
+
+        # collectively write the array to file
+        self.handler.Write_all(array)
+
+    def set_view(self, domain, dtype, order, pos, sizes, subsizes, starts):
         # make sure we are receiving a numpy valid type
         # FIXME: Need to find a way of checking is dtype is a valid string and then pass that through numpy.dtype
         if type(dtype).__module__ == numpy.__name__:
@@ -52,24 +95,7 @@ class MpiIO:
         filetype = etype.Create_subarray(sizes, subsizes, starts, order=mpi_order)
         filetype.Commit()
 
-        # skip header
-        pos = self.handler.Get_position() + header_offset
         self.handler.Set_view(pos, etype, filetype, datarep="native")
-
-        # allocate space for local_array to hold data read from file
-        # FIXME: Depending on how future formats will be used (eg HDF5) this might has to go
-        local_array = numpy.empty(subsizes, dtype=dtype, order=order.upper())
-
-        self.handler.Read_all(local_array)
-
-        return local_array
-
-    def save(self, array, header):
-
-        if self.handler is None:
-            self.file_open(self.MPI.MODE_CREATE | self.MPI.MODE_WRONLY)
-
-        raise NotImplementedError("MPI-IO Save not implemented yet")
 
     def file_close(self):
         self.handler.Close()
@@ -185,6 +211,21 @@ class Decomposition:
 
         return size, subsize, start
 
+    def compose(self, domain, comm=None, id=None):
+
+        size = list(domain)
+        subsize = list(domain)
+        start = [0] * len(domain)
+
+        if comm is None or id is None:
+            comm, id = self.comm, self.rank
+
+        subsizes = comm.allgather(subsize[0])
+        size[0] = sum(subsizes)
+        start[0] = numpy.cumsum([0] + subsizes)[id]
+
+        return size, subsize, start
+
     def __split_work(self, load, workers, id):
         """
         Uniformly distributes load over the dimension.
@@ -271,5 +312,27 @@ class Cartesian(Decomposition):
                 [domain[dim]], workers=self.dims[dim], id=self.coords[dim]
             )
             subsizes[dim], starts[dim] = ssz[0], st[0]
+
+        return sizes, subsizes, starts
+
+    def compose(self, domain):
+
+        sizes = list(domain)
+        subsizes = list(domain)
+        starts = [0] * len(domain)
+
+        # Iterating over the dimensionality of the topology
+        # allows for composition of higher order data domains
+        for dim in range(len(self.dims)):
+            rdims = [False] * len(self.dims)
+            rdims[dim] = True
+            # sub-communicator for collective communications over
+            # a single dimension in the topology
+            subcomm = self.comm.Sub(remain_dims=rdims)
+
+            sz, ssz, st = super(Cartesian, self).compose(
+                [domain[dim]], comm=subcomm, id=self.coords[dim]
+            )
+            sizes[dim], subsizes[dim], starts[dim] = sz[0], ssz[0], st[0]
 
         return sizes, subsizes, starts
