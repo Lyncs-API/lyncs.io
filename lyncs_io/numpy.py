@@ -21,6 +21,7 @@ from numpy.lib.format import (
     read_magic,
     _check_version,
     _read_array_header,
+    _write_array_header,
     header_data_from_array_1_0,
 )
 from lyncs_utils import is_keyword
@@ -45,7 +46,6 @@ def load(filename, chunks=None, comm=None, **kwargs):
 
     metadata = head(filename)
 
-    # TODO: Convert string mode to MPI_MODE
     with MpiIO(comm, filename, mode="r") as mpiio:
         local_array = mpiio.load(
             metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
@@ -60,19 +60,15 @@ def save(array, filename, comm=None, **kwargs):
     if comm is None or comm.size == 1:
         return numpy.save(filename, array, **kwargs)
 
-    mpiio = MpiIO(comm, filename)
-    mpiio.file_open(mpiio.MPI.MODE_CREATE | mpiio.MPI.MODE_WRONLY)
+    with MpiIO(comm, filename, mode="w") as mpiio:
+        global_shape, _, _ = mpiio.decomposition.compose(array.shape)
 
-    global_shape, _, _ = mpiio.decomposition.compose(array.shape)
+        if mpiio.rank == 0:
+            header = header_data_from_array_1_0(array)
+            header["shape"] = tuple(global_shape)  # needs to be tuple
+            _write_array_header(mpiio.handler, header)
 
-    if mpiio.rank == 0:
-        header = header_data_from_array_1_0(array)
-        header["shape"] = tuple(global_shape)  # needs to be tuple
-
-        _write_array_header(mpiio.handler, header)
-
-    mpiio.save(array)
-    mpiio.file_close()
+        mpiio.save(array)
 
 
 def _get_offset(npy):

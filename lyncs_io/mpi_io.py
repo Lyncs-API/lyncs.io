@@ -35,8 +35,18 @@ class MpiIO:
         self.filename = filename
         self.handler = None
 
+        if mode is None:
+            mode = "r"
+
+        # TODO: Remove this into a convert routine
+        if mode == "r":
+            self.mode = self.MPI.MODE_RDONLY
+        elif mode == "w":
+            self.mode = self.MPI.MODE_CREATE | self.MPI.MODE_WRONLY
+
     def __enter__(self):
-        self.file_open()
+        self.file_open(mode=self.mode)
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.file_close()
@@ -45,9 +55,11 @@ class MpiIO:
     def file_open(self, mode=None):
 
         # amode = self.__check_file_mode(mode)
-        amode = mode
+        if mode is None:
+            mode = self.mode
+
         self.handler = FileWrapper(
-            self.MPI.File.Open(self.comm, self.filename, amode=amode)
+            self.MPI.File.Open(self.comm, self.filename, amode=mode)
         )
 
     def load(self, domain, dtype, order, header_offset):
