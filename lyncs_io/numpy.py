@@ -39,19 +39,17 @@ def load(filename, chunks=None, comm=None, **kwargs):
     chunks = number of chunks per dir
     comm = cartesian MPI_Comm
     """
-    from mpi4py import MPI
 
     if comm is None or comm.size == 1:
         return numpy.load(filename, **kwargs)
 
     metadata = head(filename)
-    mpiio = MpiIO(comm, filename)
 
-    mpiio.file_open(MPI.MODE_RDONLY)
-    local_array = mpiio.load(
-        metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
-    )
-    mpiio.file_close()
+    # TODO: Convert string mode to MPI_MODE
+    with MpiIO(comm, filename, mode="r") as mpiio:
+        local_array = mpiio.load(
+            metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
+        )
 
     return local_array
 
@@ -109,64 +107,6 @@ def _get_headz(npz, key):
 
     with npz.zip.open(key + ".npy") as npy:
         return _get_head(npy)
-
-
-def _write_array_header(fp, d, version=None):
-    """Write the header for an array and returns the version used
-    Parameters
-    ----------
-    fp : filelike object
-    d : dict
-        This has the appropriate entries for writing its string representation
-        to the header of the file.
-    version: tuple or None
-        None means use oldest that works
-        explicit version will raise a ValueError if the format does not
-        allow saving this data.  Default: None
-    """
-    import struct
-    from numpy.lib import format as fmt
-
-    header = ["{"]
-    for key, value in sorted(d.items()):
-        # Need to use repr here, since we eval these when reading
-        header.append("'%s': %s, " % (key, repr(value)))
-    header.append("}")
-    header = "".join(header)
-    header = numpy.compat.asbytes(fmt._filter_header(header))
-
-    hlen = len(header) + 1  # 1 for newline
-    padlen_v1 = fmt.ARRAY_ALIGN - (
-        (fmt.MAGIC_LEN + struct.calcsize("<H") + hlen) % fmt.ARRAY_ALIGN
-    )
-    padlen_v2 = fmt.ARRAY_ALIGN - (
-        (fmt.MAGIC_LEN + struct.calcsize("<I") + hlen) % fmt.ARRAY_ALIGN
-    )
-
-    # Which version(s) we write depends on the total header size; v1 has a max of 65535
-    if hlen + padlen_v1 < 2 ** 16 and version in (None, (1, 0)):
-        version = (1, 0)
-        header_prefix = fmt.magic(1, 0) + struct.pack("<H", hlen + padlen_v1)
-        topad = padlen_v1
-    elif hlen + padlen_v2 < 2 ** 32 and version in (None, (2, 0)):
-        version = (2, 0)
-        header_prefix = magic(2, 0) + struct.pack("<I", hlen + padlen_v2)
-        topad = padlen_v2
-    else:
-        msg = "Header length %s too big for version=%s"
-        msg %= (hlen, version)
-        raise ValueError(msg)
-
-    # Pad the header with spaces and a final newline such that the magic
-    # string, the header-length short and the header are aligned on a
-    # ARRAY_ALIGN byte boundary.  This supports memory mapping of dtypes
-    # aligned up to ARRAY_ALIGN on systems like Linux where mmap()
-    # offset must be page-aligned (i.e. the beginning of the file).
-    header = header + b" " * topad + b"\n"
-
-    fp.Write(header_prefix)
-    fp.Write(header)
-    return version
 
 
 def headz(filename, key=None, **kwargs):

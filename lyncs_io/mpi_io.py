@@ -1,14 +1,28 @@
 import numpy
 
 
+class FileWrapper:
+    def __init__(self, handler):
+        self.handler = handler
+
+    def __getattr__(self, key):
+        if key == "write":
+            key = "Write"
+        return self.handler.__getattribute__(key)
+
+
 class MpiIO:
     """
     Parallel IO using MPI
     """
 
-    from mpi4py import MPI
+    @property
+    def MPI(self):
+        from mpi4py import MPI
 
-    def __init__(self, comm, filename):
+        return MPI
+
+    def __init__(self, comm, filename, mode=None):
 
         if isinstance(comm, self.MPI.Cartcomm):
             self.decomposition = Cartesian(comm=comm)
@@ -21,11 +35,20 @@ class MpiIO:
         self.filename = filename
         self.handler = None
 
-    def file_open(self, mode):
+    def __enter__(self):
+        self.file_open()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.file_close()
+        # TODO: Check how to treat exc_error flags
+
+    def file_open(self, mode=None):
 
         # amode = self.__check_file_mode(mode)
         amode = mode
-        self.handler = self.MPI.File.Open(self.comm, self.filename, amode=amode)
+        self.handler = FileWrapper(
+            self.MPI.File.Open(self.comm, self.filename, amode=amode)
+        )
 
     def load(self, domain, dtype, order, header_offset):
 
