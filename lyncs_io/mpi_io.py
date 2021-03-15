@@ -35,11 +35,7 @@ class MpiIO:
         if mode is None:
             mode = "r"
 
-        # TODO: Remove this into a convert routine
-        if mode == "r":
-            self.mode = self.MPI.MODE_RDONLY
-        elif mode == "w":
-            self.mode = self.MPI.MODE_CREATE | self.MPI.MODE_WRONLY
+        self.mode = mode
 
     def __enter__(self):
         self.file_open(mode=self.mode)
@@ -51,9 +47,10 @@ class MpiIO:
 
     def file_open(self, mode=None):
 
-        # amode = self.__check_file_mode(mode)
         if mode is None:
-            mode = self.mode
+            mode = self._to_mpi_file_mode(self.mode)
+        else:
+            mode = self._to_mpi_file_mode(mode)
 
         self.handler = FileWrapper(
             self.MPI.File.Open(self.comm, self.filename, amode=mode)
@@ -62,10 +59,7 @@ class MpiIO:
     def load(self, domain, dtype, order, header_offset):
 
         if self.handler is None:
-            self.file_open(self.MPI.MODE_RDONLY)
-
-        # if not isinstance(dtype, str):
-        #     raise ValueError("dtype must be a string")
+            self.file_open(mode="r")
 
         sizes, subsizes, starts = self.decomposition.decompose(domain)
 
@@ -75,7 +69,6 @@ class MpiIO:
         self.set_view(domain, dtype, order, pos, sizes, subsizes, starts)
 
         # allocate space for local_array to hold data read from file
-        # FIXME: Depending on how future formats will be used (eg HDF5) this might has to go
         local_array = numpy.empty(subsizes, dtype=dtype, order=order.upper())
 
         self.handler.Read_all(local_array)
@@ -86,7 +79,7 @@ class MpiIO:
         # Assumes header is a dict with "shape" entry
 
         if self.handler is None:
-            self.file_open(self.MPI.MODE_CREATE | self.MPI.MODE_WRONLY)
+            self.file_open(mode="w")
 
         if self.rank == 0:
             pos = self.handler.Get_position()
@@ -111,12 +104,8 @@ class MpiIO:
         self.handler.Write_all(array)
 
     def set_view(self, domain, dtype, order, pos, sizes, subsizes, starts):
-        # make sure we are receiving a numpy valid type
-        # FIXME: Need to find a way of checking is dtype is a valid string and then pass that through numpy.dtype
-        if type(dtype).__module__ == numpy.__name__:
-            etype = self.__dtype_to_mpi(dtype)
-        else:
-            raise NotImplementedError("Currently not supporting any other types")
+        # assumes numpy valid type
+        etype = self.__dtype_to_mpi(dtype)
 
         if order.upper() == "C":
             mpi_order = self.MPI.ORDER_C
@@ -135,26 +124,21 @@ class MpiIO:
     def file_handler(self):
         return self.handler
 
-    def __check_file_mode(self, mode):
-
+    def _to_mpi_file_mode(self, mode):
         MPI = self.MPI
 
         switcher = {
-            MPI.MODE_RDONLY: "MPI.MODE_RDONLY - read only",
-            MPI.MODE_RDWR: "MPI.MODE_RDWR - reading and writing",
-            MPI.MODE_WRONLY: "MPI.MODE_WRONLY - write only",
-            MPI.MODE_CREATE: "MPI.MODE_CREATE - create the file if it does not exist",
-            MPI.MODE_EXCL: "MPI.MODE_EXCL - error if creating file that already exists",
-            MPI.MODE_DELETE_ON_CLOSE: "MPI.MODE_DELETE_ON_CLOSE - delete file on close",
-            MPI.MODE_UNIQUE_OPEN: "MPI.MODE_UNIQUE_OPEN - file will not be concurrently opened elsewhere",
-            MPI.MODE_SEQUENTIAL: "MPI.MODE_SEQUENTIAL - file will only be accessed sequentially",
-            MPI.MODE_APPEND: "MPI.MODE_APPEND - set initial position of all file pointers to end of file",
+            "r": MPI.MODE_RDONLY,
+            "w": MPI.MODE_CREATE | MPI.MODE_WRONLY,
+            "a": MPI.MODE_APPEND,
+            "r+": MPI.MODE_RDWR,
+            "w+": MPI.MODE_CREATE | MPI.MODE_RDWR,
         }
 
         if switcher.get(mode) is None:
             raise ValueError("File access mode value is invalid.")
 
-        return mode
+        return switcher.get(mode)
 
     def __dtype_to_mpi(self, t):
         """
