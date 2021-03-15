@@ -56,6 +56,9 @@ class MpiIO:
             self.MPI.File.Open(self.comm, self.filename, amode=mode)
         )
 
+    def file_close(self):
+        self.handler.Close()
+
     def load(self, domain, dtype, order, header_offset):
 
         if self.handler is None:
@@ -66,7 +69,7 @@ class MpiIO:
         # skip header
         pos = self.handler.Get_position() + header_offset
 
-        self.set_view(domain, dtype, order, pos, sizes, subsizes, starts)
+        self._set_view(domain, dtype, order, pos, sizes, subsizes, starts)
 
         # allocate space for local_array to hold data read from file
         local_array = numpy.empty(subsizes, dtype=dtype, order=order.upper())
@@ -90,7 +93,7 @@ class MpiIO:
 
         global_shape, local_shape, local_start = self.decomposition.compose(array.shape)
 
-        self.set_view(
+        self._set_view(
             array.shape,
             numpy.array(array).dtype,
             "C",
@@ -103,7 +106,7 @@ class MpiIO:
         # collectively write the array to file
         self.handler.Write_all(array)
 
-    def set_view(self, domain, dtype, order, pos, sizes, subsizes, starts):
+    def _set_view(self, domain, dtype, order, pos, sizes, subsizes, starts):
         # assumes numpy valid type
         etype = self._dtype_to_mpi(dtype)
 
@@ -117,12 +120,6 @@ class MpiIO:
         filetype.Commit()
 
         self.handler.Set_view(pos, etype, filetype, datarep="native")
-
-    def file_close(self):
-        self.handler.Close()
-
-    def file_handler(self):
-        return self.handler
 
     def _to_mpi_file_mode(self, mode):
         MPI = self.MPI
