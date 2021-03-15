@@ -24,10 +24,7 @@ class MpiIO:
 
     def __init__(self, comm, filename, mode=None):
 
-        if isinstance(comm, self.MPI.Cartcomm):
-            self.decomposition = Cartesian(comm=comm)
-        else:
-            self.decomposition = Decomposition(comm=comm)
+        self.decomposition = Decomposition(comm=comm)
 
         self.comm = self.decomposition.comm
         self.rank = self.decomposition.rank
@@ -186,34 +183,41 @@ class MpiIO:
 
 class Decomposition:
     """
-    One dimensional domain decomposition on data domains
+    Decompose data using Cartesian/Domain Decomposition
     of arbitrary dimensionality
     """
 
-    from mpi4py import MPI
+    @property
+    def MPI(self):
+        from mpi4py import MPI
+
+        return MPI
 
     def __init__(self, comm=None):
-
-        if not isinstance(comm, self.MPI.Comm):
-            raise ValueError("Expected an MPI communicator")
+        if (comm is None) or (not isinstance(comm, self.MPI.Comm)):
+            raise ValueError("Expected a (Cartesian) MPI communicator")
 
         self.comm = comm
         self.size = self.comm.Get_size()
         self.rank = self.comm.Get_rank()
 
-    def decompose(self, domain, workers=None, id=None):
+        if isinstance(comm, self.MPI.Cartcomm):
+            self.dims = self.MPI.Compute_dims(self.size, comm.Get_dim())
+            self.coords = self.comm.Get_coords(self.rank)
+        elif isinstance(comm, self.MPI.Comm):
+            self.dims = [self.size]
+            self.coords = [self.rank]
+
+    def decompose(self, domain):
         """
-        Decompose data over a 1D communicatior.
-        Only the slowest moving index is decomposed.
+        Decompose data over a cartesian/normal communicatior.
+        Data domains of higher order compared to communicators order
+        only decomposed on the slow moving indexes.
 
         Parameters
         ----------
-        domain : list or int
-            Contains the size of domain we are decomposing.
-        workers : int
-            Size of available processing elements.
-        id : int
-            Index of the current processing element.
+        domain : list
+            Contains the global size domain we are decomposing.
 
         Returns:
         --------
@@ -224,44 +228,73 @@ class Decomposition:
         start : list
             global starting position
         """
-        size = list(domain)
-        subsize = list(domain)
-        start = [0] * len(domain)
 
-        if (workers is None) or (id is None):
-            workers, id = self.size, self.rank
+        sizes = list(domain)
+        subsizes = list(domain)
+        starts = [0] * len(domain)
 
-        if size[0] < workers:
-            raise ValueError(
-                "Domain size ({}) must be larger than the amount of workers({})".format(
-                    size[0], workers
+        # Iterating over the dimensionality of the topology
+        # allows for decomposition of higher order data domains
+        for dim in range(len(self.dims)):
+            workers, id = self.dims[dim], self.coords[dim]
+            if domain[dim] < workers:
+                raise ValueError(
+                    "Domain size ({}) must be larger than the amount of workers({})".format(
+                        domain[dim], workers
+                    )
                 )
-            )
 
-        low = self.__split_work(size[0], workers, id)
-        hi = self.__split_work(size[0], workers, id + 1)
+            low = self._split_work(domain[dim], workers, id)
+            hi = self._split_work(domain[dim], workers, id + 1)
 
-        subsize[0] = hi - low
-        start[0] = low
+            subsizes[dim] = hi - low
+            starts[dim] = low
 
-        return size, subsize, start
+        return sizes, subsizes, starts
 
-    def compose(self, domain, comm=None, id=None):
+    def compose(self, domain):
+        """
+        Reconstruct global data domain and position of the
+        local array relatively to the global domain.
 
-        size = list(domain)
-        subsize = list(domain)
-        start = [0] * len(domain)
+        Parameters
+        ----------
+        domain : list
+            Contains the local size domain of the array.
 
-        if comm is None or id is None:
-            comm, id = self.comm, self.rank
+        Returns:
+        --------
+        size : list
+            global size of the domain
+        subsize : list
+            local size of the domain
+        start : list
+            global starting position
+        """
+        sizes = list(domain)
+        subsizes = list(domain)
+        starts = [0] * len(domain)
 
-        subsizes = comm.allgather(subsize[0])
-        size[0] = sum(subsizes)
-        start[0] = numpy.cumsum([0] + subsizes)[id]
+        # Iterating over the dimensionality of the topology
+        # allows for composition of higher order data domains
+        for dim in range(len(self.dims)):
+            rdims = [False] * len(self.dims)
+            rdims[dim] = True
 
-        return size, subsize, start
+            # sub-communicator for collective communications over
+            # a single dimension in the topology
+            if len(self.dims) > 1:
+                subcomm = self.comm.Sub(remain_dims=rdims)
+            else:
+                subcomm = self.comm
 
-    def __split_work(self, load, workers, id):
+            subsize = subcomm.allgather(subsizes[dim])
+            sizes[dim] = sum(subsize)
+            starts[dim] = numpy.cumsum([0] + subsize)[self.coords[dim]]
+
+        return sizes, subsizes, starts
+
+    def _split_work(self, load, workers, id):
         """
         Uniformly distributes load over the dimension.
         Remaining load is assigned in reverse round robbin manner
@@ -280,15 +313,7 @@ class Decomposition:
         bound : int
             low bound of the wokrload assigned to the worker
         """
-
-        if not isinstance(load, int):
-            raise ValueError("load expected to be an integer")
-        if not isinstance(workers, int):
-            raise ValueError("workers expected to be an integer")
-        if not isinstance(id, int):
-            raise ValueError("id expected to be an integer")
-
-        n = int(load / workers)  # uniform distribution
+        n = load // workers  # uniform distribution
         r = load - n * workers
 
         # round robbin assignment of the remaining work
@@ -298,76 +323,3 @@ class Decomposition:
             bound = (n + 1) * r + n * (id - r)
 
         return bound
-
-
-class Cartesian(Decomposition):
-    """
-    Decompose data using Cartesian Decomposition
-    of arbitrary dimensionality
-    """
-
-    def __init__(self, comm=None):
-        super().__init__(comm=comm)
-
-        if not isinstance(comm, self.MPI.Cartcomm):
-            raise ValueError("Expected a Cartesian MPI communicator")
-
-        self.dims = self.MPI.Compute_dims(self.size, comm.Get_dim())
-        self.coords = self.comm.Get_coords(self.rank)
-
-    def decompose(self, domain):
-        """
-        Decompose data over a cartesian communicatior.
-        Data domains of higher order compared to communicators order
-        only decomposed on the slow moving indexes.
-
-        Parameters
-        ----------
-        domain : list
-            Contains the global size domain we are decomposing.
-
-        Returns:
-        --------
-        size : one-dimensional list
-            global size of the dimension
-        subsize : one-dimensional list
-            local size of the dimension
-        start : one-dimensional list
-            global starting position
-        """
-
-        sizes = list(domain)
-        subsizes = list(domain)
-        starts = [0] * len(domain)
-
-        # Iterating over the dimensionality of the topology
-        # allows for decomposition of higher order data domains
-        for dim in range(len(self.dims)):
-            _, ssz, st = super(Cartesian, self).decompose(
-                [domain[dim]], workers=self.dims[dim], id=self.coords[dim]
-            )
-            subsizes[dim], starts[dim] = ssz[0], st[0]
-
-        return sizes, subsizes, starts
-
-    def compose(self, domain):
-
-        sizes = list(domain)
-        subsizes = list(domain)
-        starts = [0] * len(domain)
-
-        # Iterating over the dimensionality of the topology
-        # allows for composition of higher order data domains
-        for dim in range(len(self.dims)):
-            rdims = [False] * len(self.dims)
-            rdims[dim] = True
-            # sub-communicator for collective communications over
-            # a single dimension in the topology
-            subcomm = self.comm.Sub(remain_dims=rdims)
-
-            sz, ssz, st = super(Cartesian, self).compose(
-                [domain[dim]], comm=subcomm, id=self.coords[dim]
-            )
-            sizes[dim], subsizes[dim], starts[dim] = sz[0], ssz[0], st[0]
-
-        return sizes, subsizes, starts
