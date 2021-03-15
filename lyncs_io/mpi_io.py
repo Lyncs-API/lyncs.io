@@ -105,7 +105,7 @@ class MpiIO:
 
     def set_view(self, domain, dtype, order, pos, sizes, subsizes, starts):
         # assumes numpy valid type
-        etype = self.__dtype_to_mpi(dtype)
+        etype = self._dtype_to_mpi(dtype)
 
         if order.upper() == "C":
             mpi_order = self.MPI.ORDER_C
@@ -140,7 +140,7 @@ class MpiIO:
 
         return switcher.get(mode)
 
-    def __dtype_to_mpi(self, t):
+    def _dtype_to_mpi(self, t):
         """
         Convert Numpy data type to MPI type
 
