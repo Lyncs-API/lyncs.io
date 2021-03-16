@@ -47,11 +47,9 @@ def load(filename, chunks=None, comm=None, **kwargs):
     metadata = head(filename)
 
     with MpiIO(comm, filename, mode="r") as mpiio:
-        local_array = mpiio.load(
+        return mpiio.load(
             metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
         )
-
-    return local_array
 
 
 @wraps(numpy.save)

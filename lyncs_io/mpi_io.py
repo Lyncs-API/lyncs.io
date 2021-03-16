@@ -176,7 +176,7 @@ class Decomposition:
 
     def __init__(self, comm=None):
         if (comm is None) or (not isinstance(comm, self.MPI.Comm)):
-            raise ValueError("Expected a (Cartesian) MPI communicator")
+            raise TypeError("Expected a (Cartesian) MPI communicator")
 
         self.comm = comm
         self.size = self.comm.Get_size()
@@ -188,6 +188,8 @@ class Decomposition:
         elif isinstance(comm, self.MPI.Comm):
             self.dims = [self.size]
             self.coords = [self.rank]
+        else:
+            raise TypeError(f"comm is of unsupported type: {type(comm)}")
 
     def decompose(self, domain):
         """
