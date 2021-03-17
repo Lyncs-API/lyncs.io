@@ -42,8 +42,9 @@ def test_comm_types():
     topo.Free()
 
     # Check Cartesian topology
-    dims = MPI.Compute_dims(size, [0] * 2)
-    topo = comm.Create_cart(dims=dims, periods=[False] * dims, reorder=False)
+    ndims = 2
+    dims = MPI.Compute_dims(size, [0] * ndims)
+    topo = comm.Create_cart(dims=dims, periods=[False] * ndims, reorder=False)
     decomp = io.Decomposition(comm=topo)
 
     assert dims == decomp.dims
@@ -117,7 +118,7 @@ def test_cart_decomposition():
     # TODO: Ensure testing generalizes in arbitrary dimension
     ndims = 2
     dims = MPI.Compute_dims(size, [0] * ndims)
-    topo = comm.Create_cart(dims=dims, periods=[False] * dims, reorder=False)
+    topo = comm.Create_cart(dims=dims, periods=[False] * ndims, reorder=False)
     coords = topo.Get_coords(rank)
     dec = io.Decomposition(comm=topo)
 
@@ -200,7 +201,7 @@ def test_cart_composition():
     # TODO: Ensure testing generalizes in arbitrary dimension
     ndims = 2
     dims = MPI.Compute_dims(size, [0] * ndims)
-    topo = comm.Create_cart(dims=dims, periods=[False] * dims, reorder=False)
+    topo = comm.Create_cart(dims=dims, periods=[False] * ndims, reorder=False)
     coords = topo.Get_coords(rank)
     dec = io.Decomposition(comm=topo)
 
