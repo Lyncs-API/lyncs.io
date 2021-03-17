@@ -29,8 +29,8 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - name: Install MPI (${{ matrix.mpi }})
-      run:  bash .bash/install-${{ matrix.mpi }}.sh
-      
+        run: bash .bash/install-${{ matrix.mpi }}.sh
+
       - name: Set up Python ${{ matrix.py-version }}
         uses: actions/setup-python@v1
         with:
