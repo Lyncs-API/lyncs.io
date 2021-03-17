@@ -1,6 +1,6 @@
-# This workflow builds and tests PRs
+# This workflow runs pylint and updates badge
 
-name: PR build & test
+name: pylint
 
 on:
   pull_request:
@@ -23,14 +23,16 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: '3.x'
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        
+        pip install black lyncs_setuptools[pylint]
+        python setup.py egg_info
+        pip install `grep -v '^\[' *.egg-info/requires.txt`
+
     - name: Applying black formatting
       run: |
-        pip install black
         black --diff .
         black .
 
@@ -42,14 +44,10 @@ jobs:
         commit_user_email: s.bacchio@gmail.com
         commit_author: Simone Bacchio <s.bacchio@gmail.com>
 
-    - name: Install via pip
-      run: |
-        pip install -e .[all]
-        
     - name: Pylint output
       run: |
-        pip install lyncs_setuptools[pylint]
-        badge=$(lyncs_pylint_badge --fail-under 8 . | sed "s/\&/\\\&/g")
+        lyncs_pylint --fail-under 8 .
+        badge=$(lyncs_pylint_badge . | sed "s/\&/\\\&/g")
         badge_line=$(awk '/!\[pylint\]/ {print FNR}' README.md)
         sed -i "${badge_line}s#.*#${badge}#" README.md
 
@@ -64,33 +62,3 @@ jobs:
     - name: Run lyncs_setuptools
       run: |
         lyncs_setuptools
-
-  tests:
-    
-    needs: build-n-publish
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.6, 3.7, 3.8]
-
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.head_ref }}
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-
-    - name: Install via pip
-      run: |
-        pip install -e .[all]
-        
-    - name: Run tests
-      run: |
-        pytest -v --import-mode=importlib
