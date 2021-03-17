@@ -1,5 +1,7 @@
 import numpy
 
+__all__ = ["MpiIO", "Decomposition"]
+
 
 class FileWrapper:
     def __init__(self, handler):
@@ -176,20 +178,20 @@ class Decomposition:
 
     def __init__(self, comm=None):
         if (comm is None) or (not isinstance(comm, self.MPI.Comm)):
-            raise TypeError("Expected a (Cartesian) MPI communicator")
+            raise TypeError("Expected an MPI communicator")
 
         self.comm = comm
         self.size = self.comm.Get_size()
         self.rank = self.comm.Get_rank()
 
-        if isinstance(comm, self.MPI.Cartcomm):
+        if comm.topology is self.MPI.GRAPH or comm.topology is self.MPI.DIST_GRAPH:
+            raise TypeError(f"comm is of unsupported type: {type(comm)}")
+        if comm.topology is self.MPI.CART:
             self.dims = self.MPI.Compute_dims(self.size, comm.Get_dim())
             self.coords = self.comm.Get_coords(self.rank)
-        elif isinstance(comm, self.MPI.Comm):
+        elif isinstance(comm, self.MPI.Intracomm):
             self.dims = [self.size]
             self.coords = [self.rank]
-        else:
-            raise TypeError(f"comm is of unsupported type: {type(comm)}")
 
     def decompose(self, domain):
         """
@@ -214,7 +216,7 @@ class Decomposition:
 
         sizes = list(domain)
         subsizes = list(domain)
-        starts = [0] * len(domain)
+        starts = list(domain)
 
         # Iterating over the dimensionality of the topology
         # allows for decomposition of higher order data domains
