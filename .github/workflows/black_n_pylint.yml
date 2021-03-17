@@ -46,7 +46,7 @@ jobs:
 
     - name: Pylint output
       run: |
-        lyncs_pylint --fail-under 8
+        lyncs_pylint --fail-under 8 .
         badge=$(lyncs_pylint_badge . | sed "s/\&/\\\&/g")
         badge_line=$(awk '/!\[pylint\]/ {print FNR}' README.md)
         sed -i "${badge_line}s#.*#${badge}#" README.md
