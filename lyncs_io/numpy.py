@@ -37,12 +37,15 @@ savetxt = swap(numpy.savetxt)
 @wraps(numpy.load)
 def load(filename, chunks=None, comm=None, **kwargs):
     """
-    chunks = number of chunks per dir
+    chunks = number of chunks
     comm = cartesian MPI_Comm
     """
 
     if comm is None or comm.size == 1:
         return numpy.load(filename, **kwargs)
+
+    if chunks is not None:
+        raise NotImplementedError("Currently not supporting chunking")
 
     metadata = head(filename)
 
@@ -66,7 +69,7 @@ def save(array, filename, comm=None, **kwargs):
             header["shape"] = tuple(global_shape)  # needs to be tuple
             _write_array_header(mpiio.handler, header)
 
-        mpiio.save(array)
+        return mpiio.save(array)
 
 
 def _get_offset(npy):

@@ -1,9 +1,17 @@
-import numpy
+"""
+Parallel IO using MPI
+"""
 
 __all__ = ["MpiIO", "Decomposition"]
 
+import numpy
+
 
 class FileWrapper:
+    """
+    File Wrapper for using MPI Write with numpy write
+    """
+
     def __init__(self, handler):
         self.handler = handler
 
@@ -15,11 +23,14 @@ class FileWrapper:
 
 class MpiIO:
     """
-    Parallel IO using MPI
+    Class for handling file handling routines and Parallel IO using MPI
     """
 
     @property
     def MPI(self):
+        """
+        Property for importing MPI wherever necessary
+        """
         from mpi4py import MPI
 
         return MPI
@@ -43,12 +54,18 @@ class MpiIO:
         self.file_open(mode=self.mode)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, traceback):
         self.file_close()
-        # TODO: Check how to treat exc_error flags
 
     def file_open(self, mode=None):
+        """
+        Opens a file in parallel using MPI modes
 
+        Parameters
+        ----------
+        mode : str
+            C-style file opening modes.
+        """
         if mode is None:
             mode = self._to_mpi_file_mode(self.mode)
         else:
@@ -59,29 +76,58 @@ class MpiIO:
         )
 
     def file_close(self):
+        """
+        Closes a file
+        """
         self.handler.Close()
 
     def load(self, domain, dtype, order, header_offset):
+        """
+        Reads the local domain from a file and loads it in a numpy array
 
+        Parameters
+        ----------
+        domain : list
+            Global data domain.
+        dtype: data-type
+            numpy data-type for the array
+        order: str
+            whether data are stored in row/column
+            major ('C', 'F') order in memory
+        header_offset: int
+            offset in bytes to where the
+            data start in the file.
+
+        Returns:
+        --------
+        local_array : numpy array
+            Local data to the process
+        """
         if self.handler is None:
             self.file_open(mode="r")
-
-        sizes, subsizes, starts = self.decomposition.decompose(domain)
 
         # skip header
         pos = self.handler.Get_position() + header_offset
 
-        self._set_view(domain, dtype, order, pos, sizes, subsizes, starts)
+        self._set_view(domain, dtype, order, pos)
 
         # allocate space for local_array to hold data read from file
+        _, subsizes, _ = self.decomposition.decompose(domain)
         local_array = numpy.empty(subsizes, dtype=dtype, order=order.upper())
 
         self.handler.Read_all(local_array)
 
         return local_array
 
-    def save(self, array, header=None):
-        # Assumes header is a dict with "shape" entry
+    def save(self, array):
+        """
+        Writes the local array in a file in parallel
+
+        Parameters
+        ----------
+        local_array : numpy array
+            Local data to the process
+        """
 
         if self.handler is None:
             self.file_open(mode="w")
@@ -93,22 +139,18 @@ class MpiIO:
 
         pos = self.comm.bcast(pos, root=0)
 
-        global_shape, local_shape, local_start = self.decomposition.compose(array.shape)
-
-        self._set_view(
-            array.shape,
-            numpy.array(array).dtype,
-            "C",
-            pos,
-            global_shape,
-            local_shape,
-            local_start,
-        )
+        self._set_view(array.shape, numpy.array(array).dtype, "C", pos, compose=True)
 
         # collectively write the array to file
         self.handler.Write_all(array)
 
-    def _set_view(self, domain, dtype, order, pos, sizes, subsizes, starts):
+    def _set_view(self, domain, dtype, order, pos, compose=None):
+
+        if compose is True:
+            sizes, subsizes, starts = self.decomposition.compose(domain)
+        else:
+            sizes, subsizes, starts = self.decomposition.decompose(domain)
+
         # assumes numpy valid type
         etype = self._dtype_to_mpi(dtype)
 
@@ -139,26 +181,25 @@ class MpiIO:
 
         return switcher.get(mode)
 
-    def _dtype_to_mpi(self, t):
+    def _dtype_to_mpi(self, np_type):
         """
         Convert Numpy data type to MPI type
 
         Parameters
         ----------
-        t : type
+        np_type : type
             Numpy data type.
 
         Returns:
         --------
-        m : mpi4py.MPI.Datatype
-            MPI data type corresponding to `t`.
+        mpi_type : mpi4py.MPI.Datatype
+            MPI data type corresponding to `np_type`.
         """
-        MPI = self.MPI
 
-        if hasattr(MPI, "_typedict"):
-            mpi_type = MPI._typedict[numpy.dtype(t).char]
-        elif hasattr(MPI, "__TypeDict__"):
-            mpi_type = MPI.__TypeDict__[numpy.dtype(t).char]
+        if hasattr(self.MPI, "_typedict"):
+            mpi_type = self.MPI._typedict[numpy.dtype(np_type).char]
+        elif hasattr(self.MPI, "__TypeDict__"):
+            mpi_type = self.MPI.__TypeDict__[numpy.dtype(np_type).char]
         else:
             raise ValueError("cannot convert type")
         return mpi_type
@@ -167,11 +208,14 @@ class MpiIO:
 class Decomposition:
     """
     Decompose data using Cartesian/Domain Decomposition
-    of arbitrary dimensionality
+    of arbitrary dimensions
     """
 
     @property
     def MPI(self):
+        """
+        Property for importing MPI wherever necessary
+        """
         from mpi4py import MPI
 
         return MPI
@@ -195,7 +239,7 @@ class Decomposition:
 
     def decompose(self, domain):
         """
-        Decompose data over a cartesian/normal communicatior.
+        Decompose data over a cartesian/normal communicator.
         Data domains of higher order compared to communicators order
         only decomposed on the slow moving indexes.
 
@@ -206,22 +250,22 @@ class Decomposition:
 
         Returns:
         --------
-        size : list
+        sizes : list
             global size of the domain
-        subsize : list
+        sub_sizes : list
             local size of the domain
-        start : list
+        starts : list
             global starting position
         """
 
         sizes = list(domain)
-        subsizes = list(domain)
+        sub_sizes = list(domain)
         starts = [0] * len(domain)
 
-        # Iterating over the dimensionality of the topology
+        # Iterating over the dimensions of the topology
         # allows for decomposition of higher order data domains
         for dim in range(len(self.dims)):
-            workers, id = self.dims[dim], self.coords[dim]
+            workers, proc_id = self.dims[dim], self.coords[dim]
             if domain[dim] < workers:
                 raise ValueError(
                     "Domain size ({}) must be larger than the amount of workers({})".format(
@@ -229,13 +273,13 @@ class Decomposition:
                     )
                 )
 
-            low = self._split_work(domain[dim], workers, id)
-            hi = self._split_work(domain[dim], workers, id + 1)
+            low = self._split_work(domain[dim], workers, proc_id)
+            high = self._split_work(domain[dim], workers, proc_id + 1)
 
-            subsizes[dim] = hi - low
+            sub_sizes[dim] = high - low
             starts[dim] = low
 
-        return sizes, subsizes, starts
+        return sizes, sub_sizes, starts
 
     def compose(self, domain):
         """
@@ -249,18 +293,18 @@ class Decomposition:
 
         Returns:
         --------
-        size : list
+        sizes : list
             global size of the domain
-        subsize : list
+        sub_sizes : list
             local size of the domain
-        start : list
+        starts : list
             global starting position
         """
         sizes = list(domain)
-        subsizes = list(domain)
+        sub_sizes = list(domain)
         starts = [0] * len(domain)
 
-        # Iterating over the dimensionality of the topology
+        # Iterating over the dimensions of the topology
         # allows for composition of higher order data domains
         for dim in range(len(self.dims)):
             rdims = [False] * len(self.dims)
@@ -273,16 +317,16 @@ class Decomposition:
             else:
                 subcomm = self.comm
 
-            subsize = subcomm.allgather(subsizes[dim])
-            sizes[dim] = sum(subsize)
-            starts[dim] = numpy.cumsum([0] + subsize)[self.coords[dim]]
+            sub_size = subcomm.allgather(sub_sizes[dim])
+            sizes[dim] = sum(sub_size)
+            starts[dim] = numpy.cumsum([0] + sub_size)[self.coords[dim]]
 
-        return sizes, subsizes, starts
+        return sizes, sub_sizes, starts
 
-    def _split_work(self, load, workers, id):
+    def _split_work(self, load, workers, proc_id):
         """
         Uniformly distributes load over the dimension.
-        Remaining load is assigned in reverse round robbin manner
+        Remaining load is assigned in reverse round robin manner
 
         Parameters
         ----------
@@ -290,21 +334,21 @@ class Decomposition:
             load size to be assigned
         workers : int
             total processing elements work will be assigned to
-        id : int
+        proc_id : int
             processing element for which the bound is calculated for
 
         Returns:
         --------
         bound : int
-            low bound of the wokrload assigned to the worker
+            low bound of the workload assigned to the worker
         """
-        n = load // workers  # uniform distribution
-        r = load - n * workers
+        unifload = load // workers  # uniform distribution
+        rem = load - unifload * workers
 
-        # round robbin assignment of the remaining work
-        if id <= r:
-            bound = (n + 1) * id
+        # round-robin assignment of the remaining work
+        if proc_id <= rem:
+            bound = (unifload + 1) * proc_id
         else:
-            bound = (n + 1) * r + n * (id - r)
+            bound = (unifload + 1) * rem + unifload * (proc_id - rem)
 
         return bound
