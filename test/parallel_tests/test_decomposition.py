@@ -43,7 +43,7 @@ def test_comm_types():
 
     # Check Cartesian topology
     dims = MPI.Compute_dims(size, [0] * 2)
-    topo = comm.Create_cart(dims=dims, periods=[False, False], reorder=False)
+    topo = comm.Create_cart(dims=dims, periods=[False] * dims, reorder=False)
     decomp = io.Decomposition(comm=topo)
 
     assert dims == decomp.dims
@@ -117,7 +117,7 @@ def test_cart_decomposition():
     # TODO: Ensure testing generalizes in arbitrary dimension
     ndims = 2
     dims = MPI.Compute_dims(size, [0] * ndims)
-    topo = comm.Create_cart(dims=dims, periods=[False, False], reorder=False)
+    topo = comm.Create_cart(dims=dims, periods=[False] * dims, reorder=False)
     coords = topo.Get_coords(rank)
     dec = io.Decomposition(comm=topo)
 
@@ -200,7 +200,7 @@ def test_cart_composition():
     # TODO: Ensure testing generalizes in arbitrary dimension
     ndims = 2
     dims = MPI.Compute_dims(size, [0] * ndims)
-    topo = comm.Create_cart(dims=dims, periods=[False, False], reorder=False)
+    topo = comm.Create_cart(dims=dims, periods=[False] * dims, reorder=False)
     coords = topo.Get_coords(rank)
     dec = io.Decomposition(comm=topo)
 
@@ -252,7 +252,7 @@ def test_cart_composition():
         local_size = [9, 8, 4, 4]
 
     globalsz, localsz, start = dec.compose(local_size)
-    # print(f"[{coords}]:: {topo.Get_dim()} {globalsz}, {localsz}, {start}")
+
     assert [dims[0] * 8 + 1, dims[1] * 8 + 1, 4, 4] == globalsz
     assert local_size == localsz
 
