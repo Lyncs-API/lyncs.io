@@ -216,7 +216,7 @@ class Decomposition:
 
         sizes = list(domain)
         subsizes = list(domain)
-        starts = list(domain)
+        starts = [0] * len(domain)
 
         # Iterating over the dimensionality of the topology
         # allows for decomposition of higher order data domains
@@ -268,7 +268,7 @@ class Decomposition:
 
             # sub-communicator for collective communications over
             # a single dimension in the topology
-            if len(self.dims) > 1:
+            if self.comm.topology is self.MPI.CART:
                 subcomm = self.comm.Sub(remain_dims=rdims)
             else:
                 subcomm = self.comm
