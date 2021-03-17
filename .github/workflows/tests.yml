@@ -65,3 +65,14 @@ jobs:
       - name: Run parallel tests (procs=12)
         run: |
           mpirun -n 12 --oversubscribe python -m pytest test/parallel_tests/ --with-mpi
+
+      - name: Run tests with coverage
+        run: |
+          coverage run --rcfile=setup.cfg -m pytest
+          # Individual coverage is generated per core
+          mpiexec -n 2 --oversubscribe coverage run --rcfile=setup.cfg -m mpi4py -m pytest test/parallel_tests/ --with-mpi
+          # Combine serial and parallel coverage reports
+          coverage combine
+          coverage xml
+          export CODECOV_TOKEN="${{ secrets.CODECOV_TOKEN }}"
+          bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -n lyncs_io
