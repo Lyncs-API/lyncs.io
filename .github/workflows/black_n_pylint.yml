@@ -13,19 +13,14 @@ on:
 jobs:
   black-n-pylint:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mpi:
-          - openmpi
 
     steps:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.head_ref }}
 
-      - name: Install MPI (${{ matrix.mpi }})
-        run: bash .bash/install-${{ matrix.mpi }}.sh
+      - name: Install MPI openmpi
+        run: bash .bash/install-openmpi.sh
 
       - name: Set up Python
         uses: actions/setup-python@v1
@@ -54,7 +49,6 @@ jobs:
 
       - name: Pylint output
         run: |
-          lyncs_pylint --fail-under 8 .
           badge=$(lyncs_pylint_badge . | sed "s/\&/\\\&/g")
           badge_line=$(awk '/!\[pylint\]/ {print FNR}' README.md)
           sed -i "${badge_line}s#.*#${badge}#" README.md
