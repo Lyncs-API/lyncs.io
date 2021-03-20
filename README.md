@@ -38,7 +38,30 @@ The main features of this module are
   is added to the filename. When loading, any extension is considered,
   i.e. `filename.*`, and if only one match is available, the file is loaded.
 
-### Example
+## Installation
+
+**NOTE**: lyncs_io requires a working MPI installation for enabling parallel IO.
+This can be installed via `apt-get`:
+
+```bash
+sudo apt-get install libopenmpi-dev openmpi-bin
+```
+
+OR using `conda`:
+
+```bash
+conda install -c anaconda mpi4py
+```
+
+The package can be installed via `pip`:
+
+```bash
+pip install [--user] lyncs_io
+```
+
+## Documentation
+
+The high-level `load` and `save` (or `dump` as alias of `save`) functions provided by the Lyncs IO can be used as follows:
 
 ```python
 import numpy as np
