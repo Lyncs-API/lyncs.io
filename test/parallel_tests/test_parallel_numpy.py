@@ -71,7 +71,7 @@ def test_numpy_load_cart():
         write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
         global_array = numpy.load(ftmp)
 
-        local_array = io.load(ftmp, comm=comm)
+        local_array = io.load(ftmp, comm=cartesian2d)
 
         hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
         vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
@@ -120,7 +120,7 @@ def test_numpy_save_cart():
         vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
         local_array = global_array[hlbound:hubound, vlbound:vubound]
 
-        io.save(local_array, ftmp, comm=comm)
+        io.save(local_array, ftmp, comm=cartesian2d)
 
         global_array = numpy.load(ftmp)
         assert (local_array == global_array[hlbound:hubound, vlbound:vubound]).all()

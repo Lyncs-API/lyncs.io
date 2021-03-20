@@ -159,6 +159,7 @@ def test_save_from_cart():
     comm = comm_world()
     rank = comm.rank
     dims = comm_dims(comm, 2)
+
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
     tmpdir = get_tmpdir(comm)
@@ -166,14 +167,15 @@ def test_save_from_cart():
     with tmpdir as tmp:
         ftmp = tmp + "foo.npy"
 
-        write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
+        write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1])
+        print("BOUNDS ARE::", hlen() * dims[0], vlen() * dims[1])
         global_array = numpy.load(ftmp)
 
         hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
         vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
         local_array = global_array[hlbound:hubound, vlbound:vubound]
 
-        with io.MpiIO(comm, ftmp, mode="w") as mpiio:
+        with io.MpiIO(cartesian2d, ftmp, mode="w") as mpiio:
             global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
             assert global_shape == list(global_array.shape)
 

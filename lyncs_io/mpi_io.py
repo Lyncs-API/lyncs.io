@@ -88,6 +88,11 @@ class MpiIO:
         local_array : numpy array
             Local data to the process
         """
+        # TODO: Shall this raise an error saying about non-contiguous data?
+        if numpy.isfortran(array):
+            raise ValueError("Currently noy supporting FORTRAN ordering")
+        else:
+            array = numpy.ascontiguousarray(array)
 
         if self.rank == 0:
             pos = self.handler.Get_position()
