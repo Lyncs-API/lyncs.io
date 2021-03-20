@@ -56,10 +56,13 @@ def load(filename, chunks=None, comm=None, **kwargs):
 
 
 @wraps(numpy.save)
-def save(array, filename, comm=None, **kwargs):
+def save(array, filename, chunks=None, comm=None, **kwargs):
 
     if comm is None or comm.size == 1:
         return numpy.save(filename, array, **kwargs)
+
+    if chunks is not None:
+        raise NotImplementedError("Currently not supporting chunking")
 
     with MpiIO(comm, filename, mode="w") as mpiio:
         global_shape, _, _ = mpiio.decomposition.compose(array.shape)
