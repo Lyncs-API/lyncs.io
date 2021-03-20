@@ -1,6 +1,8 @@
 from lyncs_io.archive import Data, Archive, split_filename
+import pytest
 
 
+@pytest.mark.mpi_skip()
 def test_split():
     for fname, key in [
         ("foo", "bar"),

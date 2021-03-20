@@ -1,8 +1,10 @@
 import lyncs_io as io
 import numpy as np
 import tempfile
+import pytest
 
 
+@pytest.mark.mpi_skip()
 def test_numpy():
     arr = np.random.rand(100)
     with tempfile.TemporaryDirectory() as tmp:
