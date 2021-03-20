@@ -1,6 +1,5 @@
-import tempfile
-import pytest
 import numpy
+import pytest
 from numpy.lib.format import (
     _write_array_header,
     header_data_from_array_1_0,
@@ -9,16 +8,18 @@ from numpy.lib.format import (
 from lyncs_io import mpi_io as io
 from lyncs_io import numpy as np
 
+from helpers import *
+
 
 @pytest.mark.mpi(min_size=2)
 def test_constructor():
     from mpi4py import MPI
 
-    comm = _comm_world()
+    comm = comm_world()
     # check mode is set to "r" by default
     assert io.MpiIO(comm, "").mode == "r"
 
-    topo = comm.Create_cart(dims=_comm_dims(comm, 2))
+    topo = comm.Create_cart(dims=comm_dims(comm, 2))
     mpiio = io.MpiIO(topo, "testfile.npy", mode="w")
 
     assert isinstance(mpiio.comm, MPI.Cartcomm)
@@ -34,8 +35,8 @@ def test_constructor():
 def test_file_handles():
     from mpi4py import MPI
 
-    comm = _comm_world()
-    tmpdir = _get_tmpdir(comm)
+    comm = comm_world()
+    tmpdir = get_tmpdir(comm)
 
     # when file does not exists and we try to read
     with pytest.raises(MPI.Exception):
@@ -54,16 +55,15 @@ def test_file_handles():
 @pytest.mark.mpi(min_size=2)
 def test_load_from_comm():
 
-    comm = _comm_world()
+    comm = comm_world()
     rank = comm.rank
-    tmpdir = _get_tmpdir(comm)
+    tmpdir = get_tmpdir(comm)
 
     with tmpdir as tmp:
         ftmp = tmp + "foo.npy"
 
-        global_array = _populate_global_array(
-            comm, ftmp, comm.size * _hlen(), _vlen(), 2, 2
-        )
+        write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
+        global_array = numpy.load(ftmp)
         header = np.head(ftmp)
 
         # test invalid order
@@ -81,64 +81,61 @@ def test_load_from_comm():
     with tmpdir as tmp:
         ftmp = tmp + "foo.npy"
 
-        global_array = _populate_global_array(
-            comm, ftmp, comm.size * _hlen(), _vlen(), 2, 2
-        )
+        write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
+        global_array = numpy.load(ftmp)
         header = np.head(ftmp)
 
         # valid usage
         with io.MpiIO(comm, ftmp, mode="r") as mpiio:
             local_array = mpiio.load(
-                header["shape"], header["dtype"], _order(header), header["_offset"]
+                header["shape"], header["dtype"], order(header), header["_offset"]
             )
 
-        lbound, ubound = rank * _hlen(), (rank + 1) * _hlen()
+        lbound, ubound = rank * hlen(), (rank + 1) * hlen()
         assert (global_array[lbound:ubound] == local_array).all()
 
 
 @pytest.mark.mpi(min_size=2)
 def test_load_from_cart():
 
-    comm = _comm_world()
+    comm = comm_world()
     rank = comm.rank
-    dims = _comm_dims(comm, 2)
+    dims = comm_dims(comm, 2)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    tmpdir = _get_tmpdir(comm)
+    tmpdir = get_tmpdir(comm)
 
     with tmpdir as tmp:
         ftmp = tmp + "foo.npy"
 
-        global_array = _populate_global_array(
-            comm, ftmp, _hlen() * dims[0], _vlen() * dims[1], 2, 2
-        )
+        write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
+        global_array = numpy.load(ftmp)
         header = np.head(ftmp)
 
         with io.MpiIO(cartesian2d, ftmp, mode="r") as mpiio:
             local_array = mpiio.load(
-                header["shape"], header["dtype"], _order(header), header["_offset"]
+                header["shape"], header["dtype"], order(header), header["_offset"]
             )
 
-        hlbound, hubound = coords[0] * _hlen(), (coords[0] + 1) * _hlen()
-        vlbound, vubound = coords[1] * _vlen(), (coords[1] + 1) * _vlen()
+        hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
+        vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
         assert (global_array[hlbound:hubound, vlbound:vubound] == local_array).all()
 
 
 @pytest.mark.mpi(min_size=2)
 def test_save_from_comm():
 
-    comm = _comm_world()
+    comm = comm_world()
     rank = comm.rank
-    tmpdir = _get_tmpdir(comm)
+    tmpdir = get_tmpdir(comm)
 
     with tmpdir as tmp:
         ftmp = tmp + "foo.npy"
 
-        global_array = _populate_global_array(
-            comm, ftmp, comm.size * _hlen(), _vlen(), 2, 2
-        )
+        write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
+        global_array = numpy.load(ftmp)
 
-        lbound, ubound = rank * _hlen(), (rank + 1) * _hlen()
+        lbound, ubound = rank * hlen(), (rank + 1) * hlen()
         local_array = global_array[lbound:ubound]
 
         with io.MpiIO(comm, ftmp, mode="w") as mpiio:
@@ -159,22 +156,21 @@ def test_save_from_comm():
 @pytest.mark.mpi(min_size=2)
 def test_save_from_cart():
 
-    comm = _comm_world()
+    comm = comm_world()
     rank = comm.rank
-    dims = _comm_dims(comm, 2)
+    dims = comm_dims(comm, 2)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    tmpdir = _get_tmpdir(comm)
+    tmpdir = get_tmpdir(comm)
 
     with tmpdir as tmp:
         ftmp = tmp + "foo.npy"
 
-        global_array = _populate_global_array(
-            comm, ftmp, _hlen() * dims[0], _vlen() * dims[1], 2, 2
-        )
+        write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
+        global_array = numpy.load(ftmp)
 
-        hlbound, hubound = coords[0] * _hlen(), (coords[0] + 1) * _hlen()
-        vlbound, vubound = coords[1] * _vlen(), (coords[1] + 1) * _vlen()
+        hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
+        vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
         local_array = global_array[hlbound:hubound, vlbound:vubound]
 
         with io.MpiIO(comm, ftmp, mode="w") as mpiio:
@@ -190,60 +186,3 @@ def test_save_from_cart():
 
         global_array = numpy.load(ftmp)
         assert (local_array == global_array[hlbound:hubound, vlbound:vubound]).all()
-
-
-### Helper functions ###
-def _get_tmpdir(comm):
-    """
-    Trying something like:
-        with tempfile.TemporaryDirectory() as tmp:
-            with io.MpiIO(comm, ftmp, mode="w") as mpiio:
-    will result in deadlock as processes will try to write collectively
-    to files in different directories collectively.
-    Hence need to ensure all the processes will have the same tmpdir.
-    """
-    if comm.rank == 0:
-        tmpdir = tempfile.TemporaryDirectory()
-    else:
-        tmpdir = None
-
-    return comm.bcast(tmpdir, root=0)
-
-
-def _order(header):
-    if header["_fortran_order"] is True:
-        ordering = "Fortran"
-    else:
-        ordering = "C"
-
-    return ordering
-
-
-def _populate_global_array(comm, filename, *args):
-
-    if comm.rank == 0:
-        master_array = numpy.random.rand(*args)
-        numpy.save(filename, master_array)
-    comm.Barrier()  # make sure file is created and visible by all
-
-    return numpy.load(filename)
-
-
-def _comm_world():
-    from mpi4py import MPI
-
-    return MPI.COMM_WORLD
-
-
-def _comm_dims(comm, ndims):
-    from mpi4py import MPI
-
-    return MPI.Compute_dims(comm.size, ndims)
-
-
-def _hlen():
-    return 6
-
-
-def _vlen():
-    return 4
