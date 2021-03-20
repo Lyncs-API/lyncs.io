@@ -175,10 +175,10 @@ class MpiIO:
         return mpi_type
 
     class _FileWrapper:
-    """
-    File Wrapper for using MPI Write with numpy write
-    """
-    
+        """
+        File Wrapper for using MPI Write with numpy write
+        """
+
         def __init__(self, handler):
             self.handler = handler
 
