@@ -7,20 +7,6 @@ __all__ = ["MpiIO", "Decomposition"]
 import numpy
 
 
-class FileWrapper:
-    """
-    File Wrapper for using MPI Write with numpy write
-    """
-
-    def __init__(self, handler):
-        self.handler = handler
-
-    def __getattr__(self, key):
-        if key == "write":
-            key = "Write"
-        return self.handler.__getattribute__(key)
-
-
 class MpiIO:
     """
     Class for handling file handling routines and Parallel IO using MPI
@@ -51,35 +37,11 @@ class MpiIO:
         self.mode = mode
 
     def __enter__(self):
-        self.file_open(mode=self.mode)
+        self._file_open(mode=self.mode)
         return self
 
     def __exit__(self, exc_type, exc_val, traceback):
-        self.file_close()
-
-    def file_open(self, mode=None):
-        """
-        Opens a file in parallel using MPI modes
-
-        Parameters
-        ----------
-        mode : str
-            C-style file opening modes.
-        """
-        if mode is None:
-            mode = self._to_mpi_file_mode(self.mode)
-        else:
-            mode = self._to_mpi_file_mode(mode)
-
-        self.handler = FileWrapper(
-            self.MPI.File.Open(self.comm, self.filename, amode=mode)
-        )
-
-    def file_close(self):
-        """
-        Closes a file
-        """
-        self.handler.Close()
+        self._file_close()
 
     def load(self, domain, dtype, order, header_offset):
         """
@@ -103,8 +65,6 @@ class MpiIO:
         local_array : numpy array
             Local data to the process
         """
-        if self.handler is None:
-            self.file_open(mode="r")
 
         # skip header
         pos = self.handler.Get_position() + header_offset
@@ -129,9 +89,6 @@ class MpiIO:
             Local data to the process
         """
 
-        if self.handler is None:
-            self.file_open(mode="w")
-
         if self.rank == 0:
             pos = self.handler.Get_position()
         else:
@@ -143,6 +100,19 @@ class MpiIO:
 
         # collectively write the array to file
         self.handler.Write_all(array)
+
+    def _file_open(self, mode=None):
+        if mode is None:
+            mode = self._to_mpi_file_mode(self.mode)
+        else:
+            mode = self._to_mpi_file_mode(mode)
+
+        self.handler = self._FileWrapper(
+            self.MPI.File.Open(self.comm, self.filename, amode=mode)
+        )
+
+    def _file_close(self):
+        self.handler.Close()
 
     def _set_view(self, domain, dtype, order, pos, compose=None):
 
@@ -203,6 +173,19 @@ class MpiIO:
         else:
             raise ValueError("cannot convert type")
         return mpi_type
+
+    class _FileWrapper:
+    """
+    File Wrapper for using MPI Write with numpy write
+    """
+    
+        def __init__(self, handler):
+            self.handler = handler
+
+        def __getattr__(self, key):
+            if key == "write":
+                key = "Write"
+            return self.handler.__getattribute__(key)
 
 
 class Decomposition:
