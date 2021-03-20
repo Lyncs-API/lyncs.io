@@ -84,6 +84,27 @@ is preferred because the function can be used directly as a method
 for a class since `self`, i.e. the `data`, would be passed as the first
 argument of `save`.
 
+### IO with MPI
+
+```python
+import numpy as np
+import lyncs_io as io
+from mpi4py import MPI
+
+# Assume 2D cartesian topology
+comm = MPI.COMM_WORLD
+dims = MPI.Compute_dims(comm.size, 2)
+cartesian2d = comm.Create_cart(dims=dims)
+
+oarr = np.random.rand(6, 4, 2, 2)
+io.save(oarr, "pario.npy", comm=cartesian2d)
+iarr = io.load("pario.npy", comm=cartesian2d)
+
+assert (iarr == oarr).all()
+```
+
+NOTE: Parallel IO is enabled once a valid cartesian communicator is passed to `load` or `save` routines, otherwise Serial IO is performed. Currently only `numpy` format supports this functionality.
+
 ### File formats
 
 ### Adding a file format
