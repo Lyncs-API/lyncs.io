@@ -57,6 +57,10 @@ def load(filename, chunks=None, comm=None, **kwargs):
 
 @wraps(numpy.save)
 def save(array, filename, chunks=None, comm=None, **kwargs):
+    """
+    chunks = number of chunks
+    comm = cartesian MPI_Comm
+    """
 
     if comm is None or comm.size == 1:
         return numpy.save(filename, array, **kwargs)

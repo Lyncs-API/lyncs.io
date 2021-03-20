@@ -99,6 +99,7 @@ class Archive(Mapping):
     def tree(self):
         "Tree representation of the archive"
         try:
+            # pylint: disable=import-outside-toplevel
             from IPython.lib.pretty import pretty
 
             return pretty(self)

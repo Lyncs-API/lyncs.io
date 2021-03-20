@@ -7,8 +7,8 @@ __all__ = [
 
 import pickle
 import json
-from .format import Format, Formats
-from .utils import swap, open_file
+from .format import Formats
+from .utils import open_file
 from . import numpy
 
 formats = Formats()

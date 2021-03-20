@@ -3,13 +3,12 @@ Base class for file formats
 """
 
 from dataclasses import dataclass
-from importlib import import_module
 from collections import OrderedDict
 from .archive import split_filename
 from .utils import to_path
 
 
-def NIE(*args, **kwargs):
+def not_implemented(*args, **kwargs):
     "Raises not implemented error"
     raise NotImplementedError("This function is not avaiable")
 
@@ -34,9 +33,9 @@ class Format:
     name: str
     alias: list
     extensions: list
-    load: callable = NIE
-    save: callable = NIE
-    head: callable = NIE
+    load: callable = not_implemented
+    save: callable = not_implemented
+    head: callable = not_implemented
     error: Exception = None
     archive: bool = False
     description: str = ""
@@ -63,6 +62,7 @@ class Format:
 
     @property
     def names(self):
+        "Names of the format (name and alias)"
         return (self.name,) + tuple(self.alias)
 
 
