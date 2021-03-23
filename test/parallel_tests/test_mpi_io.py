@@ -167,8 +167,7 @@ def test_save_from_cart():
     with tmpdir as tmp:
         ftmp = tmp + "foo.npy"
 
-        write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1])
-        print("BOUNDS ARE::", hlen() * dims[0], vlen() * dims[1])
+        write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
         global_array = numpy.load(ftmp)
 
         hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
