@@ -50,18 +50,10 @@ jobs:
         run: |
           pytest -v
 
-      - name: Run parallel tests (procs=2)
+      - name: Run parallel tests (procs=2, 4, 7, 12)
         run: |
-          mpirun -n 2 --oversubscribe python -m pytest test/parallel_tests/ --with-mpi
-
-      - name: Run parallel tests (procs=4)
-        run: |
-          mpirun -n 4 --oversubscribe python -m pytest test/parallel_tests/ --with-mpi
-
-      - name: Run parallel tests (procs=7)
-        run: |
-          mpirun -n 7 --oversubscribe python -m pytest test/parallel_tests/ --with-mpi
-
-      - name: Run parallel tests (procs=12)
-        run: |
-          mpirun -n 12 --oversubscribe python -m pytest test/parallel_tests/ --with-mpi
+          PROCS=(2 4 7 12)
+          for proc in "${PROCS[@]}"
+          do
+            mpirun -n $proc --oversubscribe python -m pytest test/parallel_tests/ --with-mpi
+          done
