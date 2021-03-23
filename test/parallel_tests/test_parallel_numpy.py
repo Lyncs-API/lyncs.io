@@ -10,32 +10,6 @@ from lyncs_io import numpy as np
 from helpers import *
 
 
-@pytest.mark.mpi_skip()
-def test_numpy_serial_load():
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmp:
-        ftmp = tmp + "foo.npy"
-        array = numpy.random.rand(hlen(), vlen(), 2, 2)
-        numpy.save(ftmp, array)
-
-        array1 = io.load(ftmp)
-        assert (array == array1).all()
-
-
-@pytest.mark.mpi_skip()
-def ttest_numpy_serial_save():
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmp:
-        ftmp = tmp + "foo.npy"
-        array = numpy.random.rand(hlen(), vlen(), 2, 2)
-        io.save(array, ftmp)
-
-        array1 = numpy.load(ftmp)
-        assert (array == array1).all()
-
-
 @pytest.mark.mpi(min_size=2)
 def test_numpy_load_comm():
 
