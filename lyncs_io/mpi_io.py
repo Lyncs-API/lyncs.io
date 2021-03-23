@@ -21,7 +21,7 @@ class MpiIO:
 
         return MPI
 
-    def __init__(self, comm, filename, mode=None):
+    def __init__(self, comm, filename, mode="r"):
 
         self.decomposition = Decomposition(comm=comm)
 
@@ -30,10 +30,6 @@ class MpiIO:
         self.size = self.decomposition.size
         self.filename = filename
         self.handler = None
-
-        if mode is None:
-            mode = "r"
-
         self.mode = mode
 
     def __enter__(self):
@@ -90,7 +86,7 @@ class MpiIO:
         """
         # TODO: Shall this raise an error saying about non-contiguous data?
         if numpy.isfortran(array):
-            raise ValueError("Currently noy supporting FORTRAN ordering")
+            raise NotImplementedError("Currently noy supporting FORTRAN ordering")
         else:
             array = numpy.ascontiguousarray(array)
 
@@ -132,7 +128,7 @@ class MpiIO:
         if order.upper() == "C":
             mpi_order = self.MPI.ORDER_C
         else:
-            raise ValueError("Currently noy supporting FORTRAN ordering")
+            raise NotImplementedError("Currently noy supporting FORTRAN ordering")
 
         # use fixed data-type
         filetype = etype.Create_subarray(sizes, subsizes, starts, order=mpi_order)

@@ -40,7 +40,13 @@ The main features of this module are
 
 ## Installation
 
-**NOTE**: lyncs_io requires a working MPI installation for enabling parallel IO.
+The package can be installed via `pip`:
+
+```bash
+pip install [--user] lyncs_io
+```
+
+**NOTE**: for enabling parallel IO, lyncs_io requires a working MPI installation.
 This can be installed via `apt-get`:
 
 ```bash
@@ -53,10 +59,10 @@ OR using `conda`:
 conda install -c anaconda mpi4py
 ```
 
-The package can be installed via `pip`:
+Parallel IO can then be enabled via
 
 ```bash
-pip install [--user] lyncs_io
+pip install [--user] lyncs_io[mpi]
 ```
 
 ## Documentation

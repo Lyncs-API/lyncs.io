@@ -67,7 +67,7 @@ def test_load_from_comm():
         header = np.head(ftmp)
 
         # test invalid order
-        with pytest.raises(ValueError):
+        with pytest.raises(NotImplementedError):
             with io.MpiIO(comm, ftmp, mode="r") as mpiio:
                 mpiio.load(
                     header["shape"], header["dtype"], "Fortran", header["_offset"]
