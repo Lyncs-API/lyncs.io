@@ -6,19 +6,16 @@ on:
   pull_request:
     branches:
       - "main"
-    paths-ignore:
-      - "docs/**"
+    paths:
+      - "lyncs*/__init__.py"
 
 jobs:
   build-n-publish:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         py-version:
-          - 3.6
-          - 3.7
-          - 3.8
+          - 3.x
         mpi:
           - openmpi
         os:
@@ -39,69 +36,51 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install lyncs_setuptools
 
-      - name: Applying black formatting
-        run: |
-          pip install black
-          black --diff .
-          black .
-
-      - name: Pushing changes if any
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: Applying black formatting (from Github Action)
-          commit_user_name: sbacchio
-          commit_user_email: s.bacchio@gmail.com
-          commit_author: Simone Bacchio <s.bacchio@gmail.com>
+      - name: Upload if not up to date
+        id: check-version
+        continue-on-error: true
+        run: 
+          pip install --extra-index-url https://test.pypi.org/simple/ lyncs_io==$(lyncs_setuptools version)
 
       - name: Install from source
+        if: steps.check-version.conclusion == "failure"
         run: |
           pip install -e .[all]
 
-      - name: Pylint output
-        run: |
-          pip install lyncs_setuptools[pylint]
-          badge=$(lyncs_pylint_badge --fail-under 8 . | sed "s/\&/\\\&/g")
-          badge_line=$(awk '/!\[pylint\]/ {print FNR}' README.md)
-          sed -i "${badge_line}s#.*#${badge}#" README.md
-
-      - name: Pushing changes if any
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: Updating pylint score (from Github Action)
-          commit_user_name: sbacchio
-          commit_user_email: s.bacchio@gmail.com
-          commit_author: Simone Bacchio <s.bacchio@gmail.com>
-
       - name: Run tests
+        if: steps.check-version.conclusion == "failure"
         run: |
           pytest -v
 
-      - name: Run lyncs_setuptools
-        run: |
-          lyncs_setuptools
-
       - name: Upload if not up to date
+        if: steps.check-version.conclusion == "failure"
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.test_pypi_password }}
         run: |
           pip uninstall -y lyncs_io
-          pip install --extra-index-url https://test.pypi.org/simple/ lyncs_io==$(lyncs_setuptools version) || (
-            pip install twine
-            python setup.py sdist
-            twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-            count=0
-            # waiting for pip to update the index
-            sleep 60
-          )
+          pip install twine
+          python setup.py sdist
+          twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+          # waiting for pip to update the index
+          sleep 60
 
   clean-run:
+    if: steps.check-version.conclusion == "failure"
     needs: build-n-publish
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        py-version:
+          - 3.6
+          - 3.7
+          - 3.8
+        mpi:
+          - openmpi
+        os:
+          - ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
