@@ -45,17 +45,17 @@ jobs:
           pip install --extra-index-url https://test.pypi.org/simple/ lyncs_io==$(lyncs_setuptools version)
 
       - name: Install from source
-        if: steps.check-version.conclusion == "failure"
+        if: ${{ steps.check-version.conclusion == "failure" }}
         run: |
           pip install -e .[all]
 
       - name: Run tests
-        if: steps.check-version.conclusion == "failure"
+        if: ${{ steps.check-version.conclusion == "failure" }}
         run: |
           pytest -v
 
       - name: Upload if not up to date
-        if: steps.check-version.conclusion == "failure"
+        if: ${{ steps.check-version.conclusion == "failure" }}
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.test_pypi_password }}
@@ -68,7 +68,7 @@ jobs:
           sleep 60
 
   clean-run:
-    if: steps.check-version.conclusion == "failure"
+    if: ${{ steps.check-version.conclusion == "failure" }}
     needs: build-n-publish
     runs-on: ${{ matrix.os }}
     strategy:
