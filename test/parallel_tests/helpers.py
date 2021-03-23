@@ -1,4 +1,5 @@
 import numpy
+import os
 
 
 def get_tmpdir(comm):
@@ -17,7 +18,26 @@ def get_tmpdir(comm):
     else:
         tmpdir = None
 
-    return comm.bcast(tmpdir, root=0)
+    tmpdir = comm.bcast(tmpdir, root=0)
+
+    # Need to handle the case where distributed processes over multiple nodes
+    # will not all have access to the same temporary directory.
+    if os.access(tmpdir.name, os.R_OK | os.W_OK):
+        return tmpdir
+    else:
+        # NOTE: Worst case scenario tempfile.gettempdir() will default tmp to be the
+        # current directory after examining TMPDIR, TEMP or TMP environment variables,
+        # which should be accessible by all processes.
+        if os.access(tempfile.gettempdir(), os.R_OK | os.W_OK):
+            return tmpdir
+        else:
+            raise ValueError(
+                "Some processes are unable to access the temporary directory. \n\
+                Set TMPDIR, TEMP or TMP environment variables with the temporary \n\
+                directory to be used across processes. "
+            )
+
+    return
 
 
 def order(header):
