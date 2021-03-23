@@ -37,8 +37,24 @@ savetxt = swap(numpy.savetxt)
 @wraps(numpy.load)
 def load(filename, chunks=None, comm=None, **kwargs):
     """
-    chunks = number of chunks
-    comm = cartesian MPI_Comm
+    High level interface function for numpy load.
+    Loads a numpy array from file either in serial or parallel.
+    The parallelism is enabled by providing a valid communicator.
+
+    Parameters
+    ----------
+    filename : str
+        Filename of the numpy array to be loaded.
+    chunks: list
+        How to divide the data domain. This enables the Dask API.
+    comm: MPI.Cartcomm
+        A valid cartesian MPI Communicator.
+
+
+    Returns:
+    --------
+    local_array : list
+        Returns a numpy array representing the local elements of the domain.
     """
 
     if comm is None or comm.size == 1:
@@ -58,8 +74,21 @@ def load(filename, chunks=None, comm=None, **kwargs):
 @wraps(numpy.save)
 def save(array, filename, chunks=None, comm=None, **kwargs):
     """
-    chunks = number of chunks
-    comm = cartesian MPI_Comm
+    High level interface function for numpy save.
+    Writes a numpy array to file either in serial or parallel.
+    The parallelism is enabled by providing a valid communicator.
+
+    Parameters
+    ----------
+    local_array : list
+        A numpy array representing the local elements of the domain.
+    filename : str
+        Filename of the numpy array to be loaded.
+    chunks: list
+        How to divide the data domain. This enables the Dask API.
+    comm: MPI.Cartcomm
+        A valid cartesian MPI Communicator.
+
     """
 
     if comm is None or comm.size == 1:
