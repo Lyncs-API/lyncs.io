@@ -11,90 +11,78 @@ from helpers import *
 
 
 @pytest.mark.mpi(min_size=2)
-def test_numpy_load_comm():
+def test_numpy_load_comm(tempdir):
 
     comm = comm_world()
     rank = comm.rank
-    tmpdir = get_tmpdir(comm)
+    ftmp = tempdir + "foo.npy"
 
-    with tmpdir as tmp:
-        ftmp = tmp + "foo.npy"
+    write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
+    global_array = numpy.load(ftmp)
 
-        write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
-        global_array = numpy.load(ftmp)
+    local_array = io.load(ftmp, comm=comm)
 
-        local_array = io.load(ftmp, comm=comm)
-
-        lbound, ubound = rank * hlen(), (rank + 1) * hlen()
-        assert (global_array[lbound:ubound] == local_array).all()
+    lbound, ubound = rank * hlen(), (rank + 1) * hlen()
+    assert (global_array[lbound:ubound] == local_array).all()
 
 
 @pytest.mark.mpi(min_size=2)
-def test_numpy_load_cart():
+def test_numpy_load_cart(tempdir):
 
     comm = comm_world()
     rank = comm.rank
     dims = comm_dims(comm, 2)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    tmpdir = get_tmpdir(comm)
+    ftmp = tempdir + "foo.npy"
 
-    with tmpdir as tmp:
-        ftmp = tmp + "foo.npy"
+    write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
+    global_array = numpy.load(ftmp)
 
-        write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
-        global_array = numpy.load(ftmp)
+    local_array = io.load(ftmp, comm=cartesian2d)
 
-        local_array = io.load(ftmp, comm=cartesian2d)
-
-        hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
-        vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
-        assert (global_array[hlbound:hubound, vlbound:vubound] == local_array).all()
+    hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
+    vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
+    assert (global_array[hlbound:hubound, vlbound:vubound] == local_array).all()
 
 
 @pytest.mark.mpi(min_size=2)
-def test_numpy_save_comm():
+def test_numpy_save_comm(tempdir):
 
     comm = comm_world()
     rank = comm.rank
-    tmpdir = get_tmpdir(comm)
+    ftmp = tempdir + "foo.npy"
 
-    with tmpdir as tmp:
-        ftmp = tmp + "foo.npy"
+    write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
+    global_array = numpy.load(ftmp)
 
-        write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
-        global_array = numpy.load(ftmp)
+    lbound, ubound = rank * hlen(), (rank + 1) * hlen()
+    local_array = global_array[lbound:ubound]
 
-        lbound, ubound = rank * hlen(), (rank + 1) * hlen()
-        local_array = global_array[lbound:ubound]
+    io.save(local_array, ftmp, comm=comm)
 
-        io.save(local_array, ftmp, comm=comm)
-
-        global_array = numpy.load(ftmp)
-        assert (global_array[lbound:ubound] == local_array).all()
+    global_array = numpy.load(ftmp)
+    assert (global_array[lbound:ubound] == local_array).all()
 
 
 @pytest.mark.mpi(min_size=2)
-def test_numpy_save_cart():
+def test_numpy_save_cart(tempdir):
 
     comm = comm_world()
     rank = comm.rank
     dims = comm_dims(comm, 2)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    tmpdir = get_tmpdir(comm)
+    ftmp = tempdir + "foo.npy"
 
-    with tmpdir as tmp:
-        ftmp = tmp + "foo.npy"
+    write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
+    global_array = numpy.load(ftmp)
 
-        write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
-        global_array = numpy.load(ftmp)
+    hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
+    vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
+    local_array = global_array[hlbound:hubound, vlbound:vubound]
 
-        hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
-        vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
-        local_array = global_array[hlbound:hubound, vlbound:vubound]
+    io.save(local_array, ftmp, comm=cartesian2d)
 
-        io.save(local_array, ftmp, comm=cartesian2d)
-
-        global_array = numpy.load(ftmp)
-        assert (local_array == global_array[hlbound:hubound, vlbound:vubound]).all()
+    global_array = numpy.load(ftmp)
+    assert (local_array == global_array[hlbound:hubound, vlbound:vubound]).all()

@@ -1,43 +1,34 @@
 import numpy
-import os
+import pytest
 
 
-def get_tmpdir(comm):
-    """
-    Trying something like:
-        with tempfile.TemporaryDirectory() as tmp:
-            with io.MpiIO(comm, ftmp, mode="w") as mpiio:
-    will result in deadlock as processes will try to write collectively
-    to files in different directories collectively.
-    Hence need to ensure all the processes will have the same tmpdir.
-    """
+@pytest.fixture
+def tempdir():
     import tempfile
+    import os
+    from mpi4py import MPI
 
+    comm = comm_world()
     if comm.rank == 0:
-        tmpdir = tempfile.TemporaryDirectory()
+        tmp = tempfile.TemporaryDirectory()
+        name = tmp.__enter__()
     else:
-        tmpdir = None
+        name = ""
+    path = comm.bcast(name, root=0)
 
-    tmpdir = comm.bcast(tmpdir, root=0)
-
-    # Need to handle the case where distributed processes over multiple nodes
-    # will not all have access to the same temporary directory.
-    if os.access(tmpdir.name, os.R_OK | os.W_OK):
-        return tmpdir
-    else:
-        # NOTE: Worst case scenario tempfile.gettempdir() will default tmp to be the
-        # current directory after examining TMPDIR, TEMP or TMP environment variables,
-        # which should be accessible by all processes.
-        if os.access(tempfile.gettempdir(), os.R_OK | os.W_OK):
-            return tmpdir
-        else:
-            raise ValueError(
-                "Some processes are unable to access the temporary directory. \n\
+    # test path exists for all
+    has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
+    all_access = comm.allreduce(has_access, op=MPI.LAND)
+    if not all_access:
+        raise ValueError(
+            "Some processes are unable to access the temporary directory. \n\
                 Set TMPDIR, TEMP or TMP environment variables with the temporary \n\
                 directory to be used across processes. "
-            )
+        )
 
-    return
+    yield path
+    if comm.rank == 0:
+        tmp.__exit__(None, None, None)
 
 
 def order(header):
