@@ -55,5 +55,7 @@ jobs:
           PROCS=(2 4 7 12)
           for proc in "${PROCS[@]}"
           do
+            echo "::group::Run parallel tests (procs=$proc)"
             mpirun -n $proc --oversubscribe python -m pytest test/parallel_tests/ --with-mpi
+            echo "::endgroup::"
           done
