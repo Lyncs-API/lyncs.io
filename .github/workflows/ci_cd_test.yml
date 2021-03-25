@@ -40,7 +40,7 @@ jobs:
         id: check-version
         continue-on-error: true
         run: 
-          pip install --extra-index-url https://test.pypi.org/simple/ $(lyncs_setuptools name)==$(lyncs_setuptools version)
+          pip install --extra-index-url https://test.pypi.org/simple/ $(lyncs_setuptools name)[all]==$(lyncs_setuptools version)
 
       - name: Install from source
         if: ${{ steps.check-version.outcome == 'failure' }}
@@ -96,7 +96,7 @@ jobs:
           # Keeps trying installing until succeeds (needs to wait for PyPi to update the index)
           for i in $(seq 5); do
              [ $i -gt 1 ] && sleep 20
-             pip install --extra-index-url https://test.pypi.org/simple/ $(lyncs_setuptools name)==$(lyncs_setuptools version) && s=0 && break || s=$?
+             pip install --extra-index-url https://test.pypi.org/simple/ $(lyncs_setuptools name)[all]==$(lyncs_setuptools version) && s=0 && break || s=$?
           done
           (exit $s)
 
