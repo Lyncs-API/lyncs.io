@@ -22,8 +22,6 @@ jobs:
           - ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.head_ref }}
 
       - name: Install MPI (${{ matrix.mpi }})
         run: bash .bash/install-${{ matrix.mpi }}.sh
@@ -38,7 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install lyncs_setuptools
 
-      - name: Upload if not up to date
+      - name: Trying to install from pip
         id: check-version
         continue-on-error: true
         run: 
@@ -80,6 +78,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install MPI (${{ matrix.mpi }})
+        run: bash .bash/install-${{ matrix.mpi }}.sh
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -93,10 +94,9 @@ jobs:
       - name: Install via pip
         run: |
           # Keeps trying installing until succeeds (needs to wait for PyPi to update the index)
-          command="pip install --extra-index-url https://test.pypi.org/simple/ $(lyncs_setuptools name)==$(lyncs_setuptools version)"
           for i in $(seq 5); do
              [ $i -gt 1 ] && sleep 20
-             eval $(command) && s=0 && break || s=$?
+             pip install --extra-index-url https://test.pypi.org/simple/ $(lyncs_setuptools name)==$(lyncs_setuptools version) && s=0 && break || s=$?
           done
           (exit $s)
 
