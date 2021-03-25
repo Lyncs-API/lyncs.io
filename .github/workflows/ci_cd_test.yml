@@ -45,7 +45,7 @@ jobs:
           pip install --extra-index-url https://test.pypi.org/simple/ $(lyncs_setuptools name)==$(lyncs_setuptools version)
 
       - name: Install from source
-        if: ${{ steps.check-version.conclusion == 'failure' }}
+        if: ${{ steps.check-version.outcome == 'failure' }}
         run: |
           pip install -e .[all]
 
@@ -54,7 +54,7 @@ jobs:
           pytest -v
 
       - name: Upload if not up to date
-        if: ${{ steps.check-version.conclusion == 'failure' }}
+        if: ${{ steps.check-version.outcome == 'failure' }}
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.test_pypi_password }}
