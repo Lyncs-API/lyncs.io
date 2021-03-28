@@ -1,4 +1,4 @@
-# This workflow builds and runs test
+# This workflow runs test
 
 name: tests
 
@@ -7,8 +7,10 @@ on:
     branches:
       - "main"
       - "develop"
-    paths-ignore:
-      - "docs/**"
+  push:
+    branches:
+      - "main"
+      - "develop"
 
 jobs:
   tests:
@@ -20,6 +22,7 @@ jobs:
           - 3.6
           - 3.7
           - 3.8
+          - 3.x
         mpi:
           - openmpi
         os:
@@ -33,14 +36,15 @@ jobs:
       - name: Install MPI (${{ matrix.mpi }})
         run: bash .bash/install-${{ matrix.mpi }}.sh
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.py-version }}
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.py-version }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install lyncs_setuptools
 
       - name: Install via pip
         run: |
@@ -48,7 +52,7 @@ jobs:
 
       - name: Run serial tests
         run: |
-          pytest -v
+          coverage run --rcfile=setup.cfg -m pytest
 
       - name: Run parallel tests (procs=2, 4, 7, 12)
         run: |
@@ -56,6 +60,18 @@ jobs:
           for proc in "${PROCS[@]}"
           do
             echo "::group::Run parallel tests (procs=$proc)"
-            mpirun -n $proc --oversubscribe python -m pytest test/parallel_tests/ --with-mpi
+            mpirun -n $proc coverage run --rcfile=setup.cfg -m pytest --with-mpi
             echo "::endgroup::"
           done
+
+      - name: Coverage report
+        run: |
+          coverage combine
+          coverage report
+
+      - name: Upload Coverage report
+        if: ${{ (github.head_ref == 'main' || github.head_ref == 'master') && matrix.py-version == '3.x' }}
+        run: |
+          coverage xml
+          export CODECOV_TOKEN="${{ secrets.CODECOV_TOKEN }}"
+          bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -n $(lyncs_setuptools name)
