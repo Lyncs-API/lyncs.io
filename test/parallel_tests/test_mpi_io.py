@@ -8,6 +8,9 @@ from numpy.lib.format import (
 from lyncs_io import mpi_io as io
 from lyncs_io import numpy as np
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from helpers import *
 
 

@@ -1,78 +1,140 @@
-# This workflow updates the packages on PyPI
+# This workflow builds and tests PRs
 
-name: build & test
+name: PR build & test
 
 on:
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - "lyncs*/__init__.py"
   push:
     branches:
-      - 'main'
-    paths-ignore:
-      - 'docs/**'
+      - "main"
 
 jobs:
-  build-n-publish:  
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: '3.x'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        
-    - name: Install from source
-      run: |
-        pip install -e .[all]
-
-    - name: Run tests
-      run: |
-        pytest -v --cov-report=xml
-        export CODECOV_TOKEN="${{ secrets.CODECOV_TOKEN }}"
-        bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -n lyncs_io
-
-    - name: Upload if not up to date
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.pypi_password }}
-      run: |
-        pip uninstall -y lyncs_io
-        pip install lyncs_io==$(lyncs_setuptools version) || (
-          pip install twine
-          python setup.py sdist
-          twine upload dist/*
-          # waiting for pip to update the index
-          sleep 60
-        )
-
-  clean-run:
-    
-    needs: build-n-publish
-    runs-on: ubuntu-latest
+  build-n-publish:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        py-version:
+          - 3.x
+        mpi:
+          - openmpi
+        os:
+          - ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install MPI (${{ matrix.mpi }})
+        run: bash .bash/install-${{ matrix.mpi }}.sh
+
+      - name: Set up Python ${{ matrix.py-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.py-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install lyncs_setuptools
+
+      - name: Check github ref
+        id: check-ref
+        env:
+          TEST_PASSWORD: ${{ secrets.test_pypi_password }}
+          PYPI_PASSWORD: ${{ secrets.pypi_password }}
+        run: |
+          if [[ $GITHUB_REF == 'refs/heads/main' || $GITHUB_REF == 'refs/heads/master' ]]; then
+             echo '::set-output name=main::true'
+             echo '::set-output name=extra::'
+             echo '::set-output name=url::'
+             echo "::set-output name=token::$PYPI_PASSWORD"
+          else
+             echo '::set-output name=main::false'
+             echo '::set-output name=extra::--extra-index-url https://test.pypi.org/simple/'
+             echo '::set-output name=url::--repository-url https://test.pypi.org/legacy/'
+             echo "::set-output name=token::$TEST_PASSWORD"
+          fi
+
+      - name: Trying to install from pip
+        id: check-version
+        continue-on-error: true
+        env:
+          EXTRA: ${{ steps.check-ref.outputs.extra }}
+        run: |
+          pip install $EXTRA $(lyncs_setuptools name)[all]==$(lyncs_setuptools version)
+
+      - name: Install from source
+        if: ${{ steps.check-version.outcome == 'failure' }}
+        run: |
+          pip install -e .[all]
+
+      - name: Run tests
+        run: |
+          pytest -v
+
+      - name: Upload if not up to date
+        if: ${{ steps.check-version.outcome == 'failure' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ steps.check-ref.outputs.token }}
+          URL: ${{ steps.check-ref.outputs.url }}
+        run: |
+          pip install twine
+          python setup.py sdist
+          twine upload $URL dist/*
+
+  clean-run:
+    needs: build-n-publish
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        py-version:
+          - 3.6
+          - 3.7
+          - 3.8
+        mpi:
+          - openmpi
+        os:
+          - ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-      
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
+      - uses: actions/checkout@v2
 
-    - name: Install via pip
-      run: |
-        pip install lyncs_io[all]
-        
-    - name: Run tests
-      run: |
-        pytest -v --import-mode=importlib
+      - name: Install MPI (${{ matrix.mpi }})
+        run: bash .bash/install-${{ matrix.mpi }}.sh
+
+      - name: Set up Python ${{ matrix.py-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.py-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install lyncs_setuptools
+
+      - name: Check github ref
+        id: check-ref
+        run: |
+          if [[ $GITHUB_REF == 'refs/heads/main' || $GITHUB_REF == 'refs/heads/master' ]]; then
+             echo '::set-output name=extra::'
+          else
+             echo '::set-output name=extra::--extra-index-url https://test.pypi.org/simple/'
+          fi
+
+      - name: Install via pip
+        env:
+          EXTRA: ${{ steps.check-ref.outputs.extra }}
+        run: |
+          # Keeps trying installing until succeeds (needs to wait for PyPi to update the index)
+          for i in $(seq 5); do
+             [ $i -gt 1 ] && sleep 20
+             pip install $EXTRA $(lyncs_setuptools name)[all]==$(lyncs_setuptools version) && s=0 && break || s=$?
+          done
+          (exit $s)
+
+      - name: Run tests
+        run: |
+          pytest -v --import-mode=importlib
