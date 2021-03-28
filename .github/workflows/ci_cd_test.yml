@@ -81,10 +81,10 @@ jobs:
       - name: Install MPI (${{ matrix.mpi }})
         run: bash .bash/install-${{ matrix.mpi }}.sh
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.py-version }}
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.py-version }}
 
       - name: Install dependencies
         run: |
