@@ -8,8 +8,10 @@ setup(
         "dataclasses",
     ],
     extras_require={
+        "tree": ["ipython"],
         "dill": ["dill"],
         "hdf5": ["h5py"],
-        "test": ["pytest", "pytest-cov", "ipython"],
+        "mpi": ["mpi4py"],
+        "test": ["pytest", "pytest-cov", "ipython", "pytest-mpi"],
     },
 )

@@ -14,18 +14,98 @@ __all__ = [
 ]
 
 from io import UnsupportedOperation
+from functools import wraps
 import numpy
 from numpy.lib.npyio import NpzFile
-from numpy.lib.format import read_magic, _check_version, _read_array_header
+from numpy.lib.format import (
+    read_magic,
+    _check_version,
+    _read_array_header,
+    _write_array_header,
+    header_data_from_array_1_0,
+)
 from lyncs_utils import is_keyword
 from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
+from .mpi_io import MpiIO
 
-load = numpy.load
-save = swap(numpy.save)
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
+
+
+@wraps(numpy.load)
+def load(filename, chunks=None, comm=None, **kwargs):
+    """
+    High level interface function for numpy load.
+    Loads a numpy array from file either in serial or parallel.
+    The parallelism is enabled by providing a valid communicator.
+
+    Parameters
+    ----------
+    filename : str
+        Filename of the numpy array to be loaded.
+    chunks: list
+        How to divide the data domain. This enables the Dask API.
+    comm: MPI.Cartcomm
+        A valid cartesian MPI Communicator.
+
+
+    Returns:
+    --------
+    local_array : list
+        Returns a numpy array representing the local elements of the domain.
+    """
+
+    if comm is None or comm.size == 1:
+        return numpy.load(filename, **kwargs)
+
+    if chunks is not None:
+        raise NotImplementedError("Currently not supporting chunking")
+
+    metadata = head(filename)
+
+    with MpiIO(comm, filename, mode="r") as mpiio:
+        return mpiio.load(
+            metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
+        )
+
+
+@wraps(numpy.save)
+def save(array, filename, chunks=None, comm=None, **kwargs):
+    """
+    High level interface function for numpy save.
+    Writes a numpy array to file either in serial or parallel.
+    The parallelism is enabled by providing a valid communicator.
+
+    Parameters
+    ----------
+    local_array : list
+        A numpy array representing the local elements of the domain.
+    filename : str
+        Filename of the numpy array to be loaded.
+    chunks: list
+        How to divide the data domain. This enables the Dask API.
+    comm: MPI.Cartcomm
+        A valid cartesian MPI Communicator.
+
+    """
+
+    if comm is None or comm.size == 1:
+        return numpy.save(filename, array, **kwargs)
+
+    if chunks is not None:
+        raise NotImplementedError("Currently not supporting chunking")
+
+    with MpiIO(comm, filename, mode="w") as mpiio:
+        global_shape, _, _ = mpiio.decomposition.compose(array.shape)
+
+        if mpiio.rank == 0:
+            header = header_data_from_array_1_0(array)
+            header["shape"] = tuple(global_shape)  # needs to be tuple
+            _write_array_header(mpiio.handler, header)
+
+        return mpiio.save(array)
 
 
 def _get_offset(npy):

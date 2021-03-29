@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/github/license/Lyncs-API/lyncs.io?logo=github&logoColor=white)](https://github.com/Lyncs-API/lyncs.io/blob/master/LICENSE)
 [![build & test](https://img.shields.io/github/workflow/status/Lyncs-API/lyncs.io/build%20&%20test?logo=github&logoColor=white)](https://github.com/Lyncs-API/lyncs.io/actions)
 [![codecov](https://img.shields.io/codecov/c/github/Lyncs-API/lyncs.io?logo=codecov&logoColor=white)](https://codecov.io/gh/Lyncs-API/lyncs.io)
-[![pylint](https://img.shields.io/badge/pylint%20score-9.2%2F10-green?logo=python&logoColor=white)](http://pylint.pycqa.org/)
+[![pylint](https://img.shields.io/badge/pylint%20score-9.4%2F10-green?logo=python&logoColor=white)](http://pylint.pycqa.org/)
 [![black](https://img.shields.io/badge/code%20style-black-000000.svg?logo=codefactor&logoColor=white)](https://github.com/ambv/black)
 
 Lyncs IO offers two high-level functions `load` and `save` (or `dump` as alias of `save`).
@@ -38,7 +38,36 @@ The main features of this module are
   is added to the filename. When loading, any extension is considered,
   i.e. `filename.*`, and if only one match is available, the file is loaded.
 
-### Example
+## Installation
+
+The package can be installed via `pip`:
+
+```bash
+pip install [--user] lyncs_io
+```
+
+**NOTE**: for enabling parallel IO, lyncs_io requires a working MPI installation.
+This can be installed via `apt-get`:
+
+```bash
+sudo apt-get install libopenmpi-dev openmpi-bin
+```
+
+OR using `conda`:
+
+```bash
+conda install -c anaconda mpi4py
+```
+
+Parallel IO can then be enabled via
+
+```bash
+pip install [--user] lyncs_io[mpi]
+```
+
+## Documentation
+
+The high-level `load` and `save` (or `dump` as alias of `save`) functions provided by the Lyncs IO can be used as follows:
 
 ```python
 import numpy as np
@@ -60,6 +89,27 @@ of what done in `numpy` but consistent with `pickle`'s `dump`. This order
 is preferred because the function can be used directly as a method
 for a class since `self`, i.e. the `data`, would be passed as the first
 argument of `save`.
+
+### IO with MPI
+
+```python
+import numpy as np
+import lyncs_io as io
+from mpi4py import MPI
+
+# Assume 2D cartesian topology
+comm = MPI.COMM_WORLD
+dims = MPI.Compute_dims(comm.size, 2)
+cartesian2d = comm.Create_cart(dims=dims)
+
+oarr = np.random.rand(6, 4, 2, 2)
+io.save(oarr, "pario.npy", comm=cartesian2d)
+iarr = io.load("pario.npy", comm=cartesian2d)
+
+assert (iarr == oarr).all()
+```
+
+NOTE: Parallel IO is enabled once a valid cartesian communicator is passed to `load` or `save` routines, otherwise Serial IO is performed. Currently only `numpy` format supports this functionality.
 
 ### File formats
 
