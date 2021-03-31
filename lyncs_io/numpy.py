@@ -35,7 +35,7 @@ savetxt = swap(numpy.savetxt)
 
 
 @wraps(numpy.load)
-def load(filename, engine="numpy", chunks=1, comm=None, **kwargs):
+def load(filename, chunks=None, comm=None, **kwargs):
     """
     High level interface function for numpy load.
     Loads a numpy array from file either in serial or parallel.
@@ -57,37 +57,28 @@ def load(filename, engine="numpy", chunks=1, comm=None, **kwargs):
         Returns a numpy array representing the local elements of the domain.
     """
 
-    if engine.lower() == "numpy":
-        if comm is not None or comm == 1:
-            raise ValueError("numpy engine and comm cannot be used together")
-        else:
-            return numpy.load(filename, **kwargs)
+    if chunks is not None:
+        from .dask_io import dask_load_array
 
-    metadata = head(filename)
-
-    if engine.lower() == "dask":
-        from .dask_io import dask_array
-
-        # Assume uniform chunks in 1D
-        procs = 3
-        chunk = metadata["shape"][0] // procs
-        # chunks = [chunk] * procs
-        print("chunks = ", chunks)
-        x = dask_array(
+        metadata = head(filename)
+        x = dask_load_array(
             filename=filename,
             shape=metadata["shape"],
-            chunking=3,
             dtype=metadata["dtype"],
             offset=metadata["_offset"],
-            blocksize=chunks,
+            chunks=chunks,
         )
-        # return x.compute()
         return x
-    elif engine.lower() == "mpi":
+    elif comm is not None and comm.size != 1:
+        metadata = head(filename)
         with MpiIO(comm, filename, mode="r") as mpiio:
             return mpiio.load(
                 metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
             )
+    elif comm is not None and comm.size == 1:
+        return numpy.load(filename, **kwargs)
+    else:
+        raise ValueError("chunks and comm parameters cannot be both set to None")
 
 
 @wraps(numpy.save)
