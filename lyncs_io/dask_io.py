@@ -1,11 +1,46 @@
-import dask
-import dask.array as da
 import numpy
 
 
-def dask_load_array(filename, shape, dtype=None, offset=None, chunks=None):
+class DaskIO:
+    """
+    Class for handling file handling routines and Parallel IO using Dask
+    """
 
-    # TODO: get absolute path to filename
-    array = numpy.memmap(filename, mode="r", shape=shape, dtype=dtype, offset=offset)
+    @property
+    def dask(self):
+        import dask
 
-    return da.from_array(array, chunks=chunks)
+        return dask
+
+    def __init__(self, chunks, filename, mode="r"):
+
+        self.filename = filename
+        self.handler = None
+        self.mode = mode
+
+    def load(self, domain, dtype, header_offset, chunks=None, order="C"):
+
+        array = self._memmap(
+            self.filename,
+            mode="r",
+            shape=domain,
+            dtype=dtype,
+            offset=header_offset,
+            order=order,
+        )
+
+        return self.dask.array.from_array(array, chunks=chunks)
+
+    def save(self, array, chunks=None):
+
+        if not isinstance(array, self.dask.array.Array):
+            array = self.dask.array.from_array(array, chunks=chunks)
+
+        raise NotImplementedError("Writing an array with dask is not implemented yet.")
+
+    def _memmap(
+        self, filename, mode="r", shape=None, dtype=None, offset=None, order=None
+    ):
+        return numpy.memmap(
+            filename, mode=mode, shape=shape, dtype=dtype, offset=offset, order=order
+        )
