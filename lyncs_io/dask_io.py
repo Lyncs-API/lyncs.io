@@ -32,20 +32,17 @@ class DaskIO:
 
     def save(self, array, chunks=None):
 
-        stream = BytesIO()
-        header = self._header_data_from_dask_array_1_0(array)
-        numpy.lib.format._write_array_header(stream, header)
-
         if not isinstance(array, self.dask.array.Array):
             array = self.dask.array.from_array(array, chunks=chunks)
 
-        coords, chunksizes = self._pack_coords_chunks(array)
-        starts = self._get_starts(coords, chunksizes)
-        sl = self._get_slices(starts, chunksizes)
-
+        stream = BytesIO()
+        header = self._header_data_from_dask_array_1_0(array)
+        numpy.lib.format._write_array_header(stream, header)
         offset = len(stream.getvalue())
 
         tasks = []
+        slices = self.dask.array.core.slices_from_chunks(array.chunks)
+
         for block in range(self._prod(array.numblocks)):
             # Only one should write the header
             if block == 0 and header:
@@ -58,9 +55,8 @@ class DaskIO:
                 self.filename,
                 array,
                 offset=offset,
-                sl=sl[block],
+                sl=slices[block],
             )
-
             tasks.append(task)
 
         return tasks
@@ -70,33 +66,6 @@ class DaskIO:
         for ele in val:
             res *= ele
         return res
-
-    def _get_starts(self, coords, chunksizes):
-        lststarts = []
-        # FIXME: For uneven chunk-sizes last chunks do not much the starts
-        for a, b in zip(coords, chunksizes):
-            lststarts.append([(x * y) for x, y in zip(a, b)])
-
-        starts = [tuple(x) for x in lststarts]
-        return starts
-
-    def _get_slices(self, starts, chunksizes):
-        lstsl = []
-        for a, b in zip(starts, chunksizes):
-            lstsl.append([slice(ai, ai + bi) for ai, bi in zip(a, b)])
-
-        sl = [tuple(x) for x in lstsl]
-        return sl
-
-    def _pack_coords_chunks(self, array):
-        coords = []
-        chunksizes = []
-
-        for idx in range(self._prod(array.numblocks)):
-            blockid = numpy.unravel_index(idx, array.numblocks)
-            coords.append(blockid)
-            chunksizes.append(array.blocks[blockid].chunksize)
-        return coords, chunksizes
 
     def _memmap(
         self, filename, mode="r", shape=None, dtype=None, offset=None, order=None
