@@ -28,9 +28,9 @@ from lyncs_utils import is_keyword
 from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
+
 from .mpi_io import MpiIO
 from .dask_io import DaskIO
-from io import BytesIO
 
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
@@ -59,7 +59,7 @@ def load(filename, chunks=None, comm=None, **kwargs):
         Returns a numpy array representing the local elements of the domain.
     """
 
-    if chunks is not None and comm is none:
+    if chunks is not None and comm is None:
 
         metadata = head(filename)
         daskio = DaskIO(filename)
@@ -116,12 +116,9 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
 
     """
 
-    if chunks is not None and comm is none:
+    if chunks is not None and comm is None:
         daskio = DaskIO(filename)
-        header = BytesIO()
-        _write_array_header(header, header_data_from_array_1_0(array))
-
-        return daskio.save(array, header=header, chunks=chunks)
+        return daskio.save(array, chunks=chunks)
 
     if comm is not None and chunks is None:
         if not hasattr(comm, "size"):

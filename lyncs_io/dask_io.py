@@ -1,4 +1,5 @@
 import numpy
+from io import BytesIO
 
 
 class DaskIO:
@@ -12,11 +13,9 @@ class DaskIO:
 
         return dask
 
-    def __init__(self, chunks, filename, mode="r"):
+    def __init__(self, filename):
 
         self.filename = filename
-        self.handler = None
-        self.mode = mode
 
     def load(self, domain, dtype, header_offset, chunks=None, order="C"):
 
@@ -33,22 +32,32 @@ class DaskIO:
 
     def save(self, array, chunks=None):
 
+        stream = BytesIO()
+        header = self._header_data_from_dask_array_1_0(array)
+        numpy.lib.format._write_array_header(stream, header)
+
         if not isinstance(array, self.dask.array.Array):
             array = self.dask.array.from_array(array, chunks=chunks)
 
-        coords, chunksizes = self.pack_coords_chunks(array)
-        starts = self.get_starts(coords, chunksizes)
-        sl = self.get_slices(starts, chunksizes)
+        coords, chunksizes = self._pack_coords_chunks(array)
+        starts = self._get_starts(coords, chunksizes)
+        sl = self._get_slices(starts, chunksizes)
+
+        offset = len(stream.getvalue())
 
         tasks = []
-        for block in range(self.prod(array.numblocks)):
-            # FIXME: Each task writes to the same position
+        for block in range(self._prod(array.numblocks)):
+            # Only one should write the header
+            if block == 0 and header:
+                task_header = self.dask.delayed(self._write_header)(
+                    self.filename, header
+                )
+                tasks.append(task_header)
+
             task = self.dask.delayed(self._write_chunk)(
                 self.filename,
                 array,
-                shape=array.shape,
-                dtype=array.dtype,
-                offset=0,
+                offset=offset,
                 sl=sl[block],
             )
 
@@ -56,13 +65,13 @@ class DaskIO:
 
         return tasks
 
-    def prod(self, val):
+    def _prod(self, val):
         res = 1
         for ele in val:
             res *= ele
         return res
 
-    def get_starts(self, coords, chunksizes):
+    def _get_starts(self, coords, chunksizes):
         lststarts = []
         # FIXME: For uneven chunk-sizes last chunks do not much the starts
         for a, b in zip(coords, chunksizes):
@@ -71,7 +80,7 @@ class DaskIO:
         starts = [tuple(x) for x in lststarts]
         return starts
 
-    def get_slices(self, starts, chunksizes):
+    def _get_slices(self, starts, chunksizes):
         lstsl = []
         for a, b in zip(starts, chunksizes):
             lstsl.append([slice(ai, ai + bi) for ai, bi in zip(a, b)])
@@ -79,11 +88,11 @@ class DaskIO:
         sl = [tuple(x) for x in lstsl]
         return sl
 
-    def pack_coords_chunks(self, array):
+    def _pack_coords_chunks(self, array):
         coords = []
         chunksizes = []
 
-        for idx in range(self.prod(array.numblocks)):
+        for idx in range(self._prod(array.numblocks)):
             blockid = numpy.unravel_index(idx, array.numblocks)
             coords.append(blockid)
             chunksizes.append(array.blocks[blockid].chunksize)
@@ -96,11 +105,33 @@ class DaskIO:
             filename, mode=mode, shape=shape, dtype=dtype, offset=offset, order=order
         )
 
+    def _header_data_from_dask_array_1_0(self, array, order="C"):
+        d = {"shape": array.shape}
+        d["fortran_order"] = True if order == "F" else False
+        d["descr"] = numpy.lib.format.dtype_to_descr(array.dtype)
+        return d
+
+    def _write_header(self, filename, header):
+        fp = open(filename, "wb+")
+        numpy.lib.format._write_array_header(fp, header)
+        fp.close()
+
     def _write_chunk(
-        self, filename, array, shape=None, dtype=None, offset=None, order=None, sl=None
+        self,
+        filename,
+        array,
+        offset=None,
+        order=None,
+        sl=None,
     ):
+
         data = numpy.memmap(
-            filename, mode="w+", shape=shape, dtype=dtype, offset=offset, order=order
+            filename,
+            mode="r+",
+            shape=array.shape,
+            dtype=array.dtype,
+            offset=offset,
+            order=order,
         )
         data[sl] = array[sl]
         return data
