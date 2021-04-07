@@ -30,6 +30,7 @@ from .header import Header
 from .utils import swap, open_file
 from .mpi_io import MpiIO
 from .dask_io import DaskIO
+from io import BytesIO
 
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
@@ -58,19 +59,20 @@ def load(filename, chunks=None, comm=None, **kwargs):
         Returns a numpy array representing the local elements of the domain.
     """
 
-    if chunks is not None:
+    if chunks is not None and comm is none:
 
         metadata = head(filename)
-        daskio = DaskIO(chunks, filename, mode="r")
+        daskio = DaskIO(filename)
 
         return daskio.load(
             metadata["shape"],
             metadata["dtype"],
             metadata["_offset"],
             chunks=chunks,
-            order="C",
+            order="F" if metadata["_fortran_order"] else "C",
         )
-    elif comm is not None:
+
+    if comm is not None and chunks is None:
         if not hasattr(comm, "size"):
             raise TypeError(
                 "comm variable needs to be a valid MPI communicator with size attribute."
@@ -80,12 +82,18 @@ def load(filename, chunks=None, comm=None, **kwargs):
             metadata = head(filename)
             with MpiIO(comm, filename, mode="r") as mpiio:
                 return mpiio.load(
-                    metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
+                    metadata["shape"],
+                    metadata["dtype"],
+                    "F" if metadata["_fortran_order"] else "C",
+                    metadata["_offset"],
                 )
         else:
             return numpy.load(filename, **kwargs)
-    else:
+
+    if comm is None and chunks is None:
         return numpy.load(filename, **kwargs)
+    else:
+        raise ValueError("chunks and comm parameters cannot be both set")
 
 
 @wraps(numpy.save)
@@ -108,10 +116,14 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
 
     """
 
-    if chunks is not None:
-        daskio = DaskIO(chunks, filename, mode="w+")
-        return daskio.save(array, chunks=chunks)
-    elif comm is not None:
+    if chunks is not None and comm is none:
+        daskio = DaskIO(filename)
+        header = BytesIO()
+        _write_array_header(header, header_data_from_array_1_0(array))
+
+        return daskio.save(array, header=header, chunks=chunks)
+
+    if comm is not None and chunks is None:
         if not hasattr(comm, "size"):
             raise TypeError(
                 "comm variable needs to be a valid MPI communicator with size attribute."
@@ -129,8 +141,11 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
                 return mpiio.save(array)
         else:
             return numpy.save(filename, array, **kwargs)
-    else:
+
+    if comm is None and chunks is None:
         return numpy.save(filename, array, **kwargs)
+    else:
+        raise ValueError("chunks and comm parameters cannot be both set")
 
 
 def _get_offset(npy):
