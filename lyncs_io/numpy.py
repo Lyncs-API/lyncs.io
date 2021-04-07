@@ -85,7 +85,7 @@ def load(filename, chunks=None, comm=None, **kwargs):
         else:
             return numpy.load(filename, **kwargs)
     else:
-        raise ValueError("chunks and comm parameters cannot be both set to None")
+        return numpy.load(filename, **kwargs)
 
 
 @wraps(numpy.save)
@@ -109,7 +109,7 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
     """
 
     if chunks is not None:
-        daskio = DaskIO(chunks, filename, mode="w")
+        daskio = DaskIO(chunks, filename, mode="w+")
         return daskio.save(array, chunks=chunks)
     elif comm is not None:
         if not hasattr(comm, "size"):
@@ -130,7 +130,7 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
         else:
             return numpy.save(filename, array, **kwargs)
     else:
-        raise ValueError("chunks and comm parameters cannot be both set to None")
+        return numpy.save(filename, array, **kwargs)
 
 
 def _get_offset(npy):
