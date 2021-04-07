@@ -44,3 +44,11 @@ def default_names(i=0):
     "Infinite generator of default names ('arrN') for entries of an archive."
     yield f"arr{i}"
     yield from default_names(i + 1)
+
+
+def prod(val):
+    "Returns the product of a tuple"
+    res = 1
+    for ele in val:
+        res *= ele
+    return res

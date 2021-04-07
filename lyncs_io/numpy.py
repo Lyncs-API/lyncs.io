@@ -59,7 +59,10 @@ def load(filename, chunks=None, comm=None, **kwargs):
         Returns a numpy array representing the local elements of the domain.
     """
 
-    if chunks is not None and comm is None:
+    if comm is not None and chunks is not None:
+        raise ValueError("chunks and comm parameters cannot be both set")
+
+    if chunks is not None:
 
         metadata = head(filename)
         daskio = DaskIO(filename)
@@ -72,7 +75,7 @@ def load(filename, chunks=None, comm=None, **kwargs):
             order="F" if metadata["_fortran_order"] else "C",
         )
 
-    if comm is not None and chunks is None:
+    if comm is not None:
         if not hasattr(comm, "size"):
             raise TypeError(
                 "comm variable needs to be a valid MPI communicator with size attribute."
@@ -90,10 +93,7 @@ def load(filename, chunks=None, comm=None, **kwargs):
         else:
             return numpy.load(filename, **kwargs)
 
-    if comm is None and chunks is None:
-        return numpy.load(filename, **kwargs)
-    else:
-        raise ValueError("chunks and comm parameters cannot be both set")
+    return numpy.load(filename, **kwargs)
 
 
 @wraps(numpy.save)
@@ -116,11 +116,14 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
 
     """
 
-    if chunks is not None and comm is None:
+    if comm is not None and chunks is not None:
+        raise ValueError("chunks and comm parameters cannot be both set")
+
+    if chunks is not None:
         daskio = DaskIO(filename)
         return daskio.save(array, chunks=chunks)
 
-    if comm is not None and chunks is None:
+    if comm is not None:
         if not hasattr(comm, "size"):
             raise TypeError(
                 "comm variable needs to be a valid MPI communicator with size attribute."
@@ -139,10 +142,7 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
         else:
             return numpy.save(filename, array, **kwargs)
 
-    if comm is None and chunks is None:
-        return numpy.save(filename, array, **kwargs)
-    else:
-        raise ValueError("chunks and comm parameters cannot be both set")
+    return numpy.save(filename, array, **kwargs)
 
 
 def _get_offset(npy):
