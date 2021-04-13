@@ -1,10 +1,12 @@
 from lyncs_io import mpi_io as io
 import pytest
 
+from lyncs_io.testing import mark_mpi
+
 # TODO: Generalize on higher dimensions (Currently tested for cart_dim<=2)
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_comm_types():
     from mpi4py import MPI
 
@@ -58,14 +60,14 @@ def test_comm_types():
     assert [rank] == decomp.coords
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_mpi_property():
     from mpi4py import MPI
 
     assert hasattr(io.Decomposition(MPI.COMM_WORLD), "MPI")
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_comm_Decomposition():
     from mpi4py import MPI
 
@@ -101,13 +103,10 @@ def test_comm_Decomposition():
 
     # More workers than data
     with pytest.raises(ValueError):
-        dec.decompose(domain=[1])
-
-    with pytest.raises(ValueError):
-        dec.decompose(domain=[1, 8])
+        dec.decompose(domain=[0] * len(domain))
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_cart_decomposition():
     from mpi4py import MPI
 
@@ -146,19 +145,10 @@ def test_cart_decomposition():
 
     # More workers than data
     with pytest.raises(ValueError):
-        dec.decompose(domain=[1])
-
-    with pytest.raises(ValueError):
-        dec.decompose(domain=[1, 1])
-
-    with pytest.raises(ValueError):
-        dec.decompose(domain=[1, 8])
-
-    with pytest.raises(ValueError):
-        dec.decompose(domain=[8, 0])
+        dec.decompose(domain=[0] * len(domain))
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_comm_composition():
     from mpi4py import MPI
 
@@ -190,7 +180,7 @@ def test_comm_composition():
         assert [rank * 8 + 1, 0] == start
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_cart_composition():
     from mpi4py import MPI
 

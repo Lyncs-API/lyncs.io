@@ -8,14 +8,19 @@ from numpy.lib.format import (
 import lyncs_io as io
 from lyncs_io import numpy as np
 
-import os
-import sys
+from lyncs_io.testing import (
+    mark_mpi,
+    tempdir,
+    comm_world,
+    comm_dims,
+    hlen,
+    vlen,
+    order,
+    write_global_array,
+)
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from helpers import *
 
-
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_numpy_load_comm(tempdir):
 
     comm = comm_world()
@@ -31,7 +36,7 @@ def test_numpy_load_comm(tempdir):
     assert (global_array[lbound:ubound] == local_array).all()
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_numpy_load_cart(tempdir):
 
     comm = comm_world()
@@ -51,7 +56,7 @@ def test_numpy_load_cart(tempdir):
     assert (global_array[hlbound:hubound, vlbound:vubound] == local_array).all()
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_numpy_save_comm(tempdir):
 
     comm = comm_world()
@@ -70,7 +75,7 @@ def test_numpy_save_comm(tempdir):
     assert (global_array[lbound:ubound] == local_array).all()
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_numpy_save_cart(tempdir):
 
     comm = comm_world()

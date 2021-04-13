@@ -8,14 +8,19 @@ from numpy.lib.format import (
 from lyncs_io import mpi_io as io
 from lyncs_io import numpy as np
 
-import os
-import sys
+from lyncs_io.testing import (
+    mark_mpi,
+    tempdir,
+    comm_world,
+    comm_dims,
+    hlen,
+    vlen,
+    order,
+    write_global_array,
+)
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from helpers import *
 
-
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_constructor():
     from mpi4py import MPI
 
@@ -35,7 +40,7 @@ def test_constructor():
     assert mpiio.mode == "w"
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_file_handles(tempdir):
     from mpi4py import MPI
 
@@ -52,7 +57,7 @@ def test_file_handles(tempdir):
         assert mpiio.handler is not None
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_load_from_comm(tempdir):
 
     comm = comm_world()
@@ -83,7 +88,7 @@ def test_load_from_comm(tempdir):
     assert (global_array[lbound:ubound] == local_array).all()
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_load_from_cart(tempdir):
 
     comm = comm_world()
@@ -107,7 +112,7 @@ def test_load_from_cart(tempdir):
     assert (global_array[hlbound:hubound, vlbound:vubound] == local_array).all()
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_save_from_comm(tempdir):
 
     comm = comm_world()
@@ -135,7 +140,7 @@ def test_save_from_comm(tempdir):
     assert (local_array == global_array[lbound:ubound]).all()
 
 
-@pytest.mark.mpi(min_size=2)
+@mark_mpi
 def test_save_from_cart(tempdir):
 
     comm = comm_world()
