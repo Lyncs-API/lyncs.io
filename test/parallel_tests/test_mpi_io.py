@@ -5,7 +5,7 @@ from numpy.lib.format import (
     header_data_from_array_1_0,
 )
 
-from lyncs_io import mpi_io as io
+from lyncs_io.mpi_io import MpiIO, Decomposition
 from lyncs_io import numpy as np
 
 from lyncs_io.testing import (
@@ -26,13 +26,13 @@ def test_constructor():
 
     comm = comm_world()
     # check mode is set to "r" by default
-    assert io.MpiIO(comm, "").mode == "r"
+    assert MpiIO(comm, "").mode == "r"
 
     topo = comm.Create_cart(dims=comm_dims(comm, 2))
-    mpiio = io.MpiIO(topo, "testfile.npy", mode="w")
+    mpiio = MpiIO(topo, "testfile.npy", mode="w")
 
     assert isinstance(mpiio.comm, MPI.Cartcomm)
-    assert isinstance(mpiio.decomposition, io.Decomposition)
+    assert isinstance(mpiio.decomposition, Decomposition)
     assert mpiio.size == comm.size
     assert mpiio.rank == comm.rank
     assert mpiio.filename == "testfile.npy"
@@ -49,11 +49,11 @@ def test_file_handles(tempdir):
     # when file does not exists and we try to read
     with pytest.raises(MPI.Exception):
         ftmp = tempdir + "foo.npy"
-        with io.MpiIO(comm, ftmp, mode="r") as mpiio:
+        with MpiIO(comm, ftmp, mode="r") as mpiio:
             pass
 
     ftmp = tempdir + "foo.npy"
-    with io.MpiIO(comm, ftmp, mode="w") as mpiio:
+    with MpiIO(comm, ftmp, mode="w") as mpiio:
         assert mpiio.handler is not None
 
 
@@ -70,16 +70,16 @@ def test_load_from_comm(tempdir):
 
     # test invalid (Fortran) order
     with pytest.raises(NotImplementedError):
-        with io.MpiIO(comm, ftmp, mode="r") as mpiio:
+        with MpiIO(comm, ftmp, mode="r") as mpiio:
             mpiio.load(header["shape"], header["dtype"], "Fortran", header["_offset"])
 
     # test invalid dtype
     with pytest.raises(TypeError):
-        with io.MpiIO(comm, ftmp, mode="r") as mpiio:
+        with MpiIO(comm, ftmp, mode="r") as mpiio:
             mpiio.load(header["shape"], "j", "Fortran", header["_offset"])
 
     # valid usage
-    with io.MpiIO(comm, ftmp, mode="r") as mpiio:
+    with MpiIO(comm, ftmp, mode="r") as mpiio:
         local_array = mpiio.load(
             header["shape"], header["dtype"], order(header), header["_offset"]
         )
@@ -102,7 +102,7 @@ def test_load_from_cart(tempdir):
     global_array = numpy.load(ftmp)
     header = np.head(ftmp)
 
-    with io.MpiIO(cartesian2d, ftmp, mode="r") as mpiio:
+    with MpiIO(cartesian2d, ftmp, mode="r") as mpiio:
         local_array = mpiio.load(
             header["shape"], header["dtype"], order(header), header["_offset"]
         )
@@ -125,7 +125,7 @@ def test_save_from_comm(tempdir):
     lbound, ubound = rank * hlen(), (rank + 1) * hlen()
     local_array = global_array[lbound:ubound]
 
-    with io.MpiIO(comm, ftmp, mode="w") as mpiio:
+    with MpiIO(comm, ftmp, mode="w") as mpiio:
         global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
         assert global_shape == list(global_array.shape)
 
@@ -159,7 +159,7 @@ def test_save_from_cart(tempdir):
     vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
     local_array = global_array[hlbound:hubound, vlbound:vubound]
 
-    with io.MpiIO(cartesian2d, ftmp, mode="w") as mpiio:
+    with MpiIO(cartesian2d, ftmp, mode="w") as mpiio:
         global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
         assert global_shape == list(global_array.shape)
 

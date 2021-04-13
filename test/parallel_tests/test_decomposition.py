@@ -1,6 +1,5 @@
-from lyncs_io import mpi_io as io
 import pytest
-
+from lyncs_io.mpi_io import Decomposition
 from lyncs_io.testing import mark_mpi
 
 # TODO: Generalize on higher dimensions (Currently tested for cart_dim<=2)
@@ -12,7 +11,7 @@ def test_comm_types():
 
     # Requires a communicator
     with pytest.raises(TypeError):
-        io.Decomposition()
+        Decomposition()
 
     comm = MPI.COMM_WORLD
     size = comm.size
@@ -28,7 +27,7 @@ def test_comm_types():
     topo = comm.Create_graph(index[1:], edges)
 
     with pytest.raises(TypeError):
-        io.Decomposition(comm=topo)
+        Decomposition(comm=topo)
 
     topo.Free()
 
@@ -39,7 +38,7 @@ def test_comm_types():
     topo = comm.Create_dist_graph(sources, degrees, destinations, MPI.UNWEIGHTED)
 
     with pytest.raises(TypeError):
-        io.Decomposition(comm=topo)
+        Decomposition(comm=topo)
 
     topo.Free()
 
@@ -47,7 +46,7 @@ def test_comm_types():
     ndims = 2
     dims = MPI.Compute_dims(size, [0] * ndims)
     topo = comm.Create_cart(dims=dims, periods=[False] * ndims, reorder=False)
-    decomp = io.Decomposition(comm=topo)
+    decomp = Decomposition(comm=topo)
 
     assert dims == decomp.dims
     assert topo.Get_coords(rank) == decomp.coords
@@ -55,7 +54,7 @@ def test_comm_types():
     topo.Free()
 
     # Check COMM_WORLD
-    decomp = io.Decomposition(comm=comm)
+    decomp = Decomposition(comm=comm)
     assert [size] == decomp.dims
     assert [rank] == decomp.coords
 
@@ -64,7 +63,7 @@ def test_comm_types():
 def test_mpi_property():
     from mpi4py import MPI
 
-    assert hasattr(io.Decomposition(MPI.COMM_WORLD), "MPI")
+    assert hasattr(Decomposition(MPI.COMM_WORLD), "MPI")
 
 
 @mark_mpi
@@ -75,7 +74,7 @@ def test_comm_Decomposition():
     size = comm.size
     rank = comm.rank
 
-    dec = io.Decomposition(comm=comm)
+    dec = Decomposition(comm=comm)
 
     # No remainder
     domain = [8 * size, 12]
@@ -119,7 +118,7 @@ def test_cart_decomposition():
     dims = MPI.Compute_dims(size, [0] * ndims)
     topo = comm.Create_cart(dims=dims, periods=[False] * ndims, reorder=False)
     coords = topo.Get_coords(rank)
-    dec = io.Decomposition(comm=topo)
+    dec = Decomposition(comm=topo)
 
     # No remainder
     domain = [8 * dims[0], 8 * dims[1], 4, 4]
@@ -156,7 +155,7 @@ def test_comm_composition():
     size = comm.size
     rank = comm.rank
 
-    dec = io.Decomposition(comm=comm)
+    dec = Decomposition(comm=comm)
 
     # No remainder
     local_size = [8, 8]
@@ -193,7 +192,7 @@ def test_cart_composition():
     dims = MPI.Compute_dims(size, [0] * ndims)
     topo = comm.Create_cart(dims=dims, periods=[False] * ndims, reorder=False)
     coords = topo.Get_coords(rank)
-    dec = io.Decomposition(comm=topo)
+    dec = Decomposition(comm=topo)
 
     # No remainder
     local_size = [8, 8, 4, 4]

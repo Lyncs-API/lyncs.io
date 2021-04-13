@@ -1,13 +1,10 @@
 import numpy
 import pytest
+import lyncs_io as io
 from numpy.lib.format import (
     _write_array_header,
     header_data_from_array_1_0,
 )
-
-import lyncs_io as io
-from lyncs_io import numpy as np
-
 from lyncs_io.testing import (
     mark_mpi,
     tempdir,

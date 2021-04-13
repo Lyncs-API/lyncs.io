@@ -2,61 +2,10 @@
 Import this file only if in a testing environment
 """
 
-__all__ = [
-    "domain_loop",
-    "parallel_loop",
-    "mark_mpi",
-]
+__all__ = ["mark_mpi"]
 
-from itertools import product
 from pytest import fixture, mark
-from lyncs_utils import factors, prod
 import numpy
-
-
-domain_loop = mark.parametrize(
-    "domain",
-    [
-        # (2, 2, 2, 2),
-        # (3, 3, 3, 3),
-        (4, 4, 4, 4),
-        (8, 8, 8, 8),
-    ],
-)
-
-dtype_loop = mark.parametrize(
-    "dtype",
-    [
-        "float64",
-        "float32",
-        # "float16",
-    ],
-)
-
-
-def get_procs_list(comm_size=None, max_size=None):
-    if comm_size is None:
-        from mpi4py import MPI
-
-        comm_size = MPI.COMM_WORLD.size
-    facts = {1} | set(factors(comm_size))
-    procs = list(
-        set(procs for procs in product(facts, repeat=4) if prod(procs) == comm_size)
-    )
-    if not max_size:
-        return procs
-    return procs[:max_size]
-
-
-def get_cart(procs=None, comm=None):
-    if not QUDA_MPI or procs is None:
-        return None
-    if comm is None:
-        comm = lib.MPI.COMM_WORLD
-    return comm.Create_cart(procs)
-
-
-parallel_loop = mark.parametrize("procs", get_procs_list(max_size=1))
 
 mark_mpi = mark.mpi(min_size=1)
 
