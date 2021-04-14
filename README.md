@@ -111,6 +111,28 @@ assert (iarr == oarr).all()
 
 NOTE: Parallel IO is enabled once a valid cartesian communicator is passed to `load` or `save` routines, otherwise Serial IO is performed. Currently only `numpy` format supports this functionality.
 
+### IO with Dask
+
+```python
+import lyncs_io as io
+import dask
+from distributed import Client, progress
+
+client = Client(n_workers=2, threads_per_worker=1)
+
+x = da.arange(0,128).reshape((16, 8)).rechunk(chunks=(8,4))
+
+xio=io.save(x, "pario.npy", chunks=(8,4))
+dask.compute(xio)
+
+xload= io.load("pario.npy", chunks=(8,4))
+xcomp = xload.compute()
+
+assert (x.compute() == xcomp).all()
+```
+
+NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` or `save` routines using `chunks` parameter. Currently only `numpy` format supports this functionality.
+
 ### File formats
 
 ### Adding a file format
