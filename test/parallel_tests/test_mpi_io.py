@@ -21,7 +21,7 @@ from lyncs_io.testing import (
 
 
 @mark_mpi
-def test_constructor():
+def test_mpiio_constructor():
     from mpi4py import MPI
 
     comm = comm_world()
@@ -41,7 +41,7 @@ def test_constructor():
 
 
 @mark_mpi
-def test_file_handles(tempdir):
+def test_mpiio_file_handler(tempdir):
     from mpi4py import MPI
 
     comm = comm_world()
@@ -58,7 +58,7 @@ def test_file_handles(tempdir):
 
 
 @mark_mpi
-def test_load_from_comm(tempdir):
+def test_mpiio_load_from_comm(tempdir):
 
     comm = comm_world()
     rank = comm.rank
@@ -89,7 +89,7 @@ def test_load_from_comm(tempdir):
 
 
 @mark_mpi
-def test_load_from_cart(tempdir):
+def test_mpiio_load_from_cart(tempdir):
 
     comm = comm_world()
     rank = comm.rank
@@ -113,7 +113,7 @@ def test_load_from_cart(tempdir):
 
 
 @mark_mpi
-def test_save_from_comm(tempdir):
+def test_mpiio_save_from_comm(tempdir):
 
     comm = comm_world()
     rank = comm.rank
@@ -141,7 +141,7 @@ def test_save_from_comm(tempdir):
 
 
 @mark_mpi
-def test_save_from_cart(tempdir):
+def test_mpiio_save_from_cart(tempdir):
 
     comm = comm_world()
     rank = comm.rank
