@@ -5,7 +5,7 @@ Parallel IO using Dask
 from io import BytesIO
 import numpy
 
-from .utils import prod
+from lyncs_utils import prod
 
 
 class DaskIO:
