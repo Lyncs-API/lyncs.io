@@ -55,7 +55,3 @@ def touch(fname, mode=0o666, dir_fd=None, **kwargs):
             dir_fd=None if os.supports_fd else dir_fd,
             **kwargs,
         )
-
-
-def exists(fname):
-    return os.path.exists(fname)

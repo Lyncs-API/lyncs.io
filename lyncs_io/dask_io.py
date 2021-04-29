@@ -3,6 +3,7 @@ Parallel IO using Dask
 """
 from io import BytesIO
 import numpy
+import os
 
 from .utils import touch, exists
 
@@ -147,7 +148,7 @@ def write_blockwise_to_npy(
     block_id = block_info[None]["chunk-location"]
 
     # make sure the file is created
-    if not exists(filename):
+    if not os.path.exists(filename):
         touch(filename)
 
     if sum(block_id) == 0:

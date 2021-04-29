@@ -90,8 +90,6 @@ def load(filename, chunks=None, comm=None, **kwargs):
                     "F" if metadata["_fortran_order"] else "C",
                     metadata["_offset"],
                 )
-        else:
-            return numpy.load(filename, **kwargs)
 
     return numpy.load(filename, **kwargs)
 
@@ -139,8 +137,6 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
                     _write_array_header(mpiio.handler, header)
 
                 return mpiio.save(array)
-        else:
-            return numpy.save(filename, array, **kwargs)
 
     return numpy.save(filename, array, **kwargs)
 
