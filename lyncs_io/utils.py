@@ -5,6 +5,7 @@ Function utils
 from functools import wraps
 from io import IOBase, FileIO
 from pathlib import Path
+import os
 
 
 def swap(fnc):
@@ -46,9 +47,15 @@ def default_names(i=0):
     yield from default_names(i + 1)
 
 
-def prod(val):
-    "Returns the product of a tuple"
-    res = 1
-    for ele in val:
-        res *= ele
-    return res
+def touch(fname, mode=0o666, dir_fd=None, **kwargs):
+    flags = os.O_CREAT | os.O_APPEND
+    with os.fdopen(os.open(fname, flags=flags, mode=mode, dir_fd=dir_fd)) as f:
+        os.utime(
+            f.fileno() if os.utime in os.supports_fd else fname,
+            dir_fd=None if os.supports_fd else dir_fd,
+            **kwargs,
+        )
+
+
+def exists(fname):
+    return os.path.exists(fname)
