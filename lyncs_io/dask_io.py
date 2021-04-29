@@ -47,7 +47,7 @@ class DaskIO:
         array : dask array
             A lazy evaluated array to be computed on demand
         """
-        array = self._memmap(
+        array = numpy.memmap(
             self.filename,
             mode="r",
             shape=domain,
@@ -78,10 +78,8 @@ class DaskIO:
         if not isinstance(array, self.dask.array.Array):
             array = self.dask.array.from_array(array, chunks=chunks)
 
-        stream = BytesIO()
-        header = self._header_data_from_dask_array_1_0(array)
-        numpy.lib.format._write_array_header(stream, header)
-        offset = len(stream.getvalue())
+        header = self._build_header_from_dask_array(array)
+        offset = self._get_dask_array_header_offset(header)
 
         return self.dask.array.map_blocks(
             write_blockwise,
@@ -94,14 +92,13 @@ class DaskIO:
             dtype=array.dtype,
         )
 
-    def _memmap(
-        self, filename, mode="r", shape=None, dtype=None, offset=None, order=None
-    ):
-        return numpy.memmap(
-            filename, mode=mode, shape=shape, dtype=dtype, offset=offset, order=order
-        )
+    def _get_dask_array_header_offset(self, header):
+        stream = BytesIO()
+        numpy.lib.format._write_array_header(stream, header)
 
-    def _header_data_from_dask_array_1_0(self, array, order="C"):
+        return len(stream.getvalue())
+
+    def _build_header_from_dask_array(self, array, order="C"):
         header_dict = {"shape": array.shape}
         header_dict["fortran_order"] = bool(order == "F")
         header_dict["descr"] = numpy.lib.format.dtype_to_descr(array.dtype)
@@ -118,11 +115,12 @@ def write_blockwise(array_block, filename, header, shape, offset, block_info=Non
 
     block_id = block_info[None]["chunk-location"]
 
+    # make sure the file is created
+    if not exists(filename):
+        touch(filename)
+
     if sum(block_id) == 0:
         write_header(filename, header)
-    elif not exists(filename):
-        # make sure the file is created
-        touch(filename)
 
     data = numpy.memmap(
         filename,
