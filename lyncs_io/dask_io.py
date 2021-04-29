@@ -1,9 +1,9 @@
 """
 Parallel IO using Dask
 """
+from io import BytesIO
 import numpy
 
-from io import BytesIO
 from .utils import touch, exists
 
 
@@ -78,11 +78,11 @@ class DaskIO:
         if not isinstance(array, self.dask.array.Array):
             array = self.dask.array.from_array(array, chunks=chunks)
 
-        header = self._build_header_from_dask_array(array)
-        offset = self._get_dask_array_header_offset(header)
+        header = _build_header_from_dask_array(array)
+        offset = _get_dask_array_header_offset(header)
 
         return self.dask.array.map_blocks(
-            write_blockwise,
+            write_blockwise_to_npy,
             array,
             self.filename,
             header,
@@ -92,26 +92,57 @@ class DaskIO:
             dtype=array.dtype,
         )
 
-    def _get_dask_array_header_offset(self, header):
-        stream = BytesIO()
-        numpy.lib.format._write_array_header(stream, header)
 
-        return len(stream.getvalue())
+def _get_dask_array_header_offset(header):
+    stream = BytesIO()
+    numpy.lib.format._write_array_header(stream, header)
 
-    def _build_header_from_dask_array(self, array, order="C"):
-        header_dict = {"shape": array.shape}
-        header_dict["fortran_order"] = bool(order == "F")
-        header_dict["descr"] = numpy.lib.format.dtype_to_descr(array.dtype)
-        return header_dict
+    return len(stream.getvalue())
 
 
-def write_header(filename, header):
+def _build_header_from_dask_array(array, order="C"):
+    header_dict = {"shape": array.shape}
+    header_dict["fortran_order"] = bool(order == "F")
+    header_dict["descr"] = numpy.lib.format.dtype_to_descr(array.dtype)
+
+    return header_dict
+
+
+def _write_npy_header(filename, header):
 
     with open(filename, "wb+") as f:
         numpy.lib.format._write_array_header(f, header)
 
 
-def write_blockwise(array_block, filename, header, shape, offset, block_info=None):
+def write_blockwise_to_npy(
+    array_block, filename, header, shape, offset, block_info=None
+):
+    """
+    Performs a lazy blockwise write of a dask array to file.
+
+    Parameters
+    ----------
+    array_block: list
+        Block array.
+    filename: str
+        Filename where the result will be stored
+    header: dict
+        Numpy header to be written in the file
+    shape: tuple
+        Shape of the global array
+    offset: int
+        offset in bytes to where the
+        data start in the file.
+    block_info: dict
+        contains relevant information to the blocks
+        and chunks of the array. Determined by dask
+        when the function is used in operations like
+        `dask.array.map_blocks`.
+
+    Returns:
+    --------
+    data : slice of the memmap written to the file
+    """
 
     block_id = block_info[None]["chunk-location"]
 
@@ -120,7 +151,7 @@ def write_blockwise(array_block, filename, header, shape, offset, block_info=Non
         touch(filename)
 
     if sum(block_id) == 0:
-        write_header(filename, header)
+        _write_npy_header(filename, header)
 
     data = numpy.memmap(
         filename,
