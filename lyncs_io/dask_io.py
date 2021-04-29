@@ -1,11 +1,10 @@
 """
 Parallel IO using Dask
 """
-
-from io import BytesIO
 import numpy
 
-from lyncs_utils import prod
+from io import BytesIO
+from .utils import touch, exists
 
 
 class DaskIO:
@@ -69,7 +68,13 @@ class DaskIO:
             The array to be written
         chunks : tuple
             shape of chunks to split the array into
+
+        Returns:
+        --------
+        array : dask array
+            A lazy evaluated array to be computed on demand
         """
+
         if not isinstance(array, self.dask.array.Array):
             array = self.dask.array.from_array(array, chunks=chunks)
 
@@ -78,26 +83,16 @@ class DaskIO:
         numpy.lib.format._write_array_header(stream, header)
         offset = len(stream.getvalue())
 
-        tasks = []
-        slices = self.dask.array.core.slices_from_chunks(array.chunks)
-
-        for block in range(prod(array.numblocks)):
-            # Only one should write the header
-            if block == 0 and header:
-                task_header = self.dask.delayed(self._write_header)(
-                    self.filename, header
-                )
-                tasks.append(task_header)
-
-            task = self.dask.delayed(self._write_chunk)(
-                self.filename,
-                array,
-                offset=offset,
-                slice_block=slices[block],
-            )
-            tasks.append(task)
-
-        return tasks
+        return self.dask.array.map_blocks(
+            write_blockwise,
+            array,
+            self.filename,
+            header,
+            array.shape,
+            offset,
+            chunks=array.chunks,
+            dtype=array.dtype,
+        )
 
     def _memmap(
         self, filename, mode="r", shape=None, dtype=None, offset=None, order=None
@@ -112,27 +107,32 @@ class DaskIO:
         header_dict["descr"] = numpy.lib.format.dtype_to_descr(array.dtype)
         return header_dict
 
-    def _write_header(self, filename, header):
-        fptr = open(filename, "wb+")
-        numpy.lib.format._write_array_header(fptr, header)
-        fptr.close()
 
-    def _write_chunk(
-        self,
+def write_header(filename, header):
+
+    with open(filename, "wb+") as f:
+        numpy.lib.format._write_array_header(f, header)
+
+
+def write_blockwise(array_block, filename, header, shape, offset, block_info=None):
+
+    block_id = block_info[None]["chunk-location"]
+
+    if sum(block_id) == 0:
+        write_header(filename, header)
+    elif not exists(filename):
+        # make sure the file is created
+        touch(filename)
+
+    data = numpy.memmap(
         filename,
-        array,
-        offset=None,
-        order=None,
-        slice_block=None,
-    ):
+        mode="r+",
+        shape=shape,
+        dtype=array_block.dtype,
+        offset=offset,
+    )
 
-        data = numpy.memmap(
-            filename,
-            mode="r+",
-            shape=array.shape,
-            dtype=array.dtype,
-            offset=offset,
-            order=order,
-        )
-        data[slice_block] = array[slice_block]
-        return data
+    # write array in right memmap slice
+    slc = tuple(slice(*loc) for loc in block_info[None]["array-location"])
+    data[slc] = array_block
+    return data[slc]
