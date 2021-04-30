@@ -8,88 +8,113 @@ from numpy.lib.format import (
 from lyncs_io.testing import (
     mark_mpi,
     tempdir,
-    comm_world,
-    comm_dims,
-    hlen,
-    vlen,
-    order,
-    write_global_array,
+    ldomain_loop,
+    topo_dim_loop,
+    get_comm,
+    get_topology_dims,
 )
 
 
-@mark_mpi
-def test_numpy_load_comm(tempdir):
+def write_global_array(comm, filename, ldomain, mult=None):
 
-    comm = comm_world()
+    if comm.rank == 0:
+        gdomain = ldomain
+
+        if mult:
+            gdomain = tuple(a * b for a, b in zip(gdomain, mult))
+
+        master_array = numpy.random.rand(*gdomain)
+        numpy.save(filename, master_array)
+    comm.Barrier()  # make sure file is created and visible by all
+
+
+@mark_mpi
+@ldomain_loop  # enables local domain
+def test_numpy_mpiio_load_comm(tempdir, ldomain):
+
+    comm = get_comm()
     rank = comm.rank
     ftmp = tempdir + "foo.npy"
 
-    write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
+    mult = tuple(comm.size if i == 0 else 1 for i in range(len(ldomain)))
+    write_global_array(comm, ftmp, ldomain, mult=mult)
     global_array = numpy.load(ftmp)
 
     local_array = io.load(ftmp, comm=comm)
 
-    lbound, ubound = rank * hlen(), (rank + 1) * hlen()
-    assert (global_array[lbound:ubound] == local_array).all()
+    slc = tuple(slice(rank * ldomain[i], (rank + 1) * ldomain[i]) for i in range(1))
+    assert (global_array[slc] == local_array).all()
 
 
 @mark_mpi
-def test_numpy_load_cart(tempdir):
+@ldomain_loop  # enables local domain
+@topo_dim_loop  # enables topology dimension
+def test_numpy_mpiio_load_cart(tempdir, ldomain, topo_dim):
 
-    comm = comm_world()
+    comm = get_comm()
     rank = comm.rank
-    dims = comm_dims(comm, 2)
+    dims = get_topology_dims(comm, topo_dim)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
     ftmp = tempdir + "foo.npy"
 
-    write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
+    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(ldomain)))
+    write_global_array(comm, ftmp, ldomain, mult=mult)
     global_array = numpy.load(ftmp)
 
     local_array = io.load(ftmp, comm=cartesian2d)
 
-    hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
-    vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
-    assert (global_array[hlbound:hubound, vlbound:vubound] == local_array).all()
+    slices = tuple(
+        slice(coords[i] * ldomain[i], (coords[i] + 1) * ldomain[i])
+        for i in range(topo_dim)
+    )
+    assert (global_array[slices] == local_array).all()
 
 
 @mark_mpi
-def test_numpy_save_comm(tempdir):
+@ldomain_loop  # enables local domain
+def test_numpy_mpiio_save_comm(tempdir, ldomain):
 
-    comm = comm_world()
+    comm = get_comm()
     rank = comm.rank
     ftmp = tempdir + "foo.npy"
 
-    write_global_array(comm, ftmp, comm.size * hlen(), vlen(), 2, 2)
+    mult = tuple(comm.size if i == 0 else 1 for i in range(len(ldomain)))
+    write_global_array(comm, ftmp, ldomain, mult=mult)
     global_array = numpy.load(ftmp)
 
-    lbound, ubound = rank * hlen(), (rank + 1) * hlen()
-    local_array = global_array[lbound:ubound]
+    slc = tuple(slice(rank * ldomain[i], (rank + 1) * ldomain[i]) for i in range(1))
+    local_array = global_array[slc]
 
     io.save(local_array, ftmp, comm=comm)
 
     global_array = numpy.load(ftmp)
-    assert (global_array[lbound:ubound] == local_array).all()
+    assert (global_array[slc] == local_array).all()
 
 
 @mark_mpi
-def test_numpy_save_cart(tempdir):
+@ldomain_loop  # enables local domain
+@topo_dim_loop  # enables topology dimension
+def test_numpy_mpiio_save_cart(tempdir, ldomain, topo_dim):
 
-    comm = comm_world()
+    comm = get_comm()
     rank = comm.rank
-    dims = comm_dims(comm, 2)
+    dims = get_topology_dims(comm, topo_dim)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
     ftmp = tempdir + "foo.npy"
 
-    write_global_array(comm, ftmp, hlen() * dims[0], vlen() * dims[1], 2, 2)
+    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(ldomain)))
+    write_global_array(comm, ftmp, ldomain, mult=mult)
     global_array = numpy.load(ftmp)
 
-    hlbound, hubound = coords[0] * hlen(), (coords[0] + 1) * hlen()
-    vlbound, vubound = coords[1] * vlen(), (coords[1] + 1) * vlen()
-    local_array = global_array[hlbound:hubound, vlbound:vubound]
+    slices = tuple(
+        slice(coords[i] * ldomain[i], (coords[i] + 1) * ldomain[i])
+        for i in range(topo_dim)
+    )
+    local_array = global_array[slices]
 
     io.save(local_array, ftmp, comm=cartesian2d)
 
     global_array = numpy.load(ftmp)
-    assert (local_array == global_array[hlbound:hubound, vlbound:vubound]).all()
+    assert (local_array == global_array[slices]).all()

@@ -2,12 +2,27 @@
 Import this file only if in a testing environment
 """
 
-__all__ = ["mark_mpi"]
+__all__ = ["mark_mpi", "ldomain_loop", "topo_dim_loop"]
 
 from pytest import fixture, mark
 import numpy
 
 mark_mpi = mark.mpi(min_size=1)
+
+ldomain_loop = mark.parametrize(
+    "ldomain",
+    [
+        (2, 2, 2, 2),
+        (3, 3, 3, 3),
+        (6, 4, 2, 2),
+        (3, 5, 2, 1),
+    ],
+)
+
+topo_dim_loop = mark.parametrize(
+    "topo_dim",
+    [1, 2, 3, 4],
+)
 
 
 @fixture
@@ -16,7 +31,7 @@ def tempdir():
     import os
     from mpi4py import MPI
 
-    comm = comm_world()
+    comm = get_comm()
     if comm.rank == 0:
         tmp = tempfile.TemporaryDirectory()
         name = tmp.__enter__()
@@ -39,38 +54,34 @@ def tempdir():
         tmp.__exit__(None, None, None)
 
 
-def order(header):
-    if header["_fortran_order"] is True:
-        ordering = "Fortran"
-    else:
-        ordering = "C"
-
-    return ordering
-
-
-def write_global_array(comm, filename, *args):
+def write_global_array(comm, filename, ldomain, mult=None):
 
     if comm.rank == 0:
-        master_array = numpy.random.rand(*args)
+        gdomain = ldomain
+
+        if mult:
+            gdomain = tuple(a * b for a, b in zip(gdomain, mult))
+
+        master_array = numpy.random.rand(*gdomain)
         numpy.save(filename, master_array)
     comm.Barrier()  # make sure file is created and visible by all
 
 
-def comm_world():
+def get_comm():
     from mpi4py import MPI
 
     return MPI.COMM_WORLD
 
 
-def comm_dims(comm, ndims):
+def get_cart(procs=None, comm=None):
+    from mpi4py import MPI
+
+    if comm is None:
+        comm = MPI.COMM_WORLD
+    return comm.Create_cart(procs)
+
+
+def get_topology_dims(comm, ndims):
     from mpi4py import MPI
 
     return MPI.Compute_dims(comm.size, ndims)
-
-
-def hlen():
-    return 6
-
-
-def vlen():
-    return 4
