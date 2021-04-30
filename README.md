@@ -1,138 +1,137 @@
-## I/O functions for Python and LQCD file formats
 
-[![python](https://img.shields.io/pypi/pyversions/lyncs_io.svg?logo=python&logoColor=white)](https://pypi.org/project/lyncs_io/)
-[![pypi](https://img.shields.io/pypi/v/lyncs_io.svg?logo=python&logoColor=white)](https://pypi.org/project/lyncs_io/)
-[![license](https://img.shields.io/github/license/Lyncs-API/lyncs.io?logo=github&logoColor=white)](https://github.com/Lyncs-API/lyncs.io/blob/master/LICENSE)
-[![build & test](https://img.shields.io/github/workflow/status/Lyncs-API/lyncs.io/build%20&%20test?logo=github&logoColor=white)](https://github.com/Lyncs-API/lyncs.io/actions)
-[![codecov](https://img.shields.io/codecov/c/github/Lyncs-API/lyncs.io?logo=codecov&logoColor=white)](https://codecov.io/gh/Lyncs-API/lyncs.io)
 
-[![black](https://img.shields.io/badge/code%20style-black-000000.svg?logo=codefactor&logoColor=white)](https://github.com/ambv/black)
 
-Lyncs IO offers two high-level functions `load` and `save` (or `dump` as alias of `save`).
 
-The main features of this module are
 
-- **Seamlessly IO**, reading and writing made simple.
-  In most of the cases, after saving `save(obj, filename)`,
-  loading `obj=load(filename)` returns the original Python object.
-  This feature is already ensured by formats like `pickle`, but we
-  try to ensure it as much as possible also for other formats.
 
-- **Many formats supported**. The file format can be specified either
-  via the filename's extension or with the option `format` passed to
-  `load/save`. The structure of the package is flexible enough to
-  easily accomodate new/customized file formats as these arise.
-  See [Adding a file format] for guidelines.
 
-- **Support for archives**. In case of archives, e.g. HDF5, zip etc.,
-  the content can be accessed directly by specifying it in the path.
-  For instance with `directory/file.h5/content`, `directory/file.h5`
-  is the file path, and the remaining is content to be accessed that
-  will be searched inside the file.
 
-- **Support for Parallel IO**. Where possible, the option `chunks`
-  can be used for enabling parallel IO via `Dask`.
 
-- **Omission of extension**. When saving, if the extension is omitted,
-  the optimal file format is deduced from the data type and the extension
-  is added to the filename. When loading, any extension is considered,
-  i.e. `filename.*`, and if only one match is available, the file is loaded.
 
-## Installation
 
-The package can be installed via `pip`:
 
-```bash
-pip install [--user] lyncs_io
-```
 
-**NOTE**: for enabling parallel IO, lyncs_io requires a working MPI installation.
-This can be installed via `apt-get`:
 
-```bash
-sudo apt-get install libopenmpi-dev openmpi-bin
-```
 
-OR using `conda`:
 
-```bash
-conda install -c anaconda mpi4py
-```
 
-Parallel IO can then be enabled via
 
-```bash
-pip install [--user] lyncs_io[mpi]
-```
 
-## Documentation
 
-The high-level `load` and `save` (or `dump` as alias of `save`) functions provided by the Lyncs IO can be used as follows:
 
-```python
-import numpy as np
-import lyncs_io as io
 
-arr1 = np.random.rand((10,10,10))
-io.save(arr, "data.h5/random")
 
-arr2 = np.zeros_like(arr)
-io.save(arr, "data.h5/zeros")
 
-arrs = io.load("data.h5")
-assert (arr1 == arrs["random"]).all()
-assert (arr2 == arrs["zeros"]).all()
-```
 
-NOTE: for `save` we use the order `data, filename`. This is the opposite
-of what done in `numpy` but consistent with `pickle`'s `dump`. This order
-is preferred because the function can be used directly as a method
-for a class since `self`, i.e. the `data`, would be passed as the first
-argument of `save`.
 
-### IO with MPI
 
-```python
-import numpy as np
-import lyncs_io as io
-from mpi4py import MPI
 
-# Assume 2D cartesian topology
-comm = MPI.COMM_WORLD
-dims = MPI.Compute_dims(comm.size, 2)
-cartesian2d = comm.Create_cart(dims=dims)
 
-oarr = np.random.rand(6, 4, 2, 2)
-io.save(oarr, "pario.npy", comm=cartesian2d)
-iarr = io.load("pario.npy", comm=cartesian2d)
 
-assert (iarr == oarr).all()
-```
 
-NOTE: Parallel IO is enabled once a valid cartesian communicator is passed to `load` or `save` routines, otherwise Serial IO is performed. Currently only `numpy` format supports this functionality.
 
-### IO with Dask
 
-```python
-import lyncs_io as io
-import dask
-from distributed import Client, progress
 
-client = Client(n_workers=2, threads_per_worker=1)
 
-x = da.arange(0,128).reshape((16, 8)).rechunk(chunks=(8,4))
 
-xio=io.save(x, "pario.npy", chunks=(8,4))
-dask.compute(xio)
 
-xload= io.load("pario.npy", chunks=(8,4))
-xcomp = xload.compute()
 
-assert (x.compute() == xcomp).all()
-```
 
-NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` or `save` routines using `chunks` parameter. Currently only `numpy` format supports this functionality.
 
-### File formats
 
-### Adding a file format
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
