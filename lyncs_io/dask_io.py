@@ -5,7 +5,7 @@ from io import BytesIO
 import numpy
 import os
 
-from .utils import touch, exists
+from .utils import touch
 
 
 class DaskIO:
@@ -83,7 +83,7 @@ class DaskIO:
         offset = _get_dask_array_header_offset(header)
 
         return self.dask.array.map_blocks(
-            write_blockwise_to_npy,
+            _write_blockwise_to_npy,
             array,
             self.filename,
             header,
@@ -115,7 +115,7 @@ def _write_npy_header(filename, header):
         numpy.lib.format._write_array_header(f, header)
 
 
-def write_blockwise_to_npy(
+def _write_blockwise_to_npy(
     array_block, filename, header, shape, offset, block_info=None
 ):
     """
@@ -164,5 +164,6 @@ def write_blockwise_to_npy(
 
     # write array in right memmap slice
     slc = tuple(slice(*loc) for loc in block_info[None]["array-location"])
+    # raise ValueError(block_info[None]["array-location"], slc)
     data[slc] = array_block
     return data[slc]
