@@ -45,13 +45,3 @@ def default_names(i=0):
     "Infinite generator of default names ('arrN') for entries of an archive."
     yield f"arr{i}"
     yield from default_names(i + 1)
-
-
-def touch(fname, mode=0o666, dir_fd=None, **kwargs):
-    flags = os.O_CREAT | os.O_APPEND
-    with os.fdopen(os.open(fname, flags=flags, mode=mode, dir_fd=dir_fd)) as fptr:
-        os.utime(
-            fptr.fileno() if os.utime in os.supports_fd else fname,
-            dir_fd=None if os.supports_fd else dir_fd,
-            **kwargs,
-        )

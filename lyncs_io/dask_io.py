@@ -5,8 +5,6 @@ from io import BytesIO
 import numpy
 import os
 
-from .utils import touch
-
 
 class DaskIO:
     """
@@ -109,10 +107,24 @@ def _build_header_from_dask_array(array, order="C"):
     return header_dict
 
 
-def _write_npy_header(filename, header):
+def _write_npy_header(filename, header, mode=0o666, dir_fd=None, **kwargs):
+    """
+    Writing npy header in file in a touch-like manner to ensure race-free
+    writing as described in:
+    https://stackoverflow.com/questions/1158076/implement-touch-using-python
 
-    with open(filename, "wb+") as f:
-        numpy.lib.format._write_array_header(f, header)
+    The first task that touches the file is also responsible to write the header
+    during that time before releasing the resources.
+    """
+    flags = os.O_CREAT | os.O_APPEND
+    with os.fdopen(os.open(filename, flags=flags, mode=mode, dir_fd=dir_fd)) as fptr:
+        os.utime(
+            fptr.fileno() if os.utime in os.supports_fd else filename,
+            dir_fd=None if os.supports_fd else dir_fd,
+            **kwargs,
+        )
+        with open(filename, "wb+") as f:
+            numpy.lib.format._write_array_header(f, header)
 
 
 def _write_blockwise_to_npy(
@@ -147,11 +159,7 @@ def _write_blockwise_to_npy(
 
     block_id = block_info[None]["chunk-location"]
 
-    # make sure the file is created
     if not os.path.exists(filename):
-        touch(filename)
-
-    if sum(block_id) == 0:
         _write_npy_header(filename, header)
 
     data = numpy.memmap(
@@ -164,6 +172,6 @@ def _write_blockwise_to_npy(
 
     # write array in right memmap slice
     slc = tuple(slice(*loc) for loc in block_info[None]["array-location"])
-    # raise ValueError(block_info[None]["array-location"], slc)
     data[slc] = array_block
+
     return data[slc]
