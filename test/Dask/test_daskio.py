@@ -61,10 +61,10 @@ def test_daskio_write(tempdir, domain, chunksize, workers):
     x_lazy_out = daskio.save(x_lazy)
     assert isinstance(x_lazy_out, da.Array)
 
-    x_lazy_out = x_lazy_out.compute()
+    x_out = x_lazy_out.compute()
     x_ref_in = io.load(ftmp)
 
-    assert (x_ref == x_lazy_out).all()
+    assert (x_ref == x_out).all()
     assert (x_ref == x_ref_in).all()
 
     client.shutdown()
