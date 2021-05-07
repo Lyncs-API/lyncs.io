@@ -6,6 +6,15 @@ import numpy
 import os
 
 
+def is_dask_array(obj):
+    try:
+        from dask.array import Array
+
+        return isinstance(obj, Array)
+    except ImportError:
+        return False
+
+
 class DaskIO:
     """
     Class for handling file handling routines and Parallel IO using Dask
@@ -57,7 +66,7 @@ class DaskIO:
 
         return self.dask.array.from_array(array, chunks=chunks)
 
-    def save(self, array, chunks=None):
+    def save(self, array, **kwargs):
         """
         Writes the array in a npy file in parallel using dask
 
@@ -65,17 +74,12 @@ class DaskIO:
         ----------
         array : dask/numpy array
             The array to be written
-        chunks : tuple
-            shape of chunks to split the array into
 
         Returns:
         --------
         array : dask array
             A lazy evaluated array to be computed on demand
         """
-
-        if not isinstance(array, self.dask.array.Array):
-            array = self.dask.array.from_array(array, chunks=chunks)
 
         header = _build_header_from_dask_array(array)
         offset = _get_dask_array_header_offset(header)
