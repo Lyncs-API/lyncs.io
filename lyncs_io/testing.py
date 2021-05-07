@@ -14,6 +14,8 @@ __all__ = [
 
 from pytest import fixture, mark
 import numpy
+import tempfile
+import os
 from itertools import product
 from lyncs_utils import factors, prod
 
@@ -58,18 +60,23 @@ topo_dim_loop = mark.parametrize(
 
 @fixture(scope="session")
 def client():
+    # pylint: disable=C0415
     from dask.distributed import Client
 
-    client = Client(n_workers=12, threads_per_worker=1)
-    yield client
-    client.shutdown()
+    clt = Client(n_workers=12, threads_per_worker=1)
+    yield clt
+    clt.shutdown()
+
+
+def MPI():
+    # pylint: disable=C0415
+    from mpi4py import MPI
+
+    return MPI
 
 
 @fixture
 def tempdir():
-    import tempfile
-    import os
-    from mpi4py import MPI
 
     comm = get_comm()
     if comm.rank == 0:
@@ -81,7 +88,7 @@ def tempdir():
 
     # test path exists for all
     has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
-    all_access = comm.allreduce(has_access, op=MPI.LAND)
+    all_access = comm.allreduce(has_access, op=MPI().LAND)
     if not all_access:
         raise ValueError(
             "Some processes are unable to access the temporary directory. \n\
@@ -108,30 +115,22 @@ def write_global_array(comm, filename, ldomain, mult=None):
 
 
 def get_comm():
-    from mpi4py import MPI
-
-    return MPI.COMM_WORLD
+    return MPI().COMM_WORLD
 
 
 def get_cart(procs=None, comm=None):
-    from mpi4py import MPI
-
     if comm is None:
-        comm = MPI.COMM_WORLD
+        comm = MPI().COMM_WORLD
     return comm.Create_cart(dims=procs)
 
 
 def get_topology_dims(comm, ndims):
-    from mpi4py import MPI
-
-    return MPI.Compute_dims(comm.size, ndims)
+    return MPI().Compute_dims(comm.size, ndims)
 
 
 def get_procs_list(comm_size=None, max_size=None, repeat=1):
-    from mpi4py import MPI
-
     if comm_size is None:
-        comm_size = MPI.COMM_WORLD.size
+        comm_size = MPI().COMM_WORLD.size
 
     facts = {1} | set(factors(comm_size))
     procs = []
