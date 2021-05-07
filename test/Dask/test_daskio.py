@@ -36,6 +36,7 @@ def test_daskio_load(tempdir, domain, chunksize, workers):
         order="F" if header["_fortran_order"] else "C",
     )
 
+    assert isinstance(x_lazy_in, da.Array)
     assert (x_ref == x_lazy_in.compute()).all()
 
     client.shutdown()
@@ -57,7 +58,10 @@ def test_daskio_write(tempdir, domain, chunksize, workers):
     x_ref = numpy.arange(0, size).reshape(domain)
 
     daskio = DaskIO(ftmp)
-    x_lazy_out = daskio.save(x_lazy).compute()
+    x_lazy_out = daskio.save(x_lazy)
+    assert isinstance(x_lazy_in, da.Array)
+
+    x_lazy_out = x_lazy_out.compute()
     x_ref_in = io.load(ftmp)
 
     assert (x_ref == x_lazy_out).all()

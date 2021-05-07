@@ -51,6 +51,7 @@ def test_numpy_daskio_write(tempdir, domain, chunksize, workers):
     x_lazy_out = io.save(x_lazy, ftmp, chunks=chunks).compute()
     x_ref_in = io.load(ftmp)
 
+    assert isinstance(x_lazy_out, da.Array)
     assert (x_ref == x_lazy_out).all()
     assert (x_ref == x_ref_in).all()
 
