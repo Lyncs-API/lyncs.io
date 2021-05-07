@@ -1,10 +1,7 @@
 import numpy
 import pytest
 import lyncs_io as io
-from numpy.lib.format import (
-    _write_array_header,
-    header_data_from_array_1_0,
-)
+
 from lyncs_io.testing import (
     mark_mpi,
     tempdir,
@@ -12,20 +9,8 @@ from lyncs_io.testing import (
     topo_dim_loop,
     get_comm,
     get_topology_dims,
+    write_global_array,
 )
-
-
-def write_global_array(comm, filename, ldomain, mult=None):
-
-    if comm.rank == 0:
-        gdomain = ldomain
-
-        if mult:
-            gdomain = tuple(a * b for a, b in zip(gdomain, mult))
-
-        master_array = numpy.random.rand(*gdomain)
-        numpy.save(filename, master_array)
-    comm.Barrier()  # make sure file is created and visible by all
 
 
 @mark_mpi
