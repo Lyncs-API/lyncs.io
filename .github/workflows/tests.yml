@@ -52,17 +52,21 @@ jobs:
 
       - name: Run serial tests
         run: |
-          coverage run --rcfile=setup.cfg -m pytest
+          coverage run --rcfile=setup.cfg -m pytest test/serial
 
-      - name: Run parallel tests (procs=2, 4, 7, 12)
+      - name: Run MPI tests (procs=2, 4, 7, 12)
         run: |
           PROCS=(2 4 7 12)
           for proc in "${PROCS[@]}"
           do
-            echo "::group::Run parallel tests (procs=$proc)"
-            mpirun -n $proc coverage run --rcfile=setup.cfg -m pytest --with-mpi
+            echo "::group::Run MPI tests (procs=$proc)"
+            mpirun -n $proc coverage run --rcfile=setup.cfg -m pytest test/MPI --with-mpi
             echo "::endgroup::"
           done
+
+      - name: Run Dask tests
+        run: |
+          coverage run --rcfile=setup.cfg -m pytest test/Dask
 
       - name: Coverage report
         run: |

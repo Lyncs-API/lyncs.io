@@ -24,8 +24,8 @@ domain_loop = mark.parametrize(
     [
         (10,),
         (10, 10),
-        (10, 10, 10),
-        (10, 10, 10, 10),
+        # (10, 10, 10),
+        # (10, 10, 10, 10),
     ],
 )
 
@@ -47,7 +47,7 @@ ldomain_loop = mark.parametrize(
 
 workers_loop = mark.parametrize(
     "workers",
-    [1, 2, 3, 4, 5, 6, 7, 8],
+    [1, 2, 4, 7, 12],
 )
 
 topo_dim_loop = mark.parametrize(
