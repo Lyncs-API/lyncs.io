@@ -12,7 +12,7 @@ setup(
         "dill": ["dill"],
         "hdf5": ["h5py"],
         "mpi": ["mpi4py"],
-        "dask": ["dask", "distributed"],
+        "dask": ["dask", "distributed", "filelock"],
         "test": ["pytest", "pytest-cov", "ipython", "pytest-mpi"],
     },
 )

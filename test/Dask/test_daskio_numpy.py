@@ -41,7 +41,7 @@ def test_numpy_daskio_write(client, tempdir, domain, chunksize, workers):
     x_lazy = da.arange(0, size).reshape(domain).rechunk(chunks=chunks)
     x_ref = numpy.arange(0, size).reshape(domain)
 
-    x_lazy_out = io.save(x_lazy, ftmp, chunks=chunks)
+    x_lazy_out = io.save(x_lazy, ftmp)
     assert isinstance(x_lazy_out, da.Array)
 
     x_out = x_lazy_out.compute(num_workers=workers)

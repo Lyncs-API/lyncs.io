@@ -5,6 +5,8 @@ from io import BytesIO
 import numpy
 import os
 
+from filelock import FileLock
+
 
 def is_dask_array(obj):
     try:
@@ -82,7 +84,6 @@ class DaskIO:
         """
 
         header = _build_header_from_dask_array(array)
-        offset = _get_dask_array_header_offset(header)
 
         return self.dask.array.map_blocks(
             _write_blockwise_to_npy,
@@ -90,7 +91,6 @@ class DaskIO:
             self.filename,
             header,
             array.shape,
-            offset,
             chunks=array.chunks,
             dtype=array.dtype,
         )
@@ -111,29 +111,36 @@ def _build_header_from_dask_array(array, order="C"):
     return header_dict
 
 
-def _write_npy_header(filename, header, mode=0o666, dir_fd=None, **kwargs):
-    """
-    Writing npy header in file in a touch-like manner to ensure race-free
-    writing as described in:
-    https://stackoverflow.com/questions/1158076/implement-touch-using-python
+def _build_header_from_file(filename):
 
-    The first task that touches the file is also responsible to write the header
-    during that time before releasing the resources.
-    """
-    flags = os.O_CREAT | os.O_APPEND
-    with os.fdopen(os.open(filename, flags=flags, mode=mode, dir_fd=dir_fd)) as fptr:
-        os.utime(
-            fptr.fileno() if os.utime in os.supports_fd else filename,
-            dir_fd=None if os.supports_fd else dir_fd,
-            **kwargs,
-        )
-        with open(filename, "wb+") as f:
-            numpy.lib.format._write_array_header(f, header)
+    with open(filename, "rb") as fptr:
+        version = numpy.lib.format.read_magic(fptr)
+        numpy.lib.format._check_version(version)
+        shape, fortran_order, dtype = numpy.lib.format._read_array_header(fptr, version)
+
+        header_dict = {"shape": shape}
+        header_dict["fortran_order"] = fortran_order
+        header_dict["descr"] = dtype
+
+    return header_dict
 
 
-def _write_blockwise_to_npy(
-    array_block, filename, header, shape, offset, block_info=None
-):
+def _write_npy_header(filename, header):
+
+    lock_path = filename + ".lock"
+
+    with FileLock(lock_path):
+        write_header = True
+        if os.path.exists(filename):
+            if header == _build_header_from_file(filename):
+                write_header = False
+
+        if write_header:
+            with open(filename, "wb") as fptr:
+                numpy.lib.format._write_array_header(fptr, header)
+
+
+def _write_blockwise_to_npy(array_block, filename, header, shape, block_info=None):
     """
     Performs a lazy blockwise write of a dask array to file.
 
@@ -163,8 +170,8 @@ def _write_blockwise_to_npy(
 
     block_id = block_info[None]["chunk-location"]
 
-    if not os.path.exists(filename):
-        _write_npy_header(filename, header)
+    _write_npy_header(filename, header)
+    offset = _get_dask_array_header_offset(header)
 
     data = numpy.memmap(
         filename,
