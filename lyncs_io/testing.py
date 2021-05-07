@@ -2,12 +2,38 @@
 Import this file only if in a testing environment
 """
 
-__all__ = ["mark_mpi", "ldomain_loop", "topo_dim_loop"]
+__all__ = [
+    "mark_mpi",
+    "domain_loop",
+    "chunksize_loop",
+    "ldomain_loop",
+    "workers_loop",
+    "topo_dim_loop",
+    "parallel_loop",
+]
 
 from pytest import fixture, mark
 import numpy
+from itertools import product
+from lyncs_utils import factors, prod
 
 mark_mpi = mark.mpi(min_size=1)
+
+domain_loop = mark.parametrize(
+    "domain",
+    [
+        (10,),
+        (10, 10),
+        (10, 10, 10),
+        (10, 10, 10, 10),
+    ],
+)
+
+# NOTE: currently testing with uniform chunks
+chunksize_loop = mark.parametrize(
+    "chunksize",
+    [3, 4, 5, 6, 10],
+)
 
 ldomain_loop = mark.parametrize(
     "ldomain",
@@ -17,6 +43,11 @@ ldomain_loop = mark.parametrize(
         (6, 4, 2, 2),
         (3, 5, 2, 1),
     ],
+)
+
+workers_loop = mark.parametrize(
+    "workers",
+    [1, 2, 3, 4, 5, 6, 7, 8],
 )
 
 topo_dim_loop = mark.parametrize(
@@ -78,10 +109,39 @@ def get_cart(procs=None, comm=None):
 
     if comm is None:
         comm = MPI.COMM_WORLD
-    return comm.Create_cart(procs)
+    return comm.Create_cart(dims=procs)
 
 
 def get_topology_dims(comm, ndims):
     from mpi4py import MPI
 
     return MPI.Compute_dims(comm.size, ndims)
+
+
+def get_procs_list(comm_size=None, max_size=None, repeat=1):
+    from mpi4py import MPI
+
+    if comm_size is None:
+        comm_size = MPI.COMM_WORLD.size
+
+    facts = {1} | set(factors(comm_size))
+    procs = []
+
+    for rep in range(1, repeat + 1):
+        procs.append(
+            list(
+                procs
+                for procs in product(facts, repeat=rep)
+                if prod(procs) == comm_size
+            )
+        )
+    # flattens the list of processes
+    procs = list(j for sub_procs in procs for j in sub_procs)
+
+    if not max_size:
+        return procs
+    return procs[:max_size]
+
+
+# TODO: Substitute topo_dim_loop with parallel_loop such that routines work with arbitrary dimensionality ordering
+parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4))
