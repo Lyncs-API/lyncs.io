@@ -5,7 +5,6 @@ Function utils
 from functools import wraps
 from io import IOBase, FileIO
 from pathlib import Path
-import os
 
 
 def swap(fnc):

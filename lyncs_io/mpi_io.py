@@ -12,11 +12,13 @@ class MpiIO:
     Class for handling file handling routines and Parallel IO using MPI
     """
 
+    # pylint: disable=C0103
     @property
     def MPI(self):
         """
         Property for importing MPI wherever necessary
         """
+        # pylint: disable=C0415
         from mpi4py import MPI
 
         return MPI
@@ -195,11 +197,13 @@ class Decomposition:
     of arbitrary dimensions
     """
 
+    # pylint: disable=C0103
     @property
     def MPI(self):
         """
         Property for importing MPI wherever necessary
         """
+        # pylint: disable=C0415
         from mpi4py import MPI
 
         return MPI

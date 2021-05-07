@@ -2,14 +2,18 @@
 Parallel IO using Dask
 """
 from io import BytesIO
-import numpy
 import os
+import numpy
 
 from filelock import FileLock
 
 
 def is_dask_array(obj):
+    """
+    Function for checking if passed object is a dask Array
+    """
     try:
+        # pylint: disable=C0415
         from dask.array import Array
 
         return isinstance(obj, Array)
@@ -27,6 +31,7 @@ class DaskIO:
         """
         Property for importing Dask wherever necessary
         """
+        # pylint: disable=C0415
         import dask
 
         return dask
@@ -68,7 +73,7 @@ class DaskIO:
 
         return self.dask.array.from_array(array, chunks=chunks)
 
-    def save(self, array, **kwargs):
+    def save(self, array):
         """
         Writes the array in a npy file in parallel using dask
 
@@ -154,9 +159,6 @@ def _write_blockwise_to_npy(array_block, filename, header, shape, block_info=Non
         Numpy header to be written in the file
     shape: tuple
         Shape of the global array
-    offset: int
-        offset in bytes to where the
-        data start in the file.
     block_info: dict
         contains relevant information to the blocks
         and chunks of the array. Determined by dask
@@ -167,8 +169,6 @@ def _write_blockwise_to_npy(array_block, filename, header, shape, block_info=Non
     --------
     data : slice of the memmap written to the file
     """
-
-    block_id = block_info[None]["chunk-location"]
 
     _write_npy_header(filename, header)
     offset = _get_dask_array_header_offset(header)

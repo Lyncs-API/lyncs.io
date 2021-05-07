@@ -12,11 +12,12 @@ __all__ = [
     "parallel_loop",
 ]
 
+import os
+import tempfile
+from itertools import product
 from pytest import fixture, mark
 import numpy
-import tempfile
-import os
-from itertools import product
+
 from lyncs_utils import factors, prod
 
 mark_mpi = mark.mpi(min_size=1)
@@ -60,6 +61,9 @@ topo_dim_loop = mark.parametrize(
 
 @fixture(scope="session")
 def client():
+    """
+    Enables dask client session-wise during testing to minimize overheads
+    """
     # pylint: disable=C0415
     from dask.distributed import Client
 
@@ -69,6 +73,9 @@ def client():
 
 
 def MPI():
+    """
+    Imports MPI upon request
+    """
     # pylint: disable=C0415
     from mpi4py import MPI
 
@@ -76,8 +83,10 @@ def MPI():
 
 
 @fixture
-def tempdir():
-
+def tempdir_MPI():
+    """
+    Creates a temporary directory to be used during testing
+    """
     comm = get_comm()
     if comm.rank == 0:
         tmp = tempfile.TemporaryDirectory()
@@ -101,8 +110,34 @@ def tempdir():
         tmp.__exit__(None, None, None)
 
 
-def write_global_array(comm, filename, ldomain, mult=None):
+@fixture
+def tempdir():
+    """
+    Creates a temporary directory to be used during testing
+    """
 
+    tmp = tempfile.TemporaryDirectory()
+    path = tmp.__enter__()
+
+    # test path exists for all
+    has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
+
+    if not has_access:
+        raise ValueError(
+            "Worker unable to access the temporary directory. \n\
+                Set TMPDIR, TEMP or TMP environment variables with the temporary \n\
+                directory to be used across workers. "
+        )
+
+    yield path
+
+    tmp.__exit__(None, None, None)
+
+
+def write_global_array(comm, filename, ldomain, mult=None):
+    """
+    Writes the global array from a local domain using MPI
+    """
     if comm.rank == 0:
         gdomain = ldomain
 
@@ -115,20 +150,32 @@ def write_global_array(comm, filename, ldomain, mult=None):
 
 
 def get_comm():
+    """
+    Get the MPI communicator
+    """
     return MPI().COMM_WORLD
 
 
 def get_cart(procs=None, comm=None):
+    """
+    Get the MPI cartesian communicator
+    """
     if comm is None:
         comm = MPI().COMM_WORLD
     return comm.Create_cart(dims=procs)
 
 
 def get_topology_dims(comm, ndims):
+    """
+    Gets the MPI dimensions
+    """
     return MPI().Compute_dims(comm.size, ndims)
 
 
 def get_procs_list(comm_size=None, max_size=None, repeat=1):
+    """
+    Gets a processor list with all the combinations for the cartesian topology
+    """
     if comm_size is None:
         comm_size = MPI().COMM_WORLD.size
 
@@ -151,5 +198,6 @@ def get_procs_list(comm_size=None, max_size=None, repeat=1):
     return procs[:max_size]
 
 
-# TODO: Substitute topo_dim_loop with parallel_loop such that routines work with arbitrary dimensionality ordering
+# TODO: Substitute topo_dim_loop with parallel_loop
+# such that routines work with arbitrary dimensionality ordering
 parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4))

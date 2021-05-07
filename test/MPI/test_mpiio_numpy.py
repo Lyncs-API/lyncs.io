@@ -4,7 +4,7 @@ import lyncs_io as io
 
 from lyncs_io.testing import (
     mark_mpi,
-    tempdir,
+    tempdir_MPI,
     ldomain_loop,
     topo_dim_loop,
     get_comm,
@@ -15,11 +15,11 @@ from lyncs_io.testing import (
 
 @mark_mpi
 @ldomain_loop  # enables local domain
-def test_numpy_mpiio_load_comm(tempdir, ldomain):
+def test_numpy_mpiio_load_comm(tempdir_MPI, ldomain):
 
     comm = get_comm()
     rank = comm.rank
-    ftmp = tempdir + "foo.npy"
+    ftmp = tempdir_MPI + "foo.npy"
 
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(ldomain)))
     write_global_array(comm, ftmp, ldomain, mult=mult)
@@ -34,14 +34,14 @@ def test_numpy_mpiio_load_comm(tempdir, ldomain):
 @mark_mpi
 @ldomain_loop  # enables local domain
 @topo_dim_loop  # enables topology dimension
-def test_numpy_mpiio_load_cart(tempdir, ldomain, topo_dim):
+def test_numpy_mpiio_load_cart(tempdir_MPI, ldomain, topo_dim):
 
     comm = get_comm()
     rank = comm.rank
     dims = get_topology_dims(comm, topo_dim)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    ftmp = tempdir + "foo.npy"
+    ftmp = tempdir_MPI + "foo.npy"
 
     mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(ldomain)))
     write_global_array(comm, ftmp, ldomain, mult=mult)
@@ -58,11 +58,11 @@ def test_numpy_mpiio_load_cart(tempdir, ldomain, topo_dim):
 
 @mark_mpi
 @ldomain_loop  # enables local domain
-def test_numpy_mpiio_save_comm(tempdir, ldomain):
+def test_numpy_mpiio_save_comm(tempdir_MPI, ldomain):
 
     comm = get_comm()
     rank = comm.rank
-    ftmp = tempdir + "foo.npy"
+    ftmp = tempdir_MPI + "foo.npy"
 
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(ldomain)))
     write_global_array(comm, ftmp, ldomain, mult=mult)
@@ -80,14 +80,14 @@ def test_numpy_mpiio_save_comm(tempdir, ldomain):
 @mark_mpi
 @ldomain_loop  # enables local domain
 @topo_dim_loop  # enables topology dimension
-def test_numpy_mpiio_save_cart(tempdir, ldomain, topo_dim):
+def test_numpy_mpiio_save_cart(tempdir_MPI, ldomain, topo_dim):
 
     comm = get_comm()
     rank = comm.rank
     dims = get_topology_dims(comm, topo_dim)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    ftmp = tempdir + "foo.npy"
+    ftmp = tempdir_MPI + "foo.npy"
 
     mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(ldomain)))
     write_global_array(comm, ftmp, ldomain, mult=mult)
