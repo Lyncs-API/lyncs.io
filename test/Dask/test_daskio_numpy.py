@@ -1,20 +1,18 @@
 import numpy
+
 import dask
 import dask.array as da
-from dask.distributed import Client
 
 from lyncs_utils import prod
 import lyncs_io as io
 
-from lyncs_io.testing import domain_loop, workers_loop, chunksize_loop, tempdir
+from lyncs_io.testing import client, domain_loop, workers_loop, chunksize_loop, tempdir
 
 
 @domain_loop
 @chunksize_loop
 @workers_loop
-def test_numpy_daskio_load(tempdir, domain, chunksize, workers):
-
-    client = Client(n_workers=workers, threads_per_worker=1)
+def test_numpy_daskio_load(client, tempdir, domain, chunksize, workers):
 
     ftmp = tempdir + "foo.npy"
     size = prod(domain)
@@ -28,17 +26,13 @@ def test_numpy_daskio_load(tempdir, domain, chunksize, workers):
 
     assert isinstance(x_lazy_in, da.Array)
 
-    assert (x_ref == x_lazy_in.compute()).all()
-
-    client.shutdown()
+    assert (x_ref == x_lazy_in.compute(num_workers=workers)).all()
 
 
 @domain_loop
 @chunksize_loop
 @workers_loop
-def test_numpy_daskio_write(tempdir, domain, chunksize, workers):
-
-    client = Client(n_workers=workers, threads_per_worker=1)
+def test_numpy_daskio_write(client, tempdir, domain, chunksize, workers):
 
     ftmp = tempdir + "foo.npy"
     size = prod(domain)
@@ -51,10 +45,8 @@ def test_numpy_daskio_write(tempdir, domain, chunksize, workers):
     x_lazy_out = io.save(x_lazy, ftmp, chunks=chunks)
     assert isinstance(x_lazy_out, da.Array)
 
-    x_out = x_lazy_out.compute()
+    x_out = x_lazy_out.compute(num_workers=workers)
     x_ref_in = io.load(ftmp)
 
     assert (x_ref == x_out).all()
     assert (x_ref == x_ref_in).all()
-
-    client.shutdown()

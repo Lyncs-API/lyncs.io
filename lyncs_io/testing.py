@@ -56,6 +56,15 @@ topo_dim_loop = mark.parametrize(
 )
 
 
+@fixture(scope="session")
+def client():
+    from dask.distributed import Client
+
+    client = Client(n_workers=12, threads_per_worker=1)
+    yield client
+    client.shutdown()
+
+
 @fixture
 def tempdir():
     import tempfile
