@@ -2,15 +2,16 @@ import os
 import numpy
 import dask
 import dask.array as da
+import pytest
 
 from lyncs_utils import prod
-from lyncs_io.dask_io import DaskIO
+from lyncs_io.dask_io import DaskIO, is_dask_array
 import lyncs_io as io
 
 from lyncs_io.testing import (
     client,
     dtype_loop,
-    domain_loop,
+    shape_loop,
     workers_loop,
     chunksize_loop,
     tempdir,
@@ -18,26 +19,23 @@ from lyncs_io.testing import (
 
 
 @dtype_loop
-@domain_loop
+@shape_loop
 @chunksize_loop
 @workers_loop
-def test_daskio_load(client, tempdir, dtype, domain, chunksize, workers):
+def test_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "foo.npy"
-    x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
+    x_ref = numpy.random.rand(*shape).astype(dtype)
     io.save(x_ref, ftmp)
 
     daskio = DaskIO(ftmp)
-
     header = io.numpy.head(ftmp)
-    # chunks should have the same length as domain
-    chunks = tuple(chunksize for a in range(len(domain)))
 
     x_lazy_in = daskio.load(
         header["shape"],
         header["dtype"],
         header["_offset"],
-        chunks=chunks,
+        chunks=chunksize,
         order="F" if header["_fortran_order"] else "C",
     )
 
@@ -46,18 +44,25 @@ def test_daskio_load(client, tempdir, dtype, domain, chunksize, workers):
     assert (x_ref == x_lazy_in.compute(num_workers=workers)).all()
 
 
+def test_daskio_write_exceptions(client, tempdir):
+
+    assert not is_dask_array(numpy.zeros(10))
+    assert is_dask_array(da.zeros(10))
+
+    with pytest.raises(TypeError):
+        DaskIO(tempdir + "foo.npy").save(numpy.zeros(10))
+
+
 @dtype_loop
-@domain_loop
+@shape_loop
 @chunksize_loop
 @workers_loop
-def test_daskio_write(client, tempdir, dtype, domain, chunksize, workers):
+def test_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "foo.npy"
-    # chunks should have the same length as domain
-    chunks = tuple(chunksize for a in range(len(domain)))
 
-    x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
-    x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunks)
+    x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
     assert x_lazy.dtype.str != dtype
 
     daskio = DaskIO(ftmp)

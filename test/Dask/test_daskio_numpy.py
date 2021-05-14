@@ -9,7 +9,7 @@ import lyncs_io as io
 from lyncs_io.testing import (
     client,
     dtype_loop,
-    domain_loop,
+    shape_loop,
     workers_loop,
     chunksize_loop,
     tempdir,
@@ -17,18 +17,16 @@ from lyncs_io.testing import (
 
 
 @dtype_loop
-@domain_loop
+@shape_loop
 @chunksize_loop
 @workers_loop
-def test_numpy_daskio_load(client, tempdir, dtype, domain, chunksize, workers):
+def test_numpy_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "foo.npy"
-    x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
+    x_ref = numpy.random.rand(*shape).astype(dtype)
     io.save(x_ref, ftmp)
 
-    # chunks should have the same length as domain
-    chunks = tuple(chunksize for a in range(len(domain)))
-    x_lazy_in = io.load(ftmp, chunks=chunks)
+    x_lazy_in = io.load(ftmp, chunks=chunksize)
 
     assert isinstance(x_lazy_in, da.Array)
     assert (x_ref == x_lazy_in.compute(num_workers=workers)).all()
@@ -36,18 +34,15 @@ def test_numpy_daskio_load(client, tempdir, dtype, domain, chunksize, workers):
 
 
 @dtype_loop
-@domain_loop
+@shape_loop
 @chunksize_loop
 @workers_loop
-def test_numpy_daskio_write(client, tempdir, dtype, domain, chunksize, workers):
+def test_numpy_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "foo.npy"
-    size = prod(domain)
-    # chunks should have the same length as domain
-    chunks = tuple(chunksize for a in range(len(domain)))
 
-    x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
-    x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunks)
+    x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
     assert x_lazy.dtype.str != dtype
 
     x_lazy_out = io.save(x_lazy, ftmp)
@@ -79,11 +74,9 @@ def test_numpy_daskio_write_update(client, tempdir, dtype, workers):
     # write in the same file arrays of varying domains
     for domain in domains:
         size = prod(domain)
-        # chunks should have the same length as domain
-        chunks = tuple(chunksize for a in range(len(domain)))
 
-        x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
-        x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunks)
+        x_ref = numpy.random.rand(*domain).astype(dtype)
+        x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
 
         x_lazy_out = io.save(x_lazy, ftmp)
         assert isinstance(x_lazy_out, da.Array)

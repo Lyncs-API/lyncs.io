@@ -10,7 +10,7 @@ from lyncs_io import numpy as np
 
 from lyncs_io.testing import (
     mark_mpi,
-    ldomain_loop,
+    lshape_loop,
     topo_dim_loop,
     dtype_loop,
     tempdir_MPI,
@@ -60,15 +60,15 @@ def test_mpiio_file_handler(tempdir_MPI):
 
 @mark_mpi
 @dtype_loop
-@ldomain_loop  # enables local domain
-def test_mpiio_load_from_comm(tempdir_MPI, dtype, ldomain):
+@lshape_loop  # enables local domain
+def test_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "foo.npy"
 
-    mult = tuple(comm.size if i == 0 else 1 for i in range(len(ldomain)))
-    write_global_array(comm, ftmp, ldomain, dtype=dtype, mult=mult)
+    mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
+    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
     assert global_array.dtype.str != dtype
     header = np.head(ftmp)
@@ -90,15 +90,15 @@ def test_mpiio_load_from_comm(tempdir_MPI, dtype, ldomain):
         )
         assert local_array.dtype.str != dtype
 
-    slc = tuple(slice(rank * ldomain[i], (rank + 1) * ldomain[i]) for i in range(1))
+    slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
     assert (global_array[slc] == local_array).all()
 
 
 @mark_mpi
 @dtype_loop
-@ldomain_loop  # enables local domain
+@lshape_loop  # enables local domain
 @topo_dim_loop  # enables topology dimension
-def test_mpiio_load_from_cart(tempdir_MPI, dtype, ldomain, topo_dim):
+def test_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, topo_dim):
 
     comm = get_comm()
     rank = comm.rank
@@ -107,8 +107,8 @@ def test_mpiio_load_from_cart(tempdir_MPI, dtype, ldomain, topo_dim):
     coords = cartesian2d.Get_coords(rank)
     ftmp = tempdir_MPI + "foo.npy"
 
-    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(ldomain)))
-    write_global_array(comm, ftmp, ldomain, dtype=dtype, mult=mult)
+    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
+    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
     assert global_array.dtype.str != dtype
     header = np.head(ftmp)
@@ -120,7 +120,7 @@ def test_mpiio_load_from_cart(tempdir_MPI, dtype, ldomain, topo_dim):
         assert local_array.dtype.str != dtype
 
     slices = tuple(
-        slice(coords[i] * ldomain[i], (coords[i] + 1) * ldomain[i])
+        slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
         for i in range(topo_dim)
     )
     assert (global_array[slices] == local_array).all()
@@ -128,19 +128,19 @@ def test_mpiio_load_from_cart(tempdir_MPI, dtype, ldomain, topo_dim):
 
 @mark_mpi
 @dtype_loop
-@ldomain_loop  # enables local domain
-def test_mpiio_save_from_comm(tempdir_MPI, dtype, ldomain):
+@lshape_loop  # enables local domain
+def test_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "foo.npy"
 
-    mult = tuple(comm.size if i == 0 else 1 for i in range(len(ldomain)))
-    write_global_array(comm, ftmp, ldomain, dtype=dtype, mult=mult)
+    mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
+    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
     assert global_array.dtype.str != dtype
 
-    slc = tuple(slice(rank * ldomain[i], (rank + 1) * ldomain[i]) for i in range(1))
+    slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
     local_array = global_array[slc]
 
     with MpiIO(comm, ftmp, mode="w") as mpiio:
@@ -160,9 +160,9 @@ def test_mpiio_save_from_comm(tempdir_MPI, dtype, ldomain):
 
 @mark_mpi
 @dtype_loop
-@ldomain_loop  # enables local domain
+@lshape_loop  # enables local domain
 @topo_dim_loop  # enables topology dimension
-def test_mpiio_save_from_cart(tempdir_MPI, dtype, ldomain, topo_dim):
+def test_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, topo_dim):
 
     comm = get_comm()
     rank = comm.rank
@@ -173,13 +173,13 @@ def test_mpiio_save_from_cart(tempdir_MPI, dtype, ldomain, topo_dim):
 
     ftmp = tempdir_MPI + "foo.npy"
 
-    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(ldomain)))
-    write_global_array(comm, ftmp, ldomain, dtype=dtype, mult=mult)
+    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
+    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
     assert global_array.dtype.str != dtype
 
     slices = tuple(
-        slice(coords[i] * ldomain[i], (coords[i] + 1) * ldomain[i])
+        slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
         for i in range(topo_dim)
     )
     local_array = global_array[slices]

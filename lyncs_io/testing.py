@@ -21,9 +21,12 @@ import numpy
 from lyncs_utils import factors, prod
 
 mark_mpi = mark.mpi(min_size=1)
-
-domain_loop = mark.parametrize(
-    "domain",
+# TODO: Rename domain to shape
+# TODO: Remove reshape from tests
+# TODO: Fix the locks
+# TODO: Chunks loop to chunks
+shape_loop = mark.parametrize(
+    "shape",
     [
         (10,),
         (10, 10),
@@ -38,8 +41,8 @@ chunksize_loop = mark.parametrize(
     [3, 5, 6, 10],
 )
 
-ldomain_loop = mark.parametrize(
-    "ldomain",
+lshape_loop = mark.parametrize(
+    "lshape",
     [
         (6, 4, 2, 2),
         (3, 5, 2, 1),
@@ -112,6 +115,8 @@ def tempdir_MPI():
         )
 
     yield path + "/"
+
+    comm.Barrier()
     if comm.rank == 0:
         tmp.__exit__(None, None, None)
 
