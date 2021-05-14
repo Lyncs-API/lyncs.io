@@ -123,12 +123,9 @@ client = Client(n_workers=2, threads_per_worker=1)
 x = da.arange(0,128).reshape((16, 8)).rechunk(chunks=(8,4))
 
 xout_lazy = io.save(x, "pario.npy")
-xout_lazy.compute()
-
 xin_lazy = io.load("pario.npy", chunks=(8,4))
-xcomp = xin_lazy.compute()
 
-assert (x.compute() == xcomp).all()
+assert (x.compute() == xin_lazy.compute).all()
 client.shutdown()
 ```
 
