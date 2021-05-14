@@ -35,14 +35,12 @@ domain_loop = mark.parametrize(
 # NOTE: currently testing with uniform chunks
 chunksize_loop = mark.parametrize(
     "chunksize",
-    [3, 4, 5, 6, 10],
+    [3, 5, 6, 10],
 )
 
 ldomain_loop = mark.parametrize(
     "ldomain",
     [
-        (2, 2, 2, 2),
-        (3, 3, 3, 3),
         (6, 4, 2, 2),
         (3, 5, 2, 1),
     ],
@@ -63,8 +61,6 @@ dtype_loop = mark.parametrize(
     [
         "float64",
         "float32",
-        "int32",
-        "int64",
     ],
 )
 
