@@ -112,9 +112,6 @@ def save(array, filename, comm=None, **kwargs):
 
     """
 
-    # if comm is not None and chunks is not None:
-    #     raise ValueError("chunks and comm parameters cannot be both set")
-
     if is_dask_array(array):
         daskio = DaskIO(filename)
         return daskio.save(array)
