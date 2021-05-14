@@ -3,9 +3,14 @@ import lyncs_io as io
 import numpy as np
 import tempfile
 
+from lyncs_io.testing import dtype_loop, domain_loop
+from lyncs_utils import prod
 
-def test_numpy():
-    arr = np.random.rand(100)
+
+@dtype_loop
+@domain_loop
+def test_numpy(dtype, domain):
+    arr = np.random.rand(prod(domain)).astype(dtype).reshape(domain)
     with tempfile.TemporaryDirectory() as tmp:
         ftmp = tmp + "/foo.h5/random"
 

@@ -2,9 +2,14 @@ import lyncs_io as io
 import numpy as np
 import tempfile
 
+from lyncs_io.testing import dtype_loop, domain_loop
+from lyncs_utils import prod
 
-def test_numpy():
-    arr = np.random.rand(100)
+
+@dtype_loop
+@domain_loop
+def test_numpy(dtype, domain):
+    arr = np.random.rand(prod(domain)).astype(dtype).reshape(domain)
     with tempfile.TemporaryDirectory() as tmp:
         ftmp = tmp + "/foo.npy"
         io.save(arr, ftmp)
@@ -13,10 +18,12 @@ def test_numpy():
         assert io.load(ftmp).shape == io.head(ftmp)["shape"]
         assert io.load(ftmp).dtype == io.head(ftmp)["dtype"]
 
-        ftmp = tmp + "/foo.txt"
-        io.save(arr, ftmp)
-        assert (arr == io.load(ftmp)).all()
-        assert (arr == io.load(ftmp, format="ascii")).all()
+        # 1D or 2D arrays only for savetxt
+        if len(arr.shape) <= 2:
+            ftmp = tmp + "/foo.txt"
+            io.save(arr, ftmp)
+            assert (arr == io.load(ftmp)).all()
+            assert (arr == io.load(ftmp, format="ascii")).all()
 
         ftmp = tmp + "/foo.npz"
         io.save(arr, ftmp)

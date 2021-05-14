@@ -58,6 +58,16 @@ topo_dim_loop = mark.parametrize(
     [1, 2, 3, 4],
 )
 
+dtype_loop = mark.parametrize(
+    "dtype",
+    [
+        "float64",
+        "float32",
+        "int32",
+        "int64",
+    ],
+)
+
 
 @fixture(scope="session")
 def client():
