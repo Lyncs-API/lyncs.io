@@ -115,7 +115,7 @@ def tempdir_MPI():
                 directory to be used across processes. "
         )
 
-    yield path
+    yield path + "/"
     if comm.rank == 0:
         tmp.__exit__(None, None, None)
 
@@ -129,17 +129,7 @@ def tempdir():
     tmp = tempfile.TemporaryDirectory()
     path = tmp.__enter__()
 
-    # test path exists for all
-    has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
-
-    if not has_access:
-        raise ValueError(
-            "Worker unable to access the temporary directory. \n\
-                Set TMPDIR, TEMP or TMP environment variables with the temporary \n\
-                directory to be used across workers. "
-        )
-
-    yield path
+    yield path + "/"
 
     tmp.__exit__(None, None, None)
 

@@ -24,6 +24,7 @@ def test_numpy_daskio_load(client, tempdir, dtype, domain, chunksize, workers):
 
     ftmp = tempdir + "foo.npy"
     x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
+    io.save(x_ref, ftmp)
 
     # chunks should have the same length as domain
     chunks = tuple(chunksize for a in range(len(domain)))
