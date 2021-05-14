@@ -144,7 +144,7 @@ def tempdir():
     tmp.__exit__(None, None, None)
 
 
-def write_global_array(comm, filename, ldomain, mult=None):
+def write_global_array(comm, filename, ldomain, dtype="int64", mult=None):
     """
     Writes the global array from a local domain using MPI
     """
@@ -154,7 +154,7 @@ def write_global_array(comm, filename, ldomain, mult=None):
         if mult:
             gdomain = tuple(a * b for a, b in zip(gdomain, mult))
 
-        master_array = numpy.random.rand(*gdomain)
+        master_array = numpy.random.rand(*gdomain).astype(dtype).reshape(gdomain)
         numpy.save(filename, master_array)
     comm.Barrier()  # make sure file is created and visible by all
 

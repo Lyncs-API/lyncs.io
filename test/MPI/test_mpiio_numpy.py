@@ -7,6 +7,7 @@ from lyncs_io.testing import (
     tempdir_MPI,
     ldomain_loop,
     topo_dim_loop,
+    dtype_loop,
     get_comm,
     get_topology_dims,
     write_global_array,
@@ -14,15 +15,16 @@ from lyncs_io.testing import (
 
 
 @mark_mpi
+@dtype_loop
 @ldomain_loop  # enables local domain
-def test_numpy_mpiio_load_comm(tempdir_MPI, ldomain):
+def test_numpy_mpiio_load_comm(tempdir_MPI, dtype, ldomain):
 
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "foo.npy"
 
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(ldomain)))
-    write_global_array(comm, ftmp, ldomain, mult=mult)
+    write_global_array(comm, ftmp, ldomain, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
 
     local_array = io.load(ftmp, comm=comm)
@@ -32,9 +34,10 @@ def test_numpy_mpiio_load_comm(tempdir_MPI, ldomain):
 
 
 @mark_mpi
+@dtype_loop
 @ldomain_loop  # enables local domain
 @topo_dim_loop  # enables topology dimension
-def test_numpy_mpiio_load_cart(tempdir_MPI, ldomain, topo_dim):
+def test_numpy_mpiio_load_cart(tempdir_MPI, dtype, ldomain, topo_dim):
 
     comm = get_comm()
     rank = comm.rank
@@ -44,7 +47,7 @@ def test_numpy_mpiio_load_cart(tempdir_MPI, ldomain, topo_dim):
     ftmp = tempdir_MPI + "foo.npy"
 
     mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(ldomain)))
-    write_global_array(comm, ftmp, ldomain, mult=mult)
+    write_global_array(comm, ftmp, ldomain, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
 
     local_array = io.load(ftmp, comm=cartesian2d)
@@ -57,15 +60,16 @@ def test_numpy_mpiio_load_cart(tempdir_MPI, ldomain, topo_dim):
 
 
 @mark_mpi
+@dtype_loop
 @ldomain_loop  # enables local domain
-def test_numpy_mpiio_save_comm(tempdir_MPI, ldomain):
+def test_numpy_mpiio_save_comm(tempdir_MPI, dtype, ldomain):
 
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "foo.npy"
 
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(ldomain)))
-    write_global_array(comm, ftmp, ldomain, mult=mult)
+    write_global_array(comm, ftmp, ldomain, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
 
     slc = tuple(slice(rank * ldomain[i], (rank + 1) * ldomain[i]) for i in range(1))
@@ -78,9 +82,10 @@ def test_numpy_mpiio_save_comm(tempdir_MPI, ldomain):
 
 
 @mark_mpi
+@dtype_loop
 @ldomain_loop  # enables local domain
 @topo_dim_loop  # enables topology dimension
-def test_numpy_mpiio_save_cart(tempdir_MPI, ldomain, topo_dim):
+def test_numpy_mpiio_save_cart(tempdir_MPI, dtype, ldomain, topo_dim):
 
     comm = get_comm()
     rank = comm.rank
@@ -90,7 +95,7 @@ def test_numpy_mpiio_save_cart(tempdir_MPI, ldomain, topo_dim):
     ftmp = tempdir_MPI + "foo.npy"
 
     mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(ldomain)))
-    write_global_array(comm, ftmp, ldomain, mult=mult)
+    write_global_array(comm, ftmp, ldomain, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
 
     slices = tuple(
