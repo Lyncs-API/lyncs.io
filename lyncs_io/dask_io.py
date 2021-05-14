@@ -87,6 +87,8 @@ class DaskIO:
         array : dask array
             A lazy evaluated array to be computed on demand
         """
+        if not is_dask_array(array):
+            raise TypeError("array should be a Dask Array")
 
         header = _build_header_from_dask_array(array)
 
