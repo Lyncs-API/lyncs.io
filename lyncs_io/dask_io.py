@@ -3,7 +3,6 @@ Parallel IO using Dask
 """
 from io import BytesIO
 import os
-from os import path
 import numpy
 
 from filelock import FileLock
@@ -138,6 +137,7 @@ def _write_npy_header(filename, header):
     lock_path = filename + ".lock"
     lock = FileLock(lock_path)
 
+    # assuming uniqueness handled by OS
     if not os.path.exists(filename):
         with lock:
             with open(filename, "wb") as fptr:

@@ -4,9 +4,9 @@ Import this file only if in a testing environment
 
 __all__ = [
     "mark_mpi",
-    "domain_loop",
+    "shape_loop",
     "chunksize_loop",
-    "ldomain_loop",
+    "lshape_loop",
     "workers_loop",
     "topo_dim_loop",
     "parallel_loop",
@@ -21,7 +21,7 @@ import numpy
 from lyncs_utils import factors, prod
 
 mark_mpi = mark.mpi(min_size=1)
-# TODO: Fix the locks
+
 shape_loop = mark.parametrize(
     "shape",
     [
@@ -32,7 +32,6 @@ shape_loop = mark.parametrize(
     ],
 )
 
-# NOTE: currently testing with uniform chunks
 chunksize_loop = mark.parametrize(
     "chunksize",
     [3, 5, 6, 10],
@@ -78,7 +77,7 @@ def client():
     clt.shutdown()
 
 
-def MPI():
+def mpi():
     """
     Imports MPI upon request
     """
@@ -103,7 +102,7 @@ def tempdir_MPI():
 
     # test path exists for all
     has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
-    all_access = comm.allreduce(has_access, op=MPI().LAND)
+    all_access = comm.allreduce(has_access, op=mpi().LAND)
     if not all_access:
         raise ValueError(
             "Some processes are unable to access the temporary directory. \n\
@@ -152,7 +151,7 @@ def get_comm():
     """
     Get the MPI communicator
     """
-    return MPI().COMM_WORLD
+    return mpi().COMM_WORLD
 
 
 def get_cart(procs=None, comm=None):
@@ -160,7 +159,7 @@ def get_cart(procs=None, comm=None):
     Get the MPI cartesian communicator
     """
     if comm is None:
-        comm = MPI().COMM_WORLD
+        comm = mpi().COMM_WORLD
     return comm.Create_cart(dims=procs)
 
 
@@ -168,7 +167,7 @@ def get_topology_dims(comm, ndims):
     """
     Gets the MPI dimensions
     """
-    return MPI().Compute_dims(comm.size, ndims)
+    return mpi().Compute_dims(comm.size, ndims)
 
 
 def get_procs_list(comm_size=None, max_size=None, repeat=1):
@@ -176,7 +175,7 @@ def get_procs_list(comm_size=None, max_size=None, repeat=1):
     Gets a processor list with all the combinations for the cartesian topology
     """
     if comm_size is None:
-        comm_size = MPI().COMM_WORLD.size
+        comm_size = mpi().COMM_WORLD.size
 
     facts = {1} | set(factors(comm_size))
     procs = []
