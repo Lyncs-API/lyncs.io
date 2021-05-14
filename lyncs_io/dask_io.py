@@ -37,8 +37,8 @@ class DaskIO:
         return dask
 
     def __init__(self, filename):
-
-        self.filename = filename
+        # convert to absolute
+        self.filename = os.path.abspath(filename)
 
     def load(self, domain, dtype, header_offset, chunks=None, order="C"):
         """
@@ -135,6 +135,17 @@ def _build_header_from_file(filename):
 def _write_npy_header(filename, header):
 
     lock_path = filename + ".lock"
+    # if file does not exist:
+    # acquire the lock
+    # write the header
+    # those who don't acquire the lock:
+    # recall the function _write without waiting
+
+    # once the lock is released:
+    # if the lock is enabled wait to be released and recall the function
+    # if the file exists we read the header
+    # if the header matches we exit and proceed
+    # else we acquire the lock and rewrite the header
 
     with FileLock(lock_path):
         write_header = True

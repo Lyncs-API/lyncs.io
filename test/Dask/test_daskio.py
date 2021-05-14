@@ -18,6 +18,12 @@ from lyncs_io.testing import (
 )
 
 
+def test_daskio_abspath(client, tempdir):
+
+    assert os.path.isabs(DaskIO(tempdir + "/foo_daskio_load.npy").filename)
+    assert os.path.isabs(DaskIO("./foo_daskio_load.npy").filename)
+
+
 @dtype_loop
 @shape_loop
 @chunksize_loop
