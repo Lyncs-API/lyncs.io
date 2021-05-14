@@ -3,6 +3,7 @@ Parallel IO using Dask
 """
 from io import BytesIO
 import os
+from os import path
 import numpy
 
 from filelock import FileLock
@@ -135,27 +136,25 @@ def _build_header_from_file(filename):
 def _write_npy_header(filename, header):
 
     lock_path = filename + ".lock"
-    # if file does not exist:
-    # acquire the lock
-    # write the header
-    # those who don't acquire the lock:
-    # recall the function _write without waiting
+    lock = FileLock(lock_path)
 
-    # once the lock is released:
-    # if the lock is enabled wait to be released and recall the function
-    # if the file exists we read the header
-    # if the header matches we exit and proceed
-    # else we acquire the lock and rewrite the header
-
-    with FileLock(lock_path):
-        write_header = True
-        if os.path.exists(filename):
-            if header == _build_header_from_file(filename):
-                write_header = False
-
-        if write_header:
+    if not os.path.exists(filename):
+        with lock:
             with open(filename, "wb") as fptr:
                 numpy.lib.format._write_array_header(fptr, header)
+
+    else:
+        # wait for lock to be release if is used
+        while lock.is_locked:
+            pass
+
+        if header != _build_header_from_file(filename):
+            lock.acquire()
+
+        if lock.is_locked:
+            with open(filename, "wb") as fptr:
+                numpy.lib.format._write_array_header(fptr, header)
+            lock.release()
 
 
 def _write_blockwise_to_npy(array_block, filename, header, shape, block_info=None):
