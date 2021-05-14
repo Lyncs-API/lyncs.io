@@ -24,7 +24,7 @@ from lyncs_io.testing import (
 @workers_loop
 def test_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
 
-    ftmp = tempdir + "foo.npy"
+    ftmp = tempdir + "/foo_daskio_load.npy"
     x_ref = numpy.random.rand(*shape).astype(dtype)
     io.save(x_ref, ftmp)
 
@@ -50,7 +50,7 @@ def test_daskio_write_exceptions(client, tempdir):
     assert is_dask_array(da.zeros(10))
 
     with pytest.raises(TypeError):
-        DaskIO(tempdir + "foo.npy").save(numpy.zeros(10))
+        DaskIO(tempdir + "/foo_daskio_write_exceptions.npy").save(numpy.zeros(10))
 
 
 @dtype_loop
@@ -59,7 +59,7 @@ def test_daskio_write_exceptions(client, tempdir):
 @workers_loop
 def test_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
 
-    ftmp = tempdir + "foo.npy"
+    ftmp = tempdir + "/foo_daskio_write.npy"
 
     x_ref = numpy.random.rand(*shape).astype(dtype)
     x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
@@ -82,7 +82,7 @@ def test_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
 @workers_loop
 def test_daskio_write_update(client, tempdir, dtype, workers):
 
-    ftmp = tempdir + "foo.npy"
+    ftmp = tempdir + "/foo_daskio_write_update.npy"
 
     domains = [
         (10,),

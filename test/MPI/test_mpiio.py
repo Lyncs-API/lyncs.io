@@ -49,11 +49,11 @@ def test_mpiio_file_handler(tempdir_MPI):
 
     # when file does not exists and we try to read
     with pytest.raises(MPI.Exception):
-        ftmp = tempdir_MPI + "foo.npy"
+        ftmp = tempdir_MPI + "/foo_mpiio_file_handler.npy"
         with MpiIO(comm, ftmp, mode="r") as mpiio:
             pass
 
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_mpiio_file_handler1.npy"
     with MpiIO(comm, ftmp, mode="w") as mpiio:
         assert mpiio.handler is not None
 
@@ -65,7 +65,7 @@ def test_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_mpiio_load_from_comm.npy"
 
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
@@ -105,7 +105,7 @@ def test_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, topo_dim):
     dims = get_topology_dims(comm, topo_dim)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_mpiio_load_from_cart.npy"
 
     mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
@@ -133,7 +133,7 @@ def test_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_mpiio_save_from_comm.npy"
 
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
@@ -171,7 +171,7 @@ def test_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, topo_dim):
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
 
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_mpiio_save_from_cart.npy"
 
     mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)

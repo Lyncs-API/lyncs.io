@@ -21,10 +21,7 @@ import numpy
 from lyncs_utils import factors, prod
 
 mark_mpi = mark.mpi(min_size=1)
-# TODO: Rename domain to shape
-# TODO: Remove reshape from tests
 # TODO: Fix the locks
-# TODO: Chunks loop to chunks
 shape_loop = mark.parametrize(
     "shape",
     [
@@ -114,8 +111,9 @@ def tempdir_MPI():
                 directory to be used across processes. "
         )
 
-    yield path + "/"
+    yield path
 
+    # make sure file exists until everyone is done
     comm.Barrier()
     if comm.rank == 0:
         tmp.__exit__(None, None, None)
@@ -130,22 +128,22 @@ def tempdir():
     tmp = tempfile.TemporaryDirectory()
     path = tmp.__enter__()
 
-    yield path + "/"
+    yield path
 
     tmp.__exit__(None, None, None)
 
 
-def write_global_array(comm, filename, ldomain, dtype="int64", mult=None):
+def write_global_array(comm, filename, lshape, dtype="int64", mult=None):
     """
     Writes the global array from a local domain using MPI
     """
     if comm.rank == 0:
-        gdomain = ldomain
+        gshape = lshape
 
         if mult:
-            gdomain = tuple(a * b for a, b in zip(gdomain, mult))
+            gshape = tuple(a * b for a, b in zip(gshape, mult))
 
-        master_array = numpy.random.rand(*gdomain).astype(dtype).reshape(gdomain)
+        master_array = numpy.random.rand(*gshape).astype(dtype)
         numpy.save(filename, master_array)
     comm.Barrier()  # make sure file is created and visible by all
 

@@ -21,7 +21,7 @@ def test_numpy_mpiio_load_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_numpy_mpiio_load_comm.npy"
 
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
@@ -44,7 +44,7 @@ def test_numpy_mpiio_load_cart(tempdir_MPI, dtype, lshape, topo_dim):
     dims = get_topology_dims(comm, topo_dim)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_numpy_mpiio_load_cart.npy"
 
     mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
@@ -66,7 +66,7 @@ def test_numpy_mpiio_save_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_numpy_mpiio_save_comm.npy"
 
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
@@ -92,7 +92,7 @@ def test_numpy_mpiio_save_cart(tempdir_MPI, dtype, lshape, topo_dim):
     dims = get_topology_dims(comm, topo_dim)
     cartesian2d = comm.Create_cart(dims=dims)
     coords = cartesian2d.Get_coords(rank)
-    ftmp = tempdir_MPI + "foo.npy"
+    ftmp = tempdir_MPI + "/foo_numpy_mpiio_save_cart.npy"
 
     mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
