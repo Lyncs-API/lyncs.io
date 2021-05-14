@@ -122,16 +122,17 @@ client = Client(n_workers=2, threads_per_worker=1)
 
 x = da.arange(0,128).reshape((16, 8)).rechunk(chunks=(8,4))
 
-xio=io.save(x, "pario.npy", chunks=(8,4))
-dask.compute(xio)
+xout_lazy = io.save(x, "pario.npy")
+xout_lazy.compute()
 
-xload= io.load("pario.npy", chunks=(8,4))
-xcomp = xload.compute()
+xin_lazy = io.load("pario.npy", chunks=(8,4))
+xcomp = xin_lazy.compute()
 
 assert (x.compute() == xcomp).all()
+client.shutdown()
 ```
 
-NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` or `save` routines using `chunks` parameter. Currently only `numpy` format supports this functionality.
+NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` routine using `chunks` parameter. For `save` routine, the DaskIO is enabled only if the array passed is a Dask Array. Currently only `numpy` format supports this functionality.
 
 ### File formats
 
