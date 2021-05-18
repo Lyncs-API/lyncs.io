@@ -2,10 +2,11 @@
 Parallel IO using Dask
 """
 from io import BytesIO
+from time import sleep
 import os
 import numpy
 
-from filelock import FileLock
+from filelock import FileLock, Timeout
 
 
 def is_dask_array(obj):
@@ -132,29 +133,25 @@ def _build_header_from_file(filename):
     return header_dict
 
 
-def _write_npy_header(filename, header):
+def _write_npy_header(filename, header, interval=0.001):
 
     lock_path = filename + ".lock"
     lock = FileLock(lock_path)
 
-    # assuming uniqueness handled by OS
-    if not os.path.exists(filename):
-        with lock:
-            with open(filename, "wb") as fptr:
-                numpy.lib.format._write_array_header(fptr, header)
+    # wait for lock to be release if is used
+    while lock.is_locked:
+        sleep(interval)
 
-    else:
-        # wait for lock to be release if is used
-        while lock.is_locked:
-            pass
-
-        if header != _build_header_from_file(filename):
-            lock.acquire()
-
-        if lock.is_locked:
-            with open(filename, "wb") as fptr:
-                numpy.lib.format._write_array_header(fptr, header)
-            lock.release()
+    # if file does not exist or header is wrong, then we write a new file
+    if not os.path.exists(filename) or header != _build_header_from_file(filename):
+        try:
+            # we use timeout smaller than poll_intervall so only one lock is acquired
+            with lock.acquire(timeout=interval / 2, poll_intervall=interval):
+                with open(filename, "wb") as fptr:
+                    numpy.lib.format._write_array_header(fptr, header)
+        except Timeout:
+            # restart the function and wait for the writing to be completed
+            _write_npy_header(filename, header, interval=interval)
 
 
 def _write_blockwise_to_npy(array_block, filename, header, shape, block_info=None):
