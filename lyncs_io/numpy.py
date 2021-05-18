@@ -30,7 +30,7 @@ from .header import Header
 from .utils import swap, open_file
 
 from .mpi_io import MpiIO
-from .dask_io import DaskIO
+from .dask_io import DaskIO, is_dask_array
 
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
@@ -95,7 +95,7 @@ def load(filename, chunks=None, comm=None, **kwargs):
 
 
 @wraps(numpy.save)
-def save(array, filename, chunks=None, comm=None, **kwargs):
+def save(array, filename, comm=None, **kwargs):
     """
     High level interface function for numpy save.
     Writes a numpy array to file either in serial or parallel.
@@ -107,19 +107,14 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
         A numpy array representing the local elements of the domain.
     filename : str
         Filename of the numpy array to be loaded.
-    chunks: list
-        How to divide the data domain. This enables the Dask API.
     comm: MPI.Cartcomm
         A valid cartesian MPI Communicator.
 
     """
 
-    if comm is not None and chunks is not None:
-        raise ValueError("chunks and comm parameters cannot be both set")
-
-    if chunks is not None:
+    if is_dask_array(array):
         daskio = DaskIO(filename)
-        return daskio.save(array, chunks=chunks)
+        return daskio.save(array)
 
     if comm is not None:
         if not hasattr(comm, "size"):
