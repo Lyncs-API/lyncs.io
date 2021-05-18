@@ -28,7 +28,9 @@ from lyncs_utils import is_keyword
 from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
+
 from .mpi_io import MpiIO
+from .dask_io import DaskIO, is_dask_array
 
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
@@ -57,22 +59,43 @@ def load(filename, chunks=None, comm=None, **kwargs):
         Returns a numpy array representing the local elements of the domain.
     """
 
-    if comm is None or comm.size == 1:
-        return numpy.load(filename, **kwargs)
+    if comm is not None and chunks is not None:
+        raise ValueError("chunks and comm parameters cannot be both set")
 
     if chunks is not None:
-        raise NotImplementedError("Currently not supporting chunking")
 
-    metadata = head(filename)
+        metadata = head(filename)
+        daskio = DaskIO(filename)
 
-    with MpiIO(comm, filename, mode="r") as mpiio:
-        return mpiio.load(
-            metadata["shape"], metadata["dtype"], "C", metadata["_offset"]
+        return daskio.load(
+            metadata["shape"],
+            metadata["dtype"],
+            metadata["_offset"],
+            chunks=chunks,
+            order="F" if metadata["_fortran_order"] else "C",
         )
+
+    if comm is not None:
+        if not hasattr(comm, "size"):
+            raise TypeError(
+                "comm variable needs to be a valid MPI communicator with size attribute."
+            )
+
+        if comm.size > 1:
+            metadata = head(filename)
+            with MpiIO(comm, filename, mode="r") as mpiio:
+                return mpiio.load(
+                    metadata["shape"],
+                    metadata["dtype"],
+                    "F" if metadata["_fortran_order"] else "C",
+                    metadata["_offset"],
+                )
+
+    return numpy.load(filename, **kwargs)
 
 
 @wraps(numpy.save)
-def save(array, filename, chunks=None, comm=None, **kwargs):
+def save(array, filename, comm=None, **kwargs):
     """
     High level interface function for numpy save.
     Writes a numpy array to file either in serial or parallel.
@@ -84,28 +107,33 @@ def save(array, filename, chunks=None, comm=None, **kwargs):
         A numpy array representing the local elements of the domain.
     filename : str
         Filename of the numpy array to be loaded.
-    chunks: list
-        How to divide the data domain. This enables the Dask API.
     comm: MPI.Cartcomm
         A valid cartesian MPI Communicator.
 
     """
 
-    if comm is None or comm.size == 1:
-        return numpy.save(filename, array, **kwargs)
+    if is_dask_array(array):
+        daskio = DaskIO(filename)
+        return daskio.save(array)
 
-    if chunks is not None:
-        raise NotImplementedError("Currently not supporting chunking")
+    if comm is not None:
+        if not hasattr(comm, "size"):
+            raise TypeError(
+                "comm variable needs to be a valid MPI communicator with size attribute."
+            )
 
-    with MpiIO(comm, filename, mode="w") as mpiio:
-        global_shape, _, _ = mpiio.decomposition.compose(array.shape)
+        if comm.size > 1:
+            with MpiIO(comm, filename, mode="w") as mpiio:
+                global_shape, _, _ = mpiio.decomposition.compose(array.shape)
 
-        if mpiio.rank == 0:
-            header = header_data_from_array_1_0(array)
-            header["shape"] = tuple(global_shape)  # needs to be tuple
-            _write_array_header(mpiio.handler, header)
+                if mpiio.rank == 0:
+                    header = header_data_from_array_1_0(array)
+                    header["shape"] = tuple(global_shape)  # needs to be tuple
+                    _write_array_header(mpiio.handler, header)
 
-        return mpiio.save(array)
+                return mpiio.save(array)
+
+    return numpy.save(filename, array, **kwargs)
 
 
 def _get_offset(npy):

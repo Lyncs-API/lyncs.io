@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/github/license/Lyncs-API/lyncs.io?logo=github&logoColor=white)](https://github.com/Lyncs-API/lyncs.io/blob/master/LICENSE)
 [![build & test](https://img.shields.io/github/workflow/status/Lyncs-API/lyncs.io/build%20&%20test?logo=github&logoColor=white)](https://github.com/Lyncs-API/lyncs.io/actions)
 [![codecov](https://img.shields.io/codecov/c/github/Lyncs-API/lyncs.io?logo=codecov&logoColor=white)](https://codecov.io/gh/Lyncs-API/lyncs.io)
-[![pylint](https://img.shields.io/badge/pylint%20score-9.4%2F10-green?logo=python&logoColor=white)](http://pylint.pycqa.org/)
+[![pylint](https://img.shields.io/badge/pylint%20score-9.5%2F10-green?logo=python&logoColor=white)](http://pylint.pycqa.org/)
 [![black](https://img.shields.io/badge/code%20style-black-000000.svg?logo=codefactor&logoColor=white)](https://github.com/ambv/black)
 
 Lyncs IO offers two high-level functions `load` and `save` (or `dump` as alias of `save`).
@@ -111,6 +111,35 @@ assert (iarr == oarr).all()
 
 NOTE: Parallel IO is enabled once a valid cartesian communicator is passed to `load` or `save` routines, otherwise Serial IO is performed. Currently only `numpy` format supports this functionality.
 
+### IO with Dask
+
+```python
+import lyncs_io as io
+import dask
+from distributed import Client, progress
+
+client = Client(n_workers=2, threads_per_worker=1)
+
+x = da.arange(0,128).reshape((16, 8)).rechunk(chunks=(8,4))
+
+xout_lazy = io.save(x, "pario.npy")
+xin_lazy = io.load("pario.npy", chunks=(8,4))
+
+assert (x.compute() == xin_lazy.compute()).all()
+client.shutdown()
+```
+
+NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` routine using `chunks` parameter. For `save` routine, the DaskIO is enabled only if the array passed is a Dask Array. Currently only `numpy` format supports this functionality.
+
 ### File formats
 
 ### Adding a file format
+
+## Acknowledgments
+
+### Authors
+- Simone Bacchio (sbacchio)
+- Christodoulos Stylianou (cstyl)
+
+### Fundings
+- PRACE-6IP, Grant agreement ID: 823767, Project name: LyNcs.

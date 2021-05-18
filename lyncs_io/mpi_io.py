@@ -12,11 +12,13 @@ class MpiIO:
     Class for handling file handling routines and Parallel IO using MPI
     """
 
+    # pylint: disable=C0103
     @property
     def MPI(self):
         """
         Property for importing MPI wherever necessary
         """
+        # pylint: disable=C0415
         from mpi4py import MPI
 
         return MPI
@@ -84,11 +86,11 @@ class MpiIO:
         local_array : numpy array
             Local data to the process
         """
-        # TODO: Shall this raise an error saying about non-contiguous data?
-        if numpy.isfortran(array):
-            raise NotImplementedError("Currently noy supporting FORTRAN ordering")
-        else:
+        if not numpy.isfortran(array):
+            # ensure data are contiguous
             array = numpy.ascontiguousarray(array)
+        else:
+            raise NotImplementedError("Currently noy supporting FORTRAN ordering")
 
         if self.rank == 0:
             pos = self.handler.Get_position()
@@ -195,11 +197,13 @@ class Decomposition:
     of arbitrary dimensions
     """
 
+    # pylint: disable=C0103
     @property
     def MPI(self):
         """
         Property for importing MPI wherever necessary
         """
+        # pylint: disable=C0415
         from mpi4py import MPI
 
         return MPI
@@ -257,8 +261,8 @@ class Decomposition:
                     )
                 )
 
-            low = self._split_work(domain[dim], workers, proc_id)
-            high = self._split_work(domain[dim], workers, proc_id + 1)
+            low = _split_work(domain[dim], workers, proc_id)
+            high = _split_work(domain[dim], workers, proc_id + 1)
 
             sub_sizes[dim] = high - low
             starts[dim] = low
@@ -307,32 +311,33 @@ class Decomposition:
 
         return sizes, sub_sizes, starts
 
-    def _split_work(self, load, workers, proc_id):
-        """
-        Uniformly distributes load over the dimension.
-        Remaining load is assigned in reverse round robin manner
 
-        Parameters
-        ----------
-        load : int
-            load size to be assigned
-        workers : int
-            total processing elements work will be assigned to
-        proc_id : int
-            processing element for which the bound is calculated for
+def _split_work(load, workers, proc_id):
+    """
+    Uniformly distributes load over the dimension.
+    Remaining load is assigned in reverse round robin manner
 
-        Returns:
-        --------
-        bound : int
-            low bound of the workload assigned to the worker
-        """
-        unifload = load // workers  # uniform distribution
-        rem = load - unifload * workers
+    Parameters
+    ----------
+    load : int
+        load size to be assigned
+    workers : int
+        total processing elements work will be assigned to
+    proc_id : int
+        processing element for which the bound is calculated for
 
-        # round-robin assignment of the remaining work
-        if proc_id <= rem:
-            bound = (unifload + 1) * proc_id
-        else:
-            bound = (unifload + 1) * rem + unifload * (proc_id - rem)
+    Returns:
+    --------
+    bound : int
+        low bound of the workload assigned to the worker
+    """
+    unifload = load // workers  # uniform distribution
+    rem = load - unifload * workers
 
-        return bound
+    # round-robin assignment of the remaining work
+    if proc_id <= rem:
+        bound = (unifload + 1) * proc_id
+    else:
+        bound = (unifload + 1) * rem + unifload * (proc_id - rem)
+
+    return bound
