@@ -125,7 +125,7 @@ x = da.arange(0,128).reshape((16, 8)).rechunk(chunks=(8,4))
 xout_lazy = io.save(x, "pario.npy")
 xin_lazy = io.load("pario.npy", chunks=(8,4))
 
-assert (x.compute() == xin_lazy.compute).all()
+assert (x.compute() == xin_lazy.compute()).all()
 client.shutdown()
 ```
 
