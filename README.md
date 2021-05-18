@@ -114,3 +114,12 @@ NOTE: Parallel IO is enabled once a valid cartesian communicator is passed to `l
 ### File formats
 
 ### Adding a file format
+
+## Acknowledgments
+
+### Authors
+- Simone Bacchio (sbacchio)
+- Christodoulos Stylianou (cstyl)
+
+### Fundings
+- PRACE-6IP, Grant agreement ID: 823767, Project name: LyNcs.
