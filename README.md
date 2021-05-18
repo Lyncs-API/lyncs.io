@@ -134,3 +134,12 @@ NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `loa
 ### File formats
 
 ### Adding a file format
+
+## Acknowledgments
+
+### Authors
+- Simone Bacchio (sbacchio)
+- Christodoulos Stylianou (cstyl)
+
+### Fundings
+- PRACE-6IP, Grant agreement ID: 823767, Project name: LyNcs.
