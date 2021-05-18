@@ -131,6 +131,8 @@ client.shutdown()
 
 NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` routine using `chunks` parameter. For `save` routine, the DaskIO is enabled only if the array passed is a Dask Array. Currently only `numpy` format supports this functionality.
 
+### IO with HDF5
+
 ### File formats
 
 ### Adding a file format
