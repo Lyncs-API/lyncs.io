@@ -14,6 +14,8 @@ from .convert import to_array, from_array
 from .header import Header
 from .utils import default_names
 
+from .dask_io import is_dask_array
+
 
 def _load_dataset(dts, header_only=False, **kwargs):
     assert isinstance(dts, Dataset)
@@ -44,9 +46,7 @@ def _load(h5f, depth=1, header_only=False, **kwargs):
     raise TypeError(f"Unsupported {type(h5f)}")
 
 
-def load(filename, key=None, **kwargs):
-    "Load function for HDF5"
-    filename, key = split_filename(filename, key)
+def _load_serial(filename, key, **kwargs):
 
     loader = Loader(load, filename, kwargs=kwargs)
 
@@ -65,6 +65,29 @@ def load(filename, key=None, **kwargs):
             )
 
         raise TypeError(f"Unsupported {type(h5f)}")
+
+
+def load(filename, key=None, chunks=None, comm=None, **kwargs):
+    "Load function for HDF5"
+
+    if comm is not None and chunks is not None:
+        raise ValueError("chunks and comm parameters cannot be both set")
+
+    filename, key = split_filename(filename, key)
+
+    if chunks is not None:
+        raise NotImplementedError("DaskIO for HDF5 load not implemented yet.")
+
+    if comm is not None:
+        if not hasattr(comm, "size"):
+            raise TypeError(
+                "comm variable needs to be a valid MPI communicator with size attribute."
+            )
+
+        if comm.size > 1:
+            raise NotImplementedError("MPIIO for HDF5 load not implemented yet.")
+
+    return _load_serial(filename, key, **kwargs)
 
 
 def head(*args, **kwargs):
@@ -101,12 +124,28 @@ def split_key(key):
     return "/" + "/".join(tmp[:-1]), tmp[-1]
 
 
-def save(data, filename, key=None, **kwargs):
-    "Save function for HDF5"
-    filename, key = split_filename(filename, key)
-    key = key or "/"
-
+def _save_serial(data, filename, key, **kwargs):
     with File(filename, "a") as h5f:
         group, dataset = split_key(key)
         h5f = h5f.require_group(group)
         return _write_dataset(h5f, dataset, data, **kwargs)
+
+
+def save(data, filename, key=None, comm=None, **kwargs):
+    "Save function for HDF5"
+    filename, key = split_filename(filename, key)
+    key = key or "/"
+
+    if is_dask_array(data):
+        raise NotImplementedError("DaskIO for HDF5 save not implemented yet.")
+
+    if comm is not None:
+        if not hasattr(comm, "size"):
+            raise TypeError(
+                "comm variable needs to be a valid MPI communicator with size attribute."
+            )
+
+        if comm.size > 1:
+            raise NotImplementedError("MPIIO for HDF5 save not implemented yet.")
+
+    return _save_serial(data, filename, key, **kwargs)
