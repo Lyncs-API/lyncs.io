@@ -8,7 +8,6 @@ __all__ = [
     "chunksize_loop",
     "lshape_loop",
     "workers_loop",
-    "topo_dim_loop",
     "parallel_loop",
 ]
 
@@ -48,11 +47,6 @@ lshape_loop = mark.parametrize(
 workers_loop = mark.parametrize(
     "workers",
     [1, 2, 4, 7, 12],
-)
-
-topo_dim_loop = mark.parametrize(
-    "topo_dim",
-    [1, 2, 3, 4],
 )
 
 dtype_loop = mark.parametrize(
@@ -156,18 +150,13 @@ def get_comm():
 
 def get_cart(procs=None, comm=None):
     """
-    Get the MPI cartesian communicator
+    Get the MPI cartesian communicators
     """
     if comm is None:
         comm = mpi().COMM_WORLD
+    if procs is None:
+        procs = [comm.size]
     return comm.Create_cart(dims=procs)
-
-
-def get_topology_dims(comm, ndims):
-    """
-    Gets the MPI dimensions
-    """
-    return mpi().Compute_dims(comm.size, ndims)
 
 
 def get_procs_list(comm_size=None, max_size=None, repeat=1):
@@ -196,6 +185,4 @@ def get_procs_list(comm_size=None, max_size=None, repeat=1):
     return procs[:max_size]
 
 
-# TODO: Substitute topo_dim_loop with parallel_loop
-# such that routines work with arbitrary dimensionality ordering
 parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4))

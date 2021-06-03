@@ -5,11 +5,6 @@ from lyncs_io.testing import (
     tempdir_MPI,
     shape_loop,
     parallel_loop,
-    topo_dim_loop,
-    dtype_loop,
-    get_comm,
-    get_topology_dims,
-    write_global_array,
 )
 
 
