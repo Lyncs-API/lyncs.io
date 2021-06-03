@@ -1,8 +1,16 @@
 import pytest
 from lyncs_io.decomposition import Decomposition
-from lyncs_io.testing import mark_mpi
-
-# TODO: Generalize on higher dimensions (Currently tested for cart_dim<=2)
+from lyncs_io.testing import (
+    mark_mpi,
+    tempdir_MPI,
+    shape_loop,
+    parallel_loop,
+    topo_dim_loop,
+    dtype_loop,
+    get_comm,
+    get_topology_dims,
+    write_global_array,
+)
 
 
 @mark_mpi
@@ -67,190 +75,45 @@ def test_mpi_property():
 
 
 @mark_mpi
-def test_comm_Decomposition():
+@shape_loop
+def test_Decomposition_Comm(tempdir_MPI, shape):
     from mpi4py import MPI
 
-    comm = MPI.COMM_WORLD
-    size = comm.size
-    rank = comm.rank
-
-    dec = Decomposition(comm=comm)
-
-    # No remainder
-    domain = [8 * size, 12]
-    globalsz, localsz, start = dec.decompose(domain=domain)
-
-    assert domain == globalsz
-    assert [8, 12] == localsz
-    if rank == 0:
-        assert [0, 0] == start
-    elif rank == size - 1:
-        assert [8 * (size - 1), 0] == start
-
-    # Remainder=1
-    domain = [8 * size + 1, 12]
-    globalsz, localsz, start = dec.decompose(domain=domain)
-
-    assert domain == globalsz
-    if rank == 0:
-        # First process takes the remainder
-        assert [9, 12] == localsz
-        assert [0, 0] == start
-    elif rank == size - 1:
-        assert [8, 12] == localsz
-        assert [8 * (size - 1) + 1, 0] == start
-
-    # More workers than data
-    with pytest.raises(ValueError):
-        dec.decompose(domain=[0] * len(domain))
-
-
-@mark_mpi
-def test_cart_decomposition():
-    from mpi4py import MPI
-
-    comm = MPI.COMM_WORLD
-    size = comm.size
-    rank = comm.rank
-
-    # TODO: Ensure testing generalizes in arbitrary dimension
-    ndims = 2
-    dims = MPI.Compute_dims(size, [0] * ndims)
-    topo = comm.Create_cart(dims=dims, periods=[False] * ndims, reorder=False)
-    coords = topo.Get_coords(rank)
+    topo = MPI.COMM_WORLD
     dec = Decomposition(comm=topo)
 
-    # No remainder
-    domain = [8 * dims[0], 8 * dims[1], 4, 4]
-    globalsz, localsz, start = dec.decompose(domain=domain)
-
-    assert domain == globalsz
-    assert [8, 8, 4, 4] == localsz
-    if coords[0] == 0 and coords[1] == 0:
-        assert [0, 0, 0, 0] == start
-    elif coords[0] == dims[0] and coords[1] == dims[1]:
-        assert [8 * (dims[0] - 1), 8 * (dims[1] - 1), 0, 0] == start
-
-    # Remainder=1 in each dimension
-    domain = [8 * dims[0] + 1, 8 * dims[1] + 1, 4, 4]
-    globalsz, localsz, start = dec.decompose(domain=domain)
-
-    assert domain == globalsz
-    if coords[0] == 0 and coords[1] == 0:
-        assert [9, 9, 4, 4] == localsz
-        assert [0, 0, 0, 0] == start
-    elif coords[0] == dims[0] and coords[1] == dims[1]:
-        assert [8 * (dims[0] - 1) + 1, 8 * (dims[1] - 1) + 1, 0, 0] == start
-
-    # More workers than data
-    with pytest.raises(ValueError):
-        dec.decompose(domain=[0] * len(domain))
-
-
-@mark_mpi
-def test_comm_composition():
-    from mpi4py import MPI
-
-    comm = MPI.COMM_WORLD
-    size = comm.size
-    rank = comm.rank
-
-    dec = Decomposition(comm=comm)
-
-    # No remainder
-    local_size = [8, 8]
-    globalsz, localsz, start = dec.compose(local_size)
-
-    assert [size * 8, 8] == globalsz
-    assert local_size == localsz
-    assert [rank * 8, 0] == start
-
-    # Remainder=1
-    if rank == 0:
-        local_size = [9, 8]
-
-    globalsz, localsz, start = dec.compose(local_size)
-
-    assert [size * 8 + 1, 8] == globalsz
-    assert local_size == localsz
-    if rank == 0:
-        assert [rank * 8, 0] == start
+    if len(shape) < len(dec.dims):
+        with pytest.raises(ValueError):
+            dglobalsz, dlocalsz, dstart = dec.decompose(shape)
+        with pytest.raises(ValueError):
+            cglobalsz, clocalsz, cstart = dec.compose(shape)
     else:
-        assert [rank * 8 + 1, 0] == start
+        dglobalsz, dlocalsz, dstart = dec.decompose(shape)
+        cglobalsz, clocalsz, cstart = dec.compose(dlocalsz)
+
+        assert dglobalsz == cglobalsz
+        assert dlocalsz == clocalsz
+        assert dstart == cstart
 
 
 @mark_mpi
-def test_cart_composition():
+@parallel_loop
+@shape_loop
+def test_Decomposition_Cartesian(tempdir_MPI, procs, shape):
     from mpi4py import MPI
 
-    comm = MPI.COMM_WORLD
-    size = comm.size
-    rank = comm.rank
-
-    # TODO: Ensure testing generalizes in arbitrary dimension
-    ndims = 2
-    dims = MPI.Compute_dims(size, [0] * ndims)
-    topo = comm.Create_cart(dims=dims, periods=[False] * ndims, reorder=False)
-    coords = topo.Get_coords(rank)
+    topo = MPI.COMM_WORLD.Create_cart(dims=procs)
     dec = Decomposition(comm=topo)
 
-    # No remainder
-    local_size = [8, 8, 4, 4]
-    globalsz, localsz, start = dec.compose(domain=local_size)
-
-    assert [dims[0] * 8, dims[1] * 8, 4, 4] == globalsz
-    assert local_size == localsz
-    assert [coords[0] * 8, coords[1] * 8, 0, 0] == start
-
-    # Remainder=1 in horizontal dimension
-    local_size = [8, 8, 4, 4]
-    if coords[0] == 0:
-        local_size = [9, 8, 4, 4]
-
-    globalsz, localsz, start = dec.compose(local_size)
-
-    assert [dims[0] * 8 + 1, dims[1] * 8, 4, 4] == globalsz
-    assert local_size == localsz
-
-    if coords[0] > 0:
-        assert [coords[0] * 8 + 1, coords[1] * 8, 0, 0] == start
+    if len(shape) < len(dec.dims):
+        with pytest.raises(ValueError):
+            dglobalsz, dlocalsz, dstart = dec.decompose(shape)
+        with pytest.raises(ValueError):
+            cglobalsz, clocalsz, cstart = dec.compose(shape)
     else:
-        assert [0, coords[1] * 8, 0, 0] == start
+        dglobalsz, dlocalsz, dstart = dec.decompose(shape)
+        cglobalsz, clocalsz, cstart = dec.compose(dlocalsz)
 
-    # Remainder=1 in vertical dimension
-    local_size = [8, 8, 4, 4]
-    if coords[1] == 0:
-        local_size = [8, 9, 4, 4]
-
-    globalsz, localsz, start = dec.compose(local_size)
-
-    assert [dims[0] * 8, dims[1] * 8 + 1, 4, 4] == globalsz
-    assert local_size == localsz
-
-    if coords[1] > 0:
-        assert [coords[0] * 8, coords[1] * 8 + 1, 0, 0] == start
-    else:
-        assert [coords[0] * 8, 0, 0, 0] == start
-
-    # Remainder=1 in each dimension
-    local_size = [8, 8, 4, 4]
-    if coords[0] == 0 and coords[1] == 0:
-        local_size = [9, 9, 4, 4]
-    elif coords[1] == 0:
-        local_size = [8, 9, 4, 4]
-    elif coords[0] == 0:
-        local_size = [9, 8, 4, 4]
-
-    globalsz, localsz, start = dec.compose(local_size)
-
-    assert [dims[0] * 8 + 1, dims[1] * 8 + 1, 4, 4] == globalsz
-    assert local_size == localsz
-
-    if coords[0] == 0 and coords[1] == 0:
-        assert [0, 0, 0, 0] == start
-    elif coords[0] == 0 and coords[1] > 0:
-        assert [0, coords[1] * 8 + 1, 0, 0] == start
-    elif coords[0] > 0 and coords[1] == 0:
-        assert [coords[0] * 8 + 1, 0, 0, 0] == start
-    else:
-        assert [coords[0] * 8 + 1, coords[1] * 8 + 1, 0, 0] == start
+        assert dglobalsz == cglobalsz
+        assert dlocalsz == clocalsz
+        assert dstart == cstart

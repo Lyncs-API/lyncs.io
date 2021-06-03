@@ -60,7 +60,12 @@ class Decomposition:
         starts : list
             global starting position
         """
-
+        if len(domain) < len(self.dims):
+            raise ValueError(
+                "Dimensionality of the domain ({}) must be larger than the dimensionality of the topology ({})".format(
+                    len(domain), len(self.dims)
+                )
+            )
         sizes = list(domain)
         sub_sizes = list(domain)
         starts = [0] * len(domain)
@@ -103,6 +108,14 @@ class Decomposition:
         starts : list
             global starting position
         """
+
+        if len(domain) < len(self.dims):
+            raise ValueError(
+                "Dimensionality of the domain ({}) must be larger than the dimensionality of the topology ({})".format(
+                    len(domain), len(self.dims)
+                )
+            )
+
         sizes = list(domain)
         sub_sizes = list(domain)
         starts = [0] * len(domain)
