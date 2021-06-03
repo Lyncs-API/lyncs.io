@@ -1,5 +1,5 @@
 import pytest
-from lyncs_io.mpi_io import Decomposition
+from lyncs_io.decomposition import Decomposition
 from lyncs_io.testing import mark_mpi
 
 # TODO: Generalize on higher dimensions (Currently tested for cart_dim<=2)
