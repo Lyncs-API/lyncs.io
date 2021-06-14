@@ -15,9 +15,10 @@ from .header import Header
 from .utils import default_names
 
 from .dask_io import is_dask_array
+from .decomposition import Decomposition
 
 
-def _load_dataset(dts, header_only=False, **kwargs):
+def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     assert isinstance(dts, Dataset)
 
     attrs = Header(dts.attrs)
@@ -27,44 +28,29 @@ def _load_dataset(dts, header_only=False, **kwargs):
     if header_only:
         return attrs
 
-    return from_array(dts[:], attrs)
+    if comm is not None:
+        _, subsizes, starts = Decomposition(comm=comm).decompose(dts.shape)
+        slc = tuple(slice(start, start + size) for start, size in zip(starts, subsizes))
+    else:
+        slc = tuple(slice(size) for size in dts.shape)
+
+    return from_array(dts[slc], attrs)
 
 
-def _load(h5f, depth=1, header_only=False, **kwargs):
+def _load(h5f, depth=1, header_only=False, comm=None, **kwargs):
     if isinstance(h5f, Group):
         return {
-            key: _load(val, depth=depth - 1) if depth > 0 else None
+            key: _load(val, depth=depth - 1, comm=comm) if depth > 0 else None
             for key, val in h5f.items()
         }
 
     if isinstance(h5f, Dataset):
-        header = _load_dataset(h5f, header_only=True, **kwargs)
+        header = _load_dataset(h5f, header_only=True, comm=comm, **kwargs)
         if header_only:
             return header
         return Data(header)
 
     raise TypeError(f"Unsupported {type(h5f)}")
-
-
-def _load_serial(filename, key, **kwargs):
-
-    loader = Loader(load, filename, kwargs=kwargs)
-
-    with File(filename, "r") as h5f:
-        if key:
-            h5f = h5f[key]
-
-        if isinstance(h5f, Dataset):
-            return _load_dataset(h5f, **kwargs)
-
-        if isinstance(h5f, Group):
-            return Archive(
-                _load(h5f, **kwargs),
-                loader=loader,
-                path=key,
-            )
-
-        raise TypeError(f"Unsupported {type(h5f)}")
 
 
 def load(filename, key=None, chunks=None, comm=None, **kwargs):
@@ -74,6 +60,7 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
         raise ValueError("chunks and comm parameters cannot be both set")
 
     filename, key = split_filename(filename, key)
+    loader = Loader(load, filename, comm=comm, kwargs=kwargs)
 
     if chunks is not None:
         raise NotImplementedError("DaskIO for HDF5 load not implemented yet.")
@@ -85,14 +72,30 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
             )
 
         if comm.size > 1:
-            raise NotImplementedError("MPIIO for HDF5 load not implemented yet.")
+            with File(filename, "r", driver="mpio", comm=comm) as h5f:
+                return load_routine(h5f, key, loader)
 
-    return _load_serial(filename, key, **kwargs)
+    with File(filename, "r") as h5f:
+        return load_routine(h5f, key, loader)
 
 
-def head(*args, **kwargs):
+def load_routine(h5f, key, loader, **kwargs):
+
+    if key:
+        h5f = h5f[key]
+
+    if isinstance(h5f, Dataset):
+        return _load_dataset(h5f, comm=loader.comm, **kwargs)
+
+    if isinstance(h5f, Group):
+        return Archive(_load(h5f, comm=loader.comm, **kwargs), loader=loader, path=key)
+
+    raise TypeError(f"Unsupported {type(h5f)}")
+
+
+def head(*args, comm=None, **kwargs):
     "Head function for HDF5"
-    return load(*args, header_only=True, **kwargs)
+    return load(*args, header_only=True, comm=comm, **kwargs)
 
 
 def _write_dataset(grp, key, data, **kwargs):

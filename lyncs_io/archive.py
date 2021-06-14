@@ -24,10 +24,13 @@ class Loader:
     load: callable
     filename: str
     kwargs: dict
+    comm: Any = None
 
     def __call__(self, key=None, **kwargs):
         "Load the given key from the file"
-        return self.load(self.filename, key=key, **self.kwargs, **kwargs)
+        return self.load(
+            self.filename, key=key, comm=self.comm, **self.kwargs, **kwargs
+        )
 
 
 @dataclass
@@ -77,6 +80,7 @@ class Archive(Mapping):
         "Loads key from the file"
         if not self.loader:
             raise ValueError("Loader not given")
+
         return self.loader(f"{self.path}/{key}", **kwargs)
 
     def data(self):
@@ -184,7 +188,10 @@ class Archive(Mapping):
                 pass
             else:
                 val = Archive(
-                    val, loader=self.loader, path=f"{self.path}/{this}", parent=self
+                    val,
+                    loader=self.loader,
+                    path=f"{self.path}/{this}",
+                    parent=self,
                 )
 
         else:
