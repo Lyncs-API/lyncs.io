@@ -82,6 +82,9 @@ def test_Decomposition_Comm(tempdir_MPI, shape):
             dglobalsz, dlocalsz, dstart = dec.decompose(shape)
         with pytest.raises(ValueError):
             cglobalsz, clocalsz, cstart = dec.compose(shape)
+    elif any(x < y for x, y in zip(shape, dec.dims)):
+        with pytest.raises(ValueError):
+            dglobalsz, dlocalsz, dstart = dec.decompose(shape)
     else:
         dglobalsz, dlocalsz, dstart = dec.decompose(shape)
         cglobalsz, clocalsz, cstart = dec.compose(dlocalsz)
@@ -105,6 +108,9 @@ def test_Decomposition_Cartesian(tempdir_MPI, procs, shape):
             dglobalsz, dlocalsz, dstart = dec.decompose(shape)
         with pytest.raises(ValueError):
             cglobalsz, clocalsz, cstart = dec.compose(shape)
+    elif any(x < y for x, y in zip(shape, dec.dims)):
+        with pytest.raises(ValueError):
+            dglobalsz, dlocalsz, dstart = dec.decompose(shape)
     else:
         dglobalsz, dlocalsz, dstart = dec.decompose(shape)
         cglobalsz, clocalsz, cstart = dec.compose(dlocalsz)

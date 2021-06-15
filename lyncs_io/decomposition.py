@@ -76,9 +76,7 @@ class Decomposition:
             workers, proc_id = self.dims[dim], self.coords[dim]
             if domain[dim] < workers:
                 raise ValueError(
-                    "Domain size ({}) must be larger than the amount of workers({})".format(
-                        domain[dim], workers
-                    )
+                    f"Domain size ({domain[dim]}) for dimension {dim} must be larger than the amount of workers({workers})"
                 )
 
             low = _split_work(domain[dim], workers, proc_id)
