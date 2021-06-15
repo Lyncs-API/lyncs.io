@@ -119,7 +119,7 @@ def _write_dataset(grp, key, data, comm=None, **kwargs):
     if comm is not None:
         global_shape, subsizes, starts = Decomposition(comm=comm).compose(data.shape)
         slc = tuple(slice(start, start + size) for start, size in zip(starts, subsizes))
-        dset = grp.create_dataset(key, global_shape)
+        dset = grp.create_dataset(key, global_shape, dtype=data.dtype)
         dset[slc] = data
     else:
         grp.create_dataset(key, data=data)
