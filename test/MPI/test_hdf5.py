@@ -62,6 +62,12 @@ def test_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
     write_global_dataset(comm, ftmp, gshape, dataset=global_array * 2, dtype=dtype)
     assert (global_array[slc] * 2 == io.load(ftmp, comm=comm)["arr1"]).all()
 
+    # Testing Head
+    assert list(io.load(ftmp, comm=comm).keys()) == list(
+        io.head(ftmp, comm=comm).keys()
+    )
+    assert gshape == io.head(ftmp, comm=comm)["arr0"]["shape"]
+
 
 @mark_mpi
 @dtype_loop
@@ -90,5 +96,12 @@ def test_hdf5_load_dataset_cart(tempdir_MPI, dtype, lshape, procs):
     ftmp = tempdir_MPI + "/test_hdf5_load_cart.h5"
     write_global_dataset(comm, ftmp, gshape, dataset=global_array, dtype=dtype)
     assert (global_array[slices] == io.load(ftmp, comm=comm)["arr0"]).all()
+
     write_global_dataset(comm, ftmp, gshape, dataset=global_array * 2, dtype=dtype)
     assert (global_array[slices] * 2 == io.load(ftmp, comm=comm)["arr1"]).all()
+
+    # Testing Head
+    assert list(io.load(ftmp, comm=comm).keys()) == list(
+        io.head(ftmp, comm=comm).keys()
+    )
+    assert gshape == io.head(ftmp, comm=comm)["arr0"]["shape"]
