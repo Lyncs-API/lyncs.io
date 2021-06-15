@@ -73,10 +73,10 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
 
         if comm.size > 1:
             with File(filename, "r", driver="mpio", comm=comm) as h5f:
-                return load_routine(h5f, key, loader)
+                return load_routine(h5f, key, loader, **kwargs)
 
     with File(filename, "r") as h5f:
-        return load_routine(h5f, key, loader)
+        return load_routine(h5f, key, loader, **kwargs)
 
 
 def load_routine(h5f, key, loader, **kwargs):
