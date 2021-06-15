@@ -24,8 +24,12 @@ EOF
 
 mpi_works(){
 
-    mkdir -p ${TMP_PATH}
-    tmpfile="${TMP_PATH}/mpi-test"
+    if [ ! -z "${$TMP_PATH}" ]; then
+        mkdir -p ${TMP_PATH}
+        tmpfile="${TMP_PATH}/mpi-test"
+    else
+        tmpfile="mpi-test"
+    fi
     create_mpi_testfile "$tmpfile.c"
 
     if [ -z "$CC" ];then
@@ -41,14 +45,6 @@ mpi_works(){
 
 }
 
-TMP_PATH="$(dirname $(realpath "$0"))/tmp"
-
-if $(mpi_works); then
-    echo "MPI Works"
-else
-    echo "MPI does not work"
-fi
-
 POSITIONAL=()
 # parse arguments
 while [[ $# -gt 0 ]]
@@ -58,6 +54,9 @@ do
         --prefix)
         INSTALL_DIR="$2"
         shift
+        shift
+        ;;
+        --enable-tmp)
         shift
         ;;
         --prefix=*)
@@ -80,9 +79,17 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
+[[ ! -z "${$TMP_PATH}" ]] && TMP_PATH="$(dirname $(realpath "$0"))/tmp"
+
+if $(mpi_works); then
+    echo "MPI Works"
+else
+    echo "MPI does not work"
+fi
+
 # if HDF5_PATH is not set we need to download it and build it with MPI Support
-if [ -z "$HDF5_PATH" ];then
-    cd $TMP_PATH
+if [ -z "${HDF5_PATH}" ];then
+    [[ ! -z "${$TMP_PATH}" ]] && cd $TMP_PATH
     git clone https://github.com/HDFGroup/hdf5.git
     cd hdf5
     git checkout hdf5-1_10_7
@@ -100,4 +107,4 @@ fi
 CC=$CC HDF5_MPI="ON" HDF5_DIR=$HDF5_PATH pip install --no-binary=h5py h5py
 
 # cleanup
-rm -rf $TMP_PATH
+[[ ! -z "${$TMP_PATH}" ]] && rm -rf $TMP_PATH
