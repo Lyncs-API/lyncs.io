@@ -51,7 +51,7 @@ jobs:
           sudo pip install -e .[all]
 
       - name: Install Parallel HDF5 and h5py
-        run: bash .bash/install-parallel-h5py.sh
+        run: bash .bash/install-hdf5.sh
 
       - name: Run serial tests
         run: |
