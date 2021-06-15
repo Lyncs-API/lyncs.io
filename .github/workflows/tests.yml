@@ -50,7 +50,7 @@ jobs:
         run: |
           sudo pip install -e .[all]
 
-      - name: Install HDF5 (${{ matrix.mpi }})
+      - name: Install Parallel HDF5 and h5py
         run: bash .bash/install-paralel-h5py.sh
 
       - name: Run serial tests

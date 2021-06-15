@@ -93,7 +93,7 @@ if [ -z "$HDF5_PATH" ];then
         PREFIX="--prefix=$INSTALL_DIR"
     fi
 
-    CC=$CC ./configure --enable-parallel --enable-shared $PREFIX && make && make install
+    CC=$CC ./configure --enable-parallel --enable-shared $PREFIX && make -j && make install
     HDF5_PATH=$INSTALL_DIR
 fi
 
