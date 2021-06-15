@@ -98,7 +98,7 @@ def head(*args, comm=None, **kwargs):
     return load(*args, header_only=True, comm=comm, **kwargs)
 
 
-def _write_dataset(grp, key, data, **kwargs):
+def _write_dataset(grp, key, data, comm=None, **kwargs):
     "Writes a dataset in the group"
     if not key:
         for name in default_names():
@@ -115,7 +115,14 @@ def _write_dataset(grp, key, data, **kwargs):
         del grp[key]
 
     data, attrs = to_array(data)
-    grp.create_dataset(key, data=data)
+
+    if comm is not None:
+        global_shape, subsizes, starts = Decomposition(comm=comm).compose(data.shape)
+        slc = tuple(slice(start, start + size) for start, size in zip(starts, subsizes))
+        dset = grp.create_dataset(key, global_shape)
+        dset[slc] = data
+    else:
+        grp.create_dataset(key, data=data)
 
     for attr, val in attrs.items():
         grp[key].attrs[attr] = val
@@ -127,11 +134,10 @@ def split_key(key):
     return "/" + "/".join(tmp[:-1]), tmp[-1]
 
 
-def _save_serial(data, filename, key, **kwargs):
-    with File(filename, "a") as h5f:
-        group, dataset = split_key(key)
-        h5f = h5f.require_group(group)
-        return _write_dataset(h5f, dataset, data, **kwargs)
+def _save_dispatch(h5f, data, key, comm=None, **kwargs):
+    group, dataset = split_key(key)
+    h5f = h5f.require_group(group)
+    return _write_dataset(h5f, dataset, data, comm=comm, **kwargs)
 
 
 def save(data, filename, key=None, comm=None, **kwargs):
@@ -149,6 +155,8 @@ def save(data, filename, key=None, comm=None, **kwargs):
             )
 
         if comm.size > 1:
-            raise NotImplementedError("MPIIO for HDF5 save not implemented yet.")
+            with File(filename, "a", driver="mpio", comm=comm) as h5f:
+                return _save_dispatch(h5f, data, key, comm=comm, **kwargs)
 
-    return _save_serial(data, filename, key, **kwargs)
+    with File(filename, "a") as h5f:
+        return _save_dispatch(h5f, data, key, **kwargs)
