@@ -16,7 +16,7 @@ from lyncs_io.testing import (
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_numpy_mpiio_load_comm(tempdir_MPI, dtype, lshape):
+def test_numpy_load_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
@@ -36,7 +36,7 @@ def test_numpy_mpiio_load_comm(tempdir_MPI, dtype, lshape):
 @dtype_loop
 @lshape_loop  # enables local domain
 @parallel_loop
-def test_numpy_mpiio_load_cart(tempdir_MPI, dtype, lshape, procs):
+def test_numpy_load_cart(tempdir_MPI, dtype, lshape, procs):
 
     comm = get_cart(procs=procs)
     dims, _, coords = comm.Get_topo()
@@ -58,7 +58,7 @@ def test_numpy_mpiio_load_cart(tempdir_MPI, dtype, lshape, procs):
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_numpy_mpiio_save_comm(tempdir_MPI, dtype, lshape):
+def test_numpy_save_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
@@ -81,7 +81,7 @@ def test_numpy_mpiio_save_comm(tempdir_MPI, dtype, lshape):
 @dtype_loop
 @lshape_loop  # enables local domain
 @parallel_loop
-def test_numpy_mpiio_save_cart(tempdir_MPI, dtype, lshape, procs):
+def test_numpy_save_cart(tempdir_MPI, dtype, lshape, procs):
 
     comm = get_cart(procs=procs)
     dims, _, coords = comm.Get_topo()
