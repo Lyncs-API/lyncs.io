@@ -24,13 +24,11 @@ class Loader:
     load: callable
     filename: str
     kwargs: dict
-    comm: Any = None
 
     def __call__(self, key=None, **kwargs):
         "Load the given key from the file"
-        return self.load(
-            self.filename, key=key, comm=self.comm, **self.kwargs, **kwargs
-        )
+
+        return self.load(self.filename, key=key, **self.kwargs, **kwargs)
 
 
 @dataclass

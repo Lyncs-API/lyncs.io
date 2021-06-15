@@ -53,6 +53,20 @@ def _load(h5f, depth=1, header_only=False, comm=None, **kwargs):
     raise TypeError(f"Unsupported {type(h5f)}")
 
 
+def _load_dispatch(h5f, key, loader, comm=None, **kwargs):
+
+    if key:
+        h5f = h5f[key]
+
+    if isinstance(h5f, Dataset):
+        return _load_dataset(h5f, comm=comm, **kwargs)
+
+    if isinstance(h5f, Group):
+        return Archive(_load(h5f, comm=comm, **kwargs), loader=loader, path=key)
+
+    raise TypeError(f"Unsupported {type(h5f)}")
+
+
 def load(filename, key=None, chunks=None, comm=None, **kwargs):
     "Load function for HDF5"
 
@@ -60,7 +74,7 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
         raise ValueError("chunks and comm parameters cannot be both set")
 
     filename, key = split_filename(filename, key)
-    loader = Loader(load, filename, comm=comm, kwargs=kwargs)
+    loader = Loader(load, filename, kwargs={"chunks": chunks, "comm": comm, **kwargs})
 
     if chunks is not None:
         raise NotImplementedError("DaskIO for HDF5 load not implemented yet.")
@@ -73,24 +87,10 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
 
         if comm.size > 1:
             with File(filename, "r", driver="mpio", comm=comm) as h5f:
-                return load_routine(h5f, key, loader, **kwargs)
+                return _load_dispatch(h5f, key, loader, comm=comm, **kwargs)
 
     with File(filename, "r") as h5f:
-        return load_routine(h5f, key, loader, **kwargs)
-
-
-def load_routine(h5f, key, loader, **kwargs):
-
-    if key:
-        h5f = h5f[key]
-
-    if isinstance(h5f, Dataset):
-        return _load_dataset(h5f, comm=loader.comm, **kwargs)
-
-    if isinstance(h5f, Group):
-        return Archive(_load(h5f, comm=loader.comm, **kwargs), loader=loader, path=key)
-
-    raise TypeError(f"Unsupported {type(h5f)}")
+        return _load_dispatch(h5f, key, loader, **kwargs)
 
 
 def head(*args, comm=None, **kwargs):
