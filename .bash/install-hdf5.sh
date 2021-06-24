@@ -8,4 +8,4 @@ h5pcc --showconfig
 # export CC=mpicc
 # export HDF5_MPI="ON"
 HDF5_PATH=$(dirname $(which h5pcc))/../lib
-CC=$CC HDF5_MPI="ON" HDF5_DIR=$HDF5_PATH pip install --no-binary=h5py h5py
+CC=mpicc HDF5_MPI="ON" HDF5_DIR=$HDF5_PATH pip install --no-binary=h5py h5py
