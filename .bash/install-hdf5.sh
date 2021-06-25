@@ -2,7 +2,9 @@
 
 sudo apt-get update -y #Gets access to packages
 sudo apt-get install -y libhdf5-mpi-dev #grabs hdf5 for parallel
-h5pcc --showconfig
+h5pcc -showconfig
+var1=$( h5pcc -showconfig | grep "Installation point" )
+HDF5_PATH=$( echo $var1 | awk '{split($0,a," "); print a[3]}' )
 # sudo apt install python3-pip
 # sudo apt-get install -y pkg-config
-CC=mpicc HDF5_MPI="ON" pip install --no-binary=h5py h5py
+CC=mpicc HDF5_MPI="ON" HDF5_DIR=$HDF5_PATH pip install --no-binary=h5py h5py
