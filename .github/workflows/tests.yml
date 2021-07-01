@@ -50,7 +50,7 @@ jobs:
         run: |
           sudo pip install -e .[all]
           CC=mpicc HDF5_MPI="ON" HDF5_DIR="/usr/lib/x86_64-linux-gnu/hdf5/openmpi" pip install --no-binary=h5py h5py
-          mpiexec -n 4 python .bash/ph5py-example.py
+          mpirun -n 4 --oversubscribe python .bash/ph5py-example.py
 
       - name: Run serial tests
         run: |
