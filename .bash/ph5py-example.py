@@ -8,4 +8,6 @@ f = h5py.File("parallel_test.hdf5", "w", driver="mpio", comm=MPI.COMM_WORLD)
 dset = f.create_dataset("test", (4,), dtype="i")
 dset[rank] = rank
 
+print(f"[{rank}] : {dset}")
+
 f.close()
