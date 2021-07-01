@@ -14,6 +14,7 @@ setup(
         "mpi": [
             'mpi4py==3.0.0; python_version < "3.8"',
             'mpi4py==3.0.3; python_version >= "3.8"',
+            "wheel",
         ],
         "dask": ["dask", "distributed", "filelock"],
         "test": ["pytest", "pytest-cov", "ipython", "pytest-mpi"],
