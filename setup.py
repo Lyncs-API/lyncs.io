@@ -10,7 +10,7 @@ setup(
     extras_require={
         "tree": ["ipython"],
         "dill": ["dill"],
-        "hdf5": ["h5py"],
+        "hdf5": ["h5py", "h5pyp"],
         "mpi": [
             'mpi4py==3.0.0; python_version < "3.8"',
             'mpi4py==3.0.3; python_version >= "3.8"',

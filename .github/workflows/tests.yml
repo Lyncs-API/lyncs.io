@@ -38,16 +38,8 @@ jobs:
         with:
           python-version: ${{ matrix.py-version }}
 
-      - name: Install OpenMPI Parallel HDF5
-        run: bash .bash/install-hdf5.sh
-
-      - name: Install h5py
-        run: |
-          CC=mpicc HDF5_MPI="ON" HDF5_DIR="/usr/lib/x86_64-linux-gnu/hdf5/openmpi" pip install --no-binary=h5py h5py
-
-      - name: Example using h5py
-        run: |
-          mpirun -n 4 --oversubscribe python .bash/ph5py-example.py
+      - name: Install MPI (${{ matrix.mpi }})
+        run: bash .bash/install-${{ matrix.mpi }}.sh
 
       - name: Install dependencies
         run: |
