@@ -38,7 +38,7 @@ jobs:
         with:
           python-version: ${{ matrix.py-version }}
 
-       - name: Install OpenMPI Parallel HDF5
+      - name: Install OpenMPI Parallel HDF5
         run: bash .bash/install-hdf5.sh
 
       - name: Install h5py
