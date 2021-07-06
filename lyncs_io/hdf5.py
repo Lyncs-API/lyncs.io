@@ -26,7 +26,7 @@ def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     attrs["dtype"] = dts.dtype
 
     if header_only:
-        return attrs
+        return attrs, None
 
     if comm is not None:
         _, subsizes, starts = Decomposition(comm=comm).decompose(dts.shape)
@@ -34,21 +34,22 @@ def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     else:
         slc = tuple(slice(size) for size in dts.shape)
 
-    return from_array(dts[slc], attrs)
+    return attrs, dts[slc]
+    # return from_array(dts[slc], attrs)
 
 
-def _load(h5f, depth=1, header_only=False, comm=None, **kwargs):
+def _load(h5f, depth=1, header_only=False, comm=None, all=False, **kwargs):
     if isinstance(h5f, Group):
         return {
-            key: _load(val, depth=depth - 1, comm=comm) if depth > 0 else None
+            key: _load(val, depth=depth - 1, comm=comm, all=all) if depth > 0 else None
             for key, val in h5f.items()
         }
 
     if isinstance(h5f, Dataset):
-        header = _load_dataset(h5f, header_only=True, comm=comm, **kwargs)
+        header, data = _load_dataset(h5f, header_only=(not all), comm=comm, **kwargs)
         if header_only:
             return header
-        return Data(header)
+        return Data(header, data)
 
     raise TypeError(f"Unsupported {type(h5f)}")
 
@@ -69,7 +70,6 @@ def _load_dispatch(h5f, key, loader, comm=None, **kwargs):
 
 def load(filename, key=None, chunks=None, comm=None, **kwargs):
     "Load function for HDF5"
-
     if comm is not None and chunks is not None:
         raise ValueError("chunks and comm parameters cannot be both set")
 

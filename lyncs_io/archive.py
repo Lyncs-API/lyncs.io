@@ -27,7 +27,6 @@ class Loader:
 
     def __call__(self, key=None, **kwargs):
         "Load the given key from the file"
-
         return self.load(self.filename, key=key, **self.kwargs, **kwargs)
 
 
@@ -78,7 +77,6 @@ class Archive(Mapping):
         "Loads key from the file"
         if not self.loader:
             raise ValueError("Loader not given")
-
         return self.loader(f"{self.path}/{key}", **kwargs)
 
     def data(self):
@@ -180,7 +178,8 @@ class Archive(Mapping):
 
             if isinstance(val, Data):
                 if val.value is None:
-                    val.value = self.load(this)
+                    # Assumes load returns header and data
+                    _, val.value = self.load(this)
                 val = val.value
             elif isinstance(val, Header):
                 pass
