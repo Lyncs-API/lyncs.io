@@ -8,6 +8,7 @@ __all__ = [
     "save",
 ]
 
+from collections.abc import Mapping
 from h5py import File, Dataset, Group
 from .archive import split_filename, Data, Loader, Archive
 from .convert import to_array, from_array
@@ -102,6 +103,23 @@ def head(*args, comm=None, **kwargs):
     return load(*args, header_only=True, comm=comm, **kwargs)
 
 
+def _nested_mapping_iterator(mapping_obj):
+    """This function accepts a nested dictionary as argument
+    and iterate over all values of nested dictionaries
+    """
+    # Iterate over all key-value pairs of mapping argument
+    for key, value in mapping_obj.items():
+        # Check if value is of dict type
+        if isinstance(value, Mapping):
+            # If value is dict then iterate over all its values
+            for pair in _nested_mapping_iterator(value):
+                yield (key, *pair)
+        else:
+            # If value is not dict type then yield the value
+            print(f"key: {key}")
+            yield (key, value)
+
+
 def _write_dataset(grp, key, data, comm=None, **kwargs):
     "Writes a dataset in the group"
     if not key:
@@ -132,23 +150,42 @@ def _write_dataset(grp, key, data, comm=None, **kwargs):
         grp[key].attrs[attr] = val
 
 
+def join_dict_entries(pair):
+    "Joins the nested mapping keys to form the group"
+    return "/" + "/".join(pair[:-1]), pair[-1]
+
+
 def split_key(key):
     "Splits the key in group & dataset"
     tmp = key.lstrip("/").split("/")
     return "/" + "/".join(tmp[:-1]), tmp[-1]
 
 
-def _save_dispatch(h5f, data, key, comm=None, **kwargs):
-    group, dataset = split_key(key)
-    h5f = h5f.require_group(group)
-    return _write_dataset(h5f, dataset, data, comm=comm, **kwargs)
+def _write(h5f, data, key, comm=None, all=False, **kwargs):
+
+    if isinstance(data, Mapping):
+        for pair in _nested_mapping_iterator(data):
+            if all:
+                group, value = join_dict_entries(pair)
+                map_key = key + group
+                group, dataset = split_key(map_key)
+                h5f = h5f.require_group(group)
+                _write_dataset(h5f, dataset, value, comm=comm, **kwargs)
+            else:
+                raise NotImplementedError(
+                    "Writing only one entry of the dictionary not yet implemented"
+                )
+    else:
+        group, dataset = split_key(key)
+        print(key, group, dataset)
+        h5f = h5f.require_group(group)
+        return _write_dataset(h5f, dataset, data, comm=comm, **kwargs)
 
 
 def save(data, filename, key=None, comm=None, **kwargs):
     "Save function for HDF5"
     filename, key = split_filename(filename, key)
     key = key or "/"
-
     if is_dask_array(data):
         raise NotImplementedError("DaskIO for HDF5 save not implemented yet.")
 
@@ -160,7 +197,7 @@ def save(data, filename, key=None, comm=None, **kwargs):
 
         if comm.size > 1:
             with File(filename, "a", driver="mpio", comm=comm) as h5f:
-                return _save_dispatch(h5f, data, key, comm=comm, **kwargs)
+                return _write(h5f, data, key, comm=comm, **kwargs)
 
     with File(filename, "a") as h5f:
-        return _save_dispatch(h5f, data, key, **kwargs)
+        return _write(h5f, data, key, **kwargs)
