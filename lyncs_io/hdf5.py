@@ -170,6 +170,7 @@ def _write_dispatch(h5f, data, key, comm=None, all=False, **kwargs):
                 _write(h5f, pair[1], key + "/" + pair[0], comm=comm, **kwargs)
         else:
             for pair in _flatten_mapping(data):
+                # FIXME: Make sure we only check against the key the user explicitly provided and NOT against the full key
                 if pair[0] == key:
                     return _write(h5f, pair[1], key, comm=comm, **kwargs)
             raise ValueError(f"{key} does not exist in the Mapping")
@@ -192,8 +193,16 @@ def save(data, filename, key=None, comm=None, **kwargs):
             )
 
         if comm.size > 1:
-            with File(filename, "a", driver="mpio", comm=comm) as h5f:
-                return _write_dispatch(h5f, data, key, comm=comm, **kwargs)
+            try:
+                with File(filename, "a", driver="mpio", comm=comm) as h5f:
+                    return _write_dispatch(h5f, data, key, comm=comm, **kwargs)
+            except OSError:
+                with File(filename, "w", driver="mpio", comm=comm) as h5f:
+                    return _write_dispatch(h5f, data, key, comm=comm, **kwargs)
 
-    with File(filename, "a") as h5f:
-        return _write_dispatch(h5f, data, key, **kwargs)
+    try:
+        with File(filename, "a") as h5f:
+            return _write_dispatch(h5f, data, key, **kwargs)
+    except OSError:
+        with File(filename, "w") as h5f:
+            return _write_dispatch(h5f, data, key, **kwargs)
