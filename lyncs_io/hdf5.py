@@ -200,9 +200,5 @@ def save(data, filename, key=None, comm=None, **kwargs):
                 with File(filename, "w", driver="mpio", comm=comm) as h5f:
                     return _write_dispatch(h5f, data, key, comm=comm, **kwargs)
 
-    try:
-        with File(filename, "a") as h5f:
-            return _write_dispatch(h5f, data, key, **kwargs)
-    except OSError:
-        with File(filename, "w") as h5f:
-            return _write_dispatch(h5f, data, key, **kwargs)
+    with File(filename, "a") as h5f:
+        return _write_dispatch(h5f, data, key, **kwargs)
