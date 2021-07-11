@@ -178,8 +178,7 @@ class Archive(Mapping):
 
             if isinstance(val, Data):
                 if val.value is None:
-                    # Assumes load returns header and data
-                    _, val.value = self.load(this)
+                    val.value = self.load(this)
                 val = val.value
             elif isinstance(val, Header):
                 pass

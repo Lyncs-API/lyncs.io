@@ -34,19 +34,22 @@ def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     else:
         slc = tuple(slice(size) for size in dts.shape)
 
-    return attrs, dts[slc]
-    # return from_array(dts[slc], attrs)
+    return attrs, from_array(dts[slc], attrs)
 
 
 def _load(h5f, depth=1, header_only=False, comm=None, all=False, **kwargs):
     if isinstance(h5f, Group):
         return {
-            key: _load(val, depth=depth - 1, comm=comm, all=all) if depth > 0 else None
+            key: _load(val, depth=depth - 1, comm=comm, all=all)
+            if all or depth > 0
+            else None
             for key, val in h5f.items()
         }
 
     if isinstance(h5f, Dataset):
-        header, data = _load_dataset(h5f, header_only=(not all), comm=comm, **kwargs)
+        header, data = _load_dataset(
+            h5f, header_only=header_only or (not all), comm=comm, **kwargs
+        )
         if header_only:
             return header
         return Data(header, data)
@@ -60,7 +63,8 @@ def _load_dispatch(h5f, key, loader, comm=None, **kwargs):
         h5f = h5f[key]
 
     if isinstance(h5f, Dataset):
-        return _load_dataset(h5f, comm=comm, **kwargs)
+        _, data = _load_dataset(h5f, comm=comm, **kwargs)
+        return data
 
     if isinstance(h5f, Group):
         return Archive(_load(h5f, comm=comm, **kwargs), loader=loader, path=key)

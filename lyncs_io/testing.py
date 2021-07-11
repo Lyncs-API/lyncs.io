@@ -104,7 +104,7 @@ def tempdir_MPI():
                 directory to be used across processes. "
         )
 
-    yield path
+    yield path + "/"
 
     # make sure file exists until everyone is done
     comm.Barrier()
