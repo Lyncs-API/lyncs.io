@@ -58,13 +58,16 @@ def _load(h5f, depth=1, header_only=False, comm=None, all=False, **kwargs):
     raise TypeError(f"Unsupported {type(h5f)}")
 
 
-def _load_dispatch(h5f, key, loader, comm=None, **kwargs):
+def _load_dispatch(h5f, key, loader, header_only=False, comm=None, **kwargs):
 
     if key:
         h5f = h5f[key]
 
     if isinstance(h5f, Dataset):
-        _, data = _load_dataset(h5f, comm=comm, **kwargs)
+        header, data = _load_dataset(h5f, comm=comm, **kwargs)
+        if header_only:
+            return header
+
         return data
 
     if isinstance(h5f, Group):
@@ -156,7 +159,7 @@ def split_key(key):
     return "/" + "/".join(tmp[:-1]), tmp[-1]
 
 
-def _write(h5f, data, key, comm=None, all=False, **kwargs):
+def _write(h5f, data, key, comm=None, **kwargs):
     "Ensures a group is created and the dataset is written"
     group, dataset = split_key(key)
     h5f = h5f.require_group(group)
