@@ -103,21 +103,21 @@ def head(*args, comm=None, **kwargs):
     return load(*args, header_only=True, comm=comm, **kwargs)
 
 
-def _nested_mapping_iterator(mapping_obj):
-    """This function accepts a nested dictionary as argument
-    and iterate over all values of nested dictionaries
+def _flatten_mapping(map):
     """
-    # Iterate over all key-value pairs of mapping argument
-    for key, value in mapping_obj.items():
-        # Check if value is of dict type
-        if isinstance(value, Mapping):
-            # If value is dict then iterate over all its values
-            for pair in _nested_mapping_iterator(value):
-                yield (key, *pair)
+    Accepts a nested Mapping as argument and iterates over
+    all values of nested Mappings creating a flatten key,value pair
+    """
+    if not isinstance(map, Mapping):
+        raise TypeError("Object must be a Mapping.")
+
+    for key, val in map.items():
+        if isinstance(val, Mapping):
+            if not val:
+                yield (key, "")
+            yield from (("%s/%s" % (key, k2), v2) for k2, v2 in _flatten_mapping(val))
         else:
-            # If value is not dict type then yield the value
-            print(f"key: {key}")
-            yield (key, value)
+            yield (key, val)
 
 
 def _write_dataset(grp, key, data, comm=None, **kwargs):
@@ -150,11 +150,6 @@ def _write_dataset(grp, key, data, comm=None, **kwargs):
         grp[key].attrs[attr] = val
 
 
-def join_dict_entries(pair):
-    "Joins the nested mapping keys to form the group"
-    return "/" + "/".join(pair[:-1]), pair[-1]
-
-
 def split_key(key):
     "Splits the key in group & dataset"
     tmp = key.lstrip("/").split("/")
@@ -162,24 +157,25 @@ def split_key(key):
 
 
 def _write(h5f, data, key, comm=None, all=False, **kwargs):
+    "Ensures a group is created and the dataset is written"
+    group, dataset = split_key(key)
+    h5f = h5f.require_group(group)
+    return _write_dataset(h5f, dataset, data, comm=comm, **kwargs)
 
+
+def _write_dispatch(h5f, data, key, comm=None, all=False, **kwargs):
     if isinstance(data, Mapping):
-        for pair in _nested_mapping_iterator(data):
-            if all:
-                group, value = join_dict_entries(pair)
-                map_key = key + group
-                group, dataset = split_key(map_key)
-                h5f = h5f.require_group(group)
-                _write_dataset(h5f, dataset, value, comm=comm, **kwargs)
-            else:
-                raise NotImplementedError(
-                    "Writing only one entry of the dictionary not yet implemented"
-                )
+        if all:
+            for pair in _flatten_mapping(data):
+                _write(h5f, pair[1], key + "/" + pair[0], comm=comm, **kwargs)
+        else:
+            for pair in _flatten_mapping(data):
+                if pair[0] == key:
+                    return _write(h5f, pair[1], key, comm=comm, **kwargs)
+            raise ValueError(f"{key} does not exist in the Mapping")
+
     else:
-        group, dataset = split_key(key)
-        print(key, group, dataset)
-        h5f = h5f.require_group(group)
-        return _write_dataset(h5f, dataset, data, comm=comm, **kwargs)
+        return _write(h5f, data, key, comm=comm, **kwargs)
 
 
 def save(data, filename, key=None, comm=None, **kwargs):
@@ -197,7 +193,7 @@ def save(data, filename, key=None, comm=None, **kwargs):
 
         if comm.size > 1:
             with File(filename, "a", driver="mpio", comm=comm) as h5f:
-                return _write(h5f, data, key, comm=comm, **kwargs)
+                return _write_dispatch(h5f, data, key, comm=comm, **kwargs)
 
     with File(filename, "a") as h5f:
-        return _write(h5f, data, key, **kwargs)
+        return _write_dispatch(h5f, data, key, **kwargs)
