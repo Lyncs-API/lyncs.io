@@ -29,7 +29,7 @@ from .archive import split_filename, Data, Loader, Archive
 from .header import Header
 from .utils import swap, open_file
 
-from .mpi_io import MpiIO
+from .mpi_io import MpiIO, check_comm
 from .dask_io import DaskIO, is_dask_array
 
 loadtxt = numpy.loadtxt
@@ -76,10 +76,7 @@ def load(filename, chunks=None, comm=None, **kwargs):
         )
 
     if comm is not None:
-        if not hasattr(comm, "size"):
-            raise TypeError(
-                "comm variable needs to be a valid MPI communicator with size attribute."
-            )
+        check_comm(comm)
 
         if comm.size > 1:
             metadata = head(filename)
@@ -117,10 +114,7 @@ def save(array, filename, comm=None, **kwargs):
         return daskio.save(array)
 
     if comm is not None:
-        if not hasattr(comm, "size"):
-            raise TypeError(
-                "comm variable needs to be a valid MPI communicator with size attribute."
-            )
+        check_comm(comm)
 
         if comm.size > 1:
             with MpiIO(comm, filename, mode="w") as mpiio:

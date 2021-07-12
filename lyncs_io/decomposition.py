@@ -62,7 +62,8 @@ class Decomposition:
         """
         if len(domain) < len(self.dims):
             raise ValueError(
-                "Dimensionality of the domain ({}) must be larger than the dimensionality of the topology ({})".format(
+                "Dimensionality of the domain ({}) must be larger than \
+                    the dimensionality of the topology ({})".format(
                     len(domain), len(self.dims)
                 )
             )
@@ -76,7 +77,8 @@ class Decomposition:
             workers, proc_id = self.dims[dim], self.coords[dim]
             if domain[dim] < workers:
                 raise ValueError(
-                    f"Domain size ({domain[dim]}) for dimension {dim} must be larger than the amount of workers({workers})"
+                    f"Domain size ({domain[dim]}) for dimension {dim} must be \
+                        larger than the amount of workers({workers})"
                 )
 
             low = _split_work(domain[dim], workers, proc_id)
@@ -109,7 +111,8 @@ class Decomposition:
 
         if len(domain) < len(self.dims):
             raise ValueError(
-                "Dimensionality of the domain ({}) must be larger than the dimensionality of the topology ({})".format(
+                "Dimensionality of the domain ({}) must be larger than \
+                    the dimensionality of the topology ({})".format(
                     len(domain), len(self.dims)
                 )
             )

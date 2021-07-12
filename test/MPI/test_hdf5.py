@@ -109,7 +109,7 @@ def test_hdf5_all_cart(tempdir_MPI, procs):
 
     ftmp = tempdir_MPI + "/test_hdf5_load_cart.h5"
     io.save(mydict, ftmp, comm=comm)
-    loaded_dict = io.load(ftmp, comm=comm, all=True)
+    loaded_dict = io.load(ftmp, comm=comm, load_all=True)
 
     assert (mydict["random"]["arr0"] == loaded_dict["random"]["arr0"]).all()
     assert (mydict["random"]["arr1"] == loaded_dict["random"]["arr1"]).all()
@@ -117,7 +117,7 @@ def test_hdf5_all_cart(tempdir_MPI, procs):
 
     # Append at the end of group
     io.save(mydict, ftmp + "/grp", comm=comm)
-    loaded_dict = io.load(ftmp, comm=comm, all=True)
+    loaded_dict = io.load(ftmp, comm=comm, load_all=True)
 
     assert (mydict["random"]["arr0"] == loaded_dict["grp"]["random"]["arr0"]).all()
     assert (mydict["random"]["arr1"] == loaded_dict["grp"]["random"]["arr1"]).all()
@@ -125,7 +125,7 @@ def test_hdf5_all_cart(tempdir_MPI, procs):
 
     # Ensure mapping is appended after the key
     io.save(mydict, ftmp, key="key-grp", comm=comm)
-    loaded_dict = io.load(ftmp, comm=comm, all=True)
+    loaded_dict = io.load(ftmp, comm=comm, load_all=True)
 
     assert (mydict["random"]["arr0"] == loaded_dict["key-grp"]["random"]["arr0"]).all()
     assert (mydict["random"]["arr1"] == loaded_dict["key-grp"]["random"]["arr1"]).all()

@@ -9,6 +9,14 @@ import numpy
 from .decomposition import Decomposition
 
 
+def check_comm(comm):
+    "Raises error if comm is not valid"
+    if not hasattr(comm, "size"):
+        raise TypeError(
+            "comm variable needs to be a valid MPI communicator with size attribute."
+        )
+
+
 class MpiIO:
     """
     Class for handling file handling routines and Parallel IO using MPI

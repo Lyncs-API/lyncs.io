@@ -15,12 +15,14 @@ from .convert import to_array, from_array
 from .header import Header
 from .utils import default_names
 
+from .mpi_io import check_comm
 from .dask_io import is_dask_array
 from .decomposition import Decomposition
 
 
 def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     assert isinstance(dts, Dataset)
+    assert not kwargs, f"Unknown parameters {kwargs}"
 
     attrs = Header(dts.attrs)
     attrs["shape"] = dts.shape
@@ -38,10 +40,10 @@ def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     return attrs, from_array(dts[slc], attrs)
 
 
-def _load(h5f, depth=1, header_only=False, all=False, **kwargs):
+def _load(h5f, depth=1, header_only=False, load_all=False, **kwargs):
     if isinstance(h5f, Group):
         return {
-            key: _load(val, depth=depth - 1, all=all, **kwargs)
+            key: _load(val, depth=depth - 1, load_all=load_all, **kwargs)
             if all or depth > 0
             else None
             for key, val in h5f.items()
@@ -49,7 +51,7 @@ def _load(h5f, depth=1, header_only=False, all=False, **kwargs):
 
     if isinstance(h5f, Dataset):
         header, data = _load_dataset(
-            h5f, header_only=header_only or (not all), **kwargs
+            h5f, header_only=header_only or (not load_all), **kwargs
         )
         if header_only:
             return header
@@ -83,17 +85,14 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
 
     filename, key = split_filename(filename, key)
     # Append comm and chunks in kwargs
-    kwargs = {"chunks": chunks, "comm": comm, **kwargs}
+    kwargs = {"comm": comm, **kwargs}
     loader = Loader(load, filename, kwargs=kwargs)
 
     if chunks is not None:
         raise NotImplementedError("DaskIO for HDF5 load not implemented yet.")
 
     if comm is not None:
-        if not hasattr(comm, "size"):
-            raise TypeError(
-                "comm variable needs to be a valid MPI communicator with size attribute."
-            )
+        check_comm(comm)
 
         if comm.size > 1:
             with File(filename, "r", driver="mpio", comm=comm) as h5f:
@@ -110,6 +109,8 @@ def head(*args, comm=None, **kwargs):
 
 def _write_dataset(grp, key, data, comm=None, **kwargs):
     "Writes a dataset in the group"
+    assert not kwargs, f"Unknown parameters {kwargs}"
+
     if not key:
         for name in default_names():
             if name not in grp:
@@ -156,7 +157,7 @@ def _write_dispatch(h5f, data, key, **kwargs):
         for map_key, val in data.items():
             _write_dispatch(h5f, val, key + "/" + map_key, **kwargs)
     else:
-        return _write(h5f, data, key, **kwargs)
+        _write(h5f, data, key, **kwargs)
 
 
 def save(data, filename, key=None, comm=None, **kwargs):
@@ -170,10 +171,7 @@ def save(data, filename, key=None, comm=None, **kwargs):
         raise NotImplementedError("DaskIO for HDF5 save not implemented yet.")
 
     if comm is not None:
-        if not hasattr(comm, "size"):
-            raise TypeError(
-                "comm variable needs to be a valid MPI communicator with size attribute."
-            )
+        check_comm(comm)
 
         if comm.size > 1:
             try:
