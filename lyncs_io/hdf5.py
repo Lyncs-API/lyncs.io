@@ -99,7 +99,7 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
                 return _load_dispatch(h5f, key, loader, **kwargs)
 
     with File(filename, "r") as h5f:
-        return _load_dispatch(h5f, key, **kwargs)
+        return _load_dispatch(h5f, key, loader, **kwargs)
 
 
 def head(*args, comm=None, **kwargs):
