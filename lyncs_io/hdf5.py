@@ -151,8 +151,8 @@ def _write(h5f, data, key, **kwargs):
 
 def _write_dispatch(h5f, data, key, **kwargs):
     if isinstance(data, Mapping):
-        for key2, val in data.items():
-            _write_dispatch(h5f, val, key + "/" + key2, **kwargs)
+        for map_key, val in data.items():
+            _write_dispatch(h5f, val, key + "/" + map_key, **kwargs)
     else:
         return _write(h5f, data, key, **kwargs)
 
