@@ -102,9 +102,9 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
         return _load_dispatch(h5f, key, loader, **kwargs)
 
 
-def head(*args, comm=None, **kwargs):
+def head(*args, **kwargs):
     "Head function for HDF5"
-    return load(*args, header_only=True, comm=comm, **kwargs)
+    return load(*args, header_only=True, **kwargs)
 
 
 def _write_dataset(grp, key, data, comm=None, **kwargs):
@@ -173,6 +173,7 @@ def save(data, filename, key=None, comm=None, **kwargs):
     if comm is not None:
         check_comm(comm)
 
+        # TODO: restore only the case with "a" when the issue in h5py is fixed
         if comm.size > 1:
             try:
                 with File(filename, "a", driver="mpio", comm=comm) as h5f:
