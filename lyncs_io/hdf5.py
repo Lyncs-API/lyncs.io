@@ -38,10 +38,10 @@ def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     return attrs, from_array(dts[slc], attrs)
 
 
-def _load(h5f, depth=1, header_only=False, comm=None, all=False, **kwargs):
+def _load(h5f, depth=1, header_only=False, all=False, **kwargs):
     if isinstance(h5f, Group):
         return {
-            key: _load(val, depth=depth - 1, comm=comm, all=all)
+            key: _load(val, depth=depth - 1, all=all, **kwargs)
             if all or depth > 0
             else None
             for key, val in h5f.items()
@@ -49,7 +49,7 @@ def _load(h5f, depth=1, header_only=False, comm=None, all=False, **kwargs):
 
     if isinstance(h5f, Dataset):
         header, data = _load_dataset(
-            h5f, header_only=header_only or (not all), comm=comm, **kwargs
+            h5f, header_only=header_only or (not all), **kwargs
         )
         if header_only:
             return header
@@ -58,20 +58,20 @@ def _load(h5f, depth=1, header_only=False, comm=None, all=False, **kwargs):
     raise TypeError(f"Unsupported {type(h5f)}")
 
 
-def _load_dispatch(h5f, key, loader, header_only=False, comm=None, **kwargs):
+def _load_dispatch(h5f, key, loader, header_only=False, **kwargs):
 
     if key:
         h5f = h5f[key]
 
     if isinstance(h5f, Dataset):
-        header, data = _load_dataset(h5f, comm=comm, **kwargs)
+        header, data = _load_dataset(h5f, **kwargs)
         if header_only:
             return header
 
         return data
 
     if isinstance(h5f, Group):
-        return Archive(_load(h5f, comm=comm, **kwargs), loader=loader, path=key)
+        return Archive(_load(h5f, **kwargs), loader=loader, path=key)
 
     raise TypeError(f"Unsupported {type(h5f)}")
 
@@ -82,7 +82,9 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
         raise ValueError("chunks and comm parameters cannot be both set")
 
     filename, key = split_filename(filename, key)
-    loader = Loader(load, filename, kwargs={"chunks": chunks, "comm": comm, **kwargs})
+    # Append comm and chunks in kwargs
+    kwargs = {"chunks": chunks, "comm": comm, **kwargs}
+    loader = Loader(load, filename, kwargs=kwargs)
 
     if chunks is not None:
         raise NotImplementedError("DaskIO for HDF5 load not implemented yet.")
@@ -95,10 +97,10 @@ def load(filename, key=None, chunks=None, comm=None, **kwargs):
 
         if comm.size > 1:
             with File(filename, "r", driver="mpio", comm=comm) as h5f:
-                return _load_dispatch(h5f, key, loader, comm=comm, **kwargs)
+                return _load_dispatch(h5f, key, loader, **kwargs)
 
     with File(filename, "r") as h5f:
-        return _load_dispatch(h5f, key, loader, **kwargs)
+        return _load_dispatch(h5f, key, **kwargs)
 
 
 def head(*args, comm=None, **kwargs):
