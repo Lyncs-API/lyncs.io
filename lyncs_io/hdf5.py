@@ -106,23 +106,6 @@ def head(*args, comm=None, **kwargs):
     return load(*args, header_only=True, comm=comm, **kwargs)
 
 
-def _flatten_mapping(map):
-    """
-    Accepts a nested Mapping as argument and iterates over
-    all values of nested Mappings creating a flatten key,value pair
-    """
-    if not isinstance(map, Mapping):
-        raise TypeError("Object must be a Mapping.")
-
-    for key, val in map.items():
-        if isinstance(val, Mapping):
-            if not val:
-                yield (key, "")
-            yield from (("%s/%s" % (key, k2), v2) for k2, v2 in _flatten_mapping(val))
-        else:
-            yield (key, val)
-
-
 def _write_dataset(grp, key, data, comm=None, **kwargs):
     "Writes a dataset in the group"
     if not key:
@@ -159,33 +142,28 @@ def split_key(key):
     return "/" + "/".join(tmp[:-1]), tmp[-1]
 
 
-def _write(h5f, data, key, comm=None, **kwargs):
+def _write(h5f, data, key, **kwargs):
     "Ensures a group is created and the dataset is written"
     group, dataset = split_key(key)
     h5f = h5f.require_group(group)
-    return _write_dataset(h5f, dataset, data, comm=comm, **kwargs)
+    return _write_dataset(h5f, dataset, data, **kwargs)
 
 
-def _write_dispatch(h5f, data, key, comm=None, all=False, **kwargs):
+def _write_dispatch(h5f, data, key, **kwargs):
     if isinstance(data, Mapping):
-        if all:
-            for pair in _flatten_mapping(data):
-                _write(h5f, pair[1], key + "/" + pair[0], comm=comm, **kwargs)
-        else:
-            for pair in _flatten_mapping(data):
-                # FIXME: Make sure we only check against the key the user explicitly provided and NOT against the full key
-                if pair[0] == key:
-                    return _write(h5f, pair[1], key, comm=comm, **kwargs)
-            raise ValueError(f"{key} does not exist in the Mapping")
-
+        for key2, val in data.items():
+            _write_dispatch(h5f, val, key + "/" + key2, **kwargs)
     else:
-        return _write(h5f, data, key, comm=comm, **kwargs)
+        return _write(h5f, data, key, **kwargs)
 
 
 def save(data, filename, key=None, comm=None, **kwargs):
     "Save function for HDF5"
     filename, key = split_filename(filename, key)
     key = key or "/"
+    # Append comm in kwargs
+    kwargs = {"comm": comm, **kwargs}
+
     if is_dask_array(data):
         raise NotImplementedError("DaskIO for HDF5 save not implemented yet.")
 
@@ -198,10 +176,10 @@ def save(data, filename, key=None, comm=None, **kwargs):
         if comm.size > 1:
             try:
                 with File(filename, "a", driver="mpio", comm=comm) as h5f:
-                    return _write_dispatch(h5f, data, key, comm=comm, **kwargs)
+                    return _write_dispatch(h5f, data, key, **kwargs)
             except OSError:
                 with File(filename, "w", driver="mpio", comm=comm) as h5f:
-                    return _write_dispatch(h5f, data, key, comm=comm, **kwargs)
+                    return _write_dispatch(h5f, data, key, **kwargs)
 
     with File(filename, "a") as h5f:
         return _write_dispatch(h5f, data, key, **kwargs)
