@@ -18,7 +18,7 @@ from lyncs_io.testing import (
 )
 
 
-def test_daskio_abspath(client, tempdir):
+def test_Dask_daskio_abspath(client, tempdir):
 
     assert os.path.isabs(DaskIO(tempdir + "/foo_daskio_load.npy").filename)
     assert os.path.isabs(DaskIO("./foo_daskio_load.npy").filename)
@@ -28,7 +28,7 @@ def test_daskio_abspath(client, tempdir):
 @shape_loop
 @chunksize_loop
 @workers_loop
-def test_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
+def test_Dask_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_daskio_load.npy"
     x_ref = numpy.random.rand(*shape).astype(dtype)
@@ -50,7 +50,7 @@ def test_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
     assert (x_ref == x_lazy_in.compute(num_workers=workers)).all()
 
 
-def test_daskio_write_exceptions(client, tempdir):
+def test_Dask_daskio_write_exceptions(client, tempdir):
 
     assert not is_dask_array(numpy.zeros(10))
     assert is_dask_array(da.zeros(10))
@@ -63,7 +63,7 @@ def test_daskio_write_exceptions(client, tempdir):
 @shape_loop
 @chunksize_loop
 @workers_loop
-def test_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
+def test_Dask_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_daskio_write.npy"
 
@@ -86,7 +86,7 @@ def test_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
 
 @dtype_loop
 @workers_loop
-def test_daskio_write_update(client, tempdir, dtype, workers):
+def test_Dask_daskio_write_update(client, tempdir, dtype, workers):
 
     ftmp = tempdir + "/foo_daskio_write_update.npy"
 

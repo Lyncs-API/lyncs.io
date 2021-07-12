@@ -9,7 +9,7 @@ from lyncs_io.testing import (
 
 
 @mark_mpi
-def test_comm_types():
+def test_MPI_decomposition_comm_types():
     from mpi4py import MPI
 
     # Requires a communicator
@@ -63,7 +63,7 @@ def test_comm_types():
 
 
 @mark_mpi
-def test_mpi_property():
+def test_MPI_decomposition_mpi_property():
     from mpi4py import MPI
 
     assert hasattr(Decomposition(MPI.COMM_WORLD), "MPI")
@@ -71,7 +71,7 @@ def test_mpi_property():
 
 @mark_mpi
 @shape_loop
-def test_Decomposition_Comm(tempdir_MPI, shape):
+def test_MPI_decomposition_Decomposition_Comm(tempdir_MPI, shape):
     from mpi4py import MPI
 
     topo = MPI.COMM_WORLD
@@ -97,7 +97,7 @@ def test_Decomposition_Comm(tempdir_MPI, shape):
 @mark_mpi
 @parallel_loop
 @shape_loop
-def test_Decomposition_Cartesian(tempdir_MPI, procs, shape):
+def test_MPI_decomposition_Decomposition_Cartesian(tempdir_MPI, procs, shape):
     from mpi4py import MPI
 
     topo = MPI.COMM_WORLD.Create_cart(dims=procs)

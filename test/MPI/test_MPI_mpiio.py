@@ -21,7 +21,7 @@ from lyncs_io.testing import (
 
 
 @mark_mpi
-def test_mpiio_constructor():
+def test_MPI_mpiio_constructor():
     from mpi4py import MPI
 
     comm = get_comm()
@@ -41,7 +41,7 @@ def test_mpiio_constructor():
 
 
 @mark_mpi
-def test_mpiio_file_handler(tempdir_MPI):
+def test_MPI_mpiio_file_handler(tempdir_MPI):
     from mpi4py import MPI
 
     comm = get_comm()
@@ -60,7 +60,7 @@ def test_mpiio_file_handler(tempdir_MPI):
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
+def test_MPI_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
@@ -97,7 +97,7 @@ def test_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
 @dtype_loop
 @lshape_loop
 @parallel_loop
-def test_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, procs):
+def test_MPI_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, procs):
 
     comm = get_cart(procs=procs)
     dims, _, coords = comm.Get_topo()
@@ -125,7 +125,7 @@ def test_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, procs):
 @mark_mpi
 @dtype_loop
 @lshape_loop
-def test_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
+def test_MPI_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
@@ -158,7 +158,7 @@ def test_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 @dtype_loop
 @lshape_loop
 @parallel_loop
-def test_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
+def test_MPI_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
 
     comm = get_cart(procs=procs)
     dims, _, coords = comm.Get_topo()

@@ -20,7 +20,7 @@ from lyncs_io.testing import (
 @shape_loop
 @chunksize_loop
 @workers_loop
-def test_numpy_load(client, tempdir, dtype, shape, chunksize, workers):
+def test_Dask_numpy_load(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_numpy_daskio_load.npy"
     x_ref = numpy.random.rand(*shape).astype(dtype)
@@ -37,7 +37,7 @@ def test_numpy_load(client, tempdir, dtype, shape, chunksize, workers):
 @shape_loop
 @chunksize_loop
 @workers_loop
-def test_numpy_write(client, tempdir, dtype, shape, chunksize, workers):
+def ttest_Dask_numpy_write(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_numpy_daskio_write.npy"
 
@@ -59,7 +59,7 @@ def test_numpy_write(client, tempdir, dtype, shape, chunksize, workers):
 
 @dtype_loop
 @workers_loop
-def test_numpy_write_update(client, tempdir, dtype, workers):
+def test_Dask_numpy_write_update(client, tempdir, dtype, workers):
 
     ftmp = tempdir + "/foo_numpy_daskio_write_update.npy"
 

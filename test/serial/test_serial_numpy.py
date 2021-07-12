@@ -8,7 +8,7 @@ from lyncs_utils import prod
 
 @dtype_loop
 @shape_loop
-def test_numpy(dtype, shape):
+def test_serial_numpy(dtype, shape):
     arr = np.random.rand(*shape).astype(dtype)
     with tempfile.TemporaryDirectory() as tmp:
         ftmp = tmp + "/foo.npy"

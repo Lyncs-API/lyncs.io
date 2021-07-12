@@ -40,7 +40,7 @@ def get_local_array_slice(dims, lshape, dtype, coords):
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
+def test_MPI_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
@@ -68,7 +68,7 @@ def test_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
 @dtype_loop
 @lshape_loop  # enables local domain
 @parallel_loop
-def test_hdf5_load_dataset_cart(tempdir_MPI, dtype, lshape, procs):
+def test_MPI_hdf5_load_dataset_cart(tempdir_MPI, dtype, lshape, procs):
 
     comm = get_cart(procs=procs)
     dims, _, coords = comm.Get_topo()
@@ -94,7 +94,7 @@ def test_hdf5_load_dataset_cart(tempdir_MPI, dtype, lshape, procs):
 
 @mark_mpi
 @parallel_loop
-def test_hdf5_all_cart(tempdir_MPI, procs):
+def test_MPI_hdf5_all_cart(tempdir_MPI, procs):
 
     comm = get_cart(procs=procs)
     dims, _, coords = comm.Get_topo()
