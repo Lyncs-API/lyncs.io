@@ -73,11 +73,11 @@ The high-level `load` and `save` (or `dump` as alias of `save`) functions provid
 import numpy as np
 import lyncs_io as io
 
-arr1 = np.random.rand((10,10,10))
-io.save(arr, "data.h5/random")
+arr1 = np.random.rand(10,10,10)
+io.save(arr1, "data.h5/random")
 
-arr2 = np.zeros_like(arr)
-io.save(arr, "data.h5/zeros")
+arr2 = np.zeros_like(arr1)
+io.save(arr2, "data.h5/zeros")
 
 arrs = io.load("data.h5")
 assert (arr1 == arrs["random"]).all()
@@ -132,6 +132,62 @@ client.shutdown()
 NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` routine using `chunks` parameter. For `save` routine, the DaskIO is enabled only if the array passed is a Dask Array. Currently only `numpy` format supports this functionality.
 
 ### IO with HDF5
+
+```python
+import numpy as np
+import lyncs_io as io
+from mpi4py import MPI
+
+# Assume 2D cartesian topology
+comm = MPI.COMM_WORLD
+dims = MPI.Compute_dims(comm.size, 2)
+cartesian2d = comm.Create_cart(dims=dims)
+
+arr1 = np.random.rand(10,10,10)
+# write as "random" dataset using the filename
+io.save(arr1, "data.h5/random", comm=comm)
+
+arr2 = np.zeros_like(arr1)
+# write as "zeros" dataset using the key argument
+io.save(arr2, "data.h5", key="zeros", comm=comm)
+
+# load the headers of all the available datasets
+arrs = io.load("data.h5", comm=comm)
+
+# actual datasets are loaded here on demand
+assert (arr1 == arrs["random"]).all()
+assert (arr2 == arrs["zeros"]).all()
+```
+
+```python
+import numpy as np
+import lyncs_io as io
+from mpi4py import MPI
+
+# Assume 2D cartesian topology
+comm = MPI.COMM_WORLD
+dims = MPI.Compute_dims(comm.size, 2)
+cartesian2d = comm.Create_cart(dims=dims)
+
+mydict = {
+        "random": {
+            "arr0": np.random.rand(10,10,10),
+            "arr1": np.random.rand(5,5),
+        },
+        "zeros":  np.zeros((4, 4, 4, 4)),
+    }
+# once a dictionary (or mapping) is passed it is written as a group
+io.save(mydict, "data.h5/dict", comm=comm)
+
+# all the datasets in the .h5 file are loaded here using all_data argument
+loaded_dict = io.load("data.h5", comm=comm, all_data=True)
+
+assert (mydict["random"]["arr0"] == loaded_dict["dict"]["random"]["arr0"]).all()
+assert (mydict["random"]["arr1"] == loaded_dict["dict"]["random"]["arr1"]).all()
+assert (mydict["zeros"] == loaded_dict["dict"]["zeros"]).all()
+```
+
+NOTE: Parallel IO for HDF5 is enabled once a valid cartesian communicator is passed to `load` or `save` routines, otherwise Serial IO is performed. 
 
 ### File formats
 
