@@ -2,7 +2,7 @@ from pytest import raises
 from lyncs_io.format import Formats
 
 
-def test_error():
+def test_serial_error():
     formats = Formats()
     formats.register(
         "broken", extensions=["bar"], error=ImportError("Not a real format")

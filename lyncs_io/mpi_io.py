@@ -2,9 +2,19 @@
 Parallel IO using MPI
 """
 
-__all__ = ["MpiIO", "Decomposition"]
+__all__ = ["MpiIO"]
 
 import numpy
+
+from .decomposition import Decomposition
+
+
+def check_comm(comm):
+    "Raises error if comm is not valid"
+    if not hasattr(comm, "size"):
+        raise TypeError(
+            "comm variable needs to be a valid MPI communicator with size attribute."
+        )
 
 
 class MpiIO:
@@ -189,155 +199,3 @@ class MpiIO:
             if key == "write":
                 key = "Write"
             return self.handler.__getattribute__(key)
-
-
-class Decomposition:
-    """
-    Decompose data using Cartesian/Domain Decomposition
-    of arbitrary dimensions
-    """
-
-    # pylint: disable=C0103
-    @property
-    def MPI(self):
-        """
-        Property for importing MPI wherever necessary
-        """
-        # pylint: disable=C0415
-        from mpi4py import MPI
-
-        return MPI
-
-    def __init__(self, comm=None):
-        if (comm is None) or (not isinstance(comm, self.MPI.Comm)):
-            raise TypeError("Expected an MPI communicator")
-
-        self.comm = comm
-        self.size = self.comm.Get_size()
-        self.rank = self.comm.Get_rank()
-
-        if comm.topology is self.MPI.GRAPH or comm.topology is self.MPI.DIST_GRAPH:
-            raise TypeError(f"comm is of unsupported type: {type(comm)}")
-        if comm.topology is self.MPI.CART:
-            self.dims = self.MPI.Compute_dims(self.size, comm.Get_dim())
-            self.coords = self.comm.Get_coords(self.rank)
-        elif isinstance(comm, self.MPI.Intracomm):
-            self.dims = [self.size]
-            self.coords = [self.rank]
-
-    def decompose(self, domain):
-        """
-        Decompose data over a cartesian/normal communicator.
-        Data domains of higher order compared to communicators order
-        only decomposed on the slow moving indexes.
-
-        Parameters
-        ----------
-        domain : list
-            Contains the global size domain we are decomposing.
-
-        Returns:
-        --------
-        sizes : list
-            global size of the domain
-        sub_sizes : list
-            local size of the domain
-        starts : list
-            global starting position
-        """
-
-        sizes = list(domain)
-        sub_sizes = list(domain)
-        starts = [0] * len(domain)
-
-        # Iterating over the dimensions of the topology
-        # allows for decomposition of higher order data domains
-        for dim in range(len(self.dims)):
-            workers, proc_id = self.dims[dim], self.coords[dim]
-            if domain[dim] < workers:
-                raise ValueError(
-                    "Domain size ({}) must be larger than the amount of workers({})".format(
-                        domain[dim], workers
-                    )
-                )
-
-            low = _split_work(domain[dim], workers, proc_id)
-            high = _split_work(domain[dim], workers, proc_id + 1)
-
-            sub_sizes[dim] = high - low
-            starts[dim] = low
-
-        return sizes, sub_sizes, starts
-
-    def compose(self, domain):
-        """
-        Reconstruct global data domain and position of the
-        local array relatively to the global domain.
-
-        Parameters
-        ----------
-        domain : list
-            Contains the local size domain of the array.
-
-        Returns:
-        --------
-        sizes : list
-            global size of the domain
-        sub_sizes : list
-            local size of the domain
-        starts : list
-            global starting position
-        """
-        sizes = list(domain)
-        sub_sizes = list(domain)
-        starts = [0] * len(domain)
-
-        # Iterating over the dimensions of the topology
-        # allows for composition of higher order data domains
-        for dim in range(len(self.dims)):
-            rdims = [False] * len(self.dims)
-            rdims[dim] = True
-
-            # sub-communicator for collective communications over
-            # a single dimension in the topology
-            if self.comm.topology is self.MPI.CART:
-                subcomm = self.comm.Sub(remain_dims=rdims)
-            else:
-                subcomm = self.comm
-
-            sub_size = subcomm.allgather(sub_sizes[dim])
-            sizes[dim] = sum(sub_size)
-            starts[dim] = numpy.cumsum([0] + sub_size)[self.coords[dim]]
-
-        return sizes, sub_sizes, starts
-
-
-def _split_work(load, workers, proc_id):
-    """
-    Uniformly distributes load over the dimension.
-    Remaining load is assigned in reverse round robin manner
-
-    Parameters
-    ----------
-    load : int
-        load size to be assigned
-    workers : int
-        total processing elements work will be assigned to
-    proc_id : int
-        processing element for which the bound is calculated for
-
-    Returns:
-    --------
-    bound : int
-        low bound of the workload assigned to the worker
-    """
-    unifload = load // workers  # uniform distribution
-    rem = load - unifload * workers
-
-    # round-robin assignment of the remaining work
-    if proc_id <= rem:
-        bound = (unifload + 1) * proc_id
-    else:
-        bound = (unifload + 1) * rem + unifload * (proc_id - rem)
-
-    return bound

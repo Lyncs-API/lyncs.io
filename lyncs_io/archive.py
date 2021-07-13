@@ -184,7 +184,10 @@ class Archive(Mapping):
                 pass
             else:
                 val = Archive(
-                    val, loader=self.loader, path=f"{self.path}/{this}", parent=self
+                    val,
+                    loader=self.loader,
+                    path=f"{self.path}/{this}",
+                    parent=self,
                 )
 
         else:

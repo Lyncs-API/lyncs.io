@@ -19,7 +19,6 @@ jobs:
       fail-fast: false
       matrix:
         py-version:
-          - 3.6
           - 3.7
           - 3.8
           - 3.x
@@ -33,9 +32,6 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - name: Install MPI (${{ matrix.mpi }})
-        run: bash .bash/install-${{ matrix.mpi }}.sh
-
       - name: Set up Python ${{ matrix.py-version }}
         uses: actions/setup-python@v2
         with:
@@ -46,9 +42,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install lyncs_setuptools
 
+      - name: Install OpenMPI Parallel HDF5
+        run: bash .bash/install-hdf5.sh
+
+      - name: Install h5py
+        run: |
+          CC=mpicc HDF5_MPI="ON" HDF5_DIR="${LIO_HDF5_PATH}" pip install --no-binary=h5py h5py
+
       - name: Install via pip
         run: |
-          sudo pip install -e .[all]
+          pip install -e .[all]
 
       - name: Run serial tests
         run: |
@@ -60,7 +63,7 @@ jobs:
           for proc in "${PROCS[@]}"
           do
             echo "::group::Run MPI tests (procs=$proc)"
-            mpirun -n $proc coverage run --rcfile=setup.cfg -m pytest test/MPI --with-mpi
+            mpirun -n $proc --oversubscribe coverage run --rcfile=setup.cfg -m pytest test/MPI --with-mpi
             echo "::endgroup::"
           done
 
