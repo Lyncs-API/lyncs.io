@@ -1,7 +1,7 @@
 from lyncs_io.archive import Data, Archive, split_filename
 
 
-def test_split():
+def test_serial_split():
     for fname, key in [
         ("foo", "bar"),
         ("../foo", "bar"),

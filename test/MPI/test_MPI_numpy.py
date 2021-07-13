@@ -1,15 +1,14 @@
 import numpy
-import pytest
 import lyncs_io as io
 
 from lyncs_io.testing import (
     mark_mpi,
     tempdir_MPI,
     lshape_loop,
-    topo_dim_loop,
     dtype_loop,
+    parallel_loop,
     get_comm,
-    get_topology_dims,
+    get_cart,
     write_global_array,
 )
 
@@ -17,7 +16,7 @@ from lyncs_io.testing import (
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_numpy_mpiio_load_comm(tempdir_MPI, dtype, lshape):
+def test_MPI_numpy_load_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
@@ -36,25 +35,22 @@ def test_numpy_mpiio_load_comm(tempdir_MPI, dtype, lshape):
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-@topo_dim_loop  # enables topology dimension
-def test_numpy_mpiio_load_cart(tempdir_MPI, dtype, lshape, topo_dim):
+@parallel_loop
+def ttest_MPI_numpy_load_cart(tempdir_MPI, dtype, lshape, procs):
 
-    comm = get_comm()
-    rank = comm.rank
-    dims = get_topology_dims(comm, topo_dim)
-    cartesian2d = comm.Create_cart(dims=dims)
-    coords = cartesian2d.Get_coords(rank)
+    comm = get_cart(procs=procs)
+    dims, _, coords = comm.Get_topo()
     ftmp = tempdir_MPI + "/foo_numpy_mpiio_load_cart.npy"
 
-    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
+    mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
 
-    local_array = io.load(ftmp, comm=cartesian2d)
+    local_array = io.load(ftmp, comm=comm)
 
     slices = tuple(
         slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
-        for i in range(topo_dim)
+        for i in range(len(dims))
     )
     assert (global_array[slices] == local_array).all()
 
@@ -62,7 +58,7 @@ def test_numpy_mpiio_load_cart(tempdir_MPI, dtype, lshape, topo_dim):
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_numpy_mpiio_save_comm(tempdir_MPI, dtype, lshape):
+def test_MPI_numpy_save_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
@@ -84,27 +80,24 @@ def test_numpy_mpiio_save_comm(tempdir_MPI, dtype, lshape):
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-@topo_dim_loop  # enables topology dimension
-def test_numpy_mpiio_save_cart(tempdir_MPI, dtype, lshape, topo_dim):
+@parallel_loop
+def test_MPI_numpy_save_cart(tempdir_MPI, dtype, lshape, procs):
 
-    comm = get_comm()
-    rank = comm.rank
-    dims = get_topology_dims(comm, topo_dim)
-    cartesian2d = comm.Create_cart(dims=dims)
-    coords = cartesian2d.Get_coords(rank)
+    comm = get_cart(procs=procs)
+    dims, _, coords = comm.Get_topo()
     ftmp = tempdir_MPI + "/foo_numpy_mpiio_save_cart.npy"
 
-    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
+    mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
 
     slices = tuple(
         slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
-        for i in range(topo_dim)
+        for i in range(len(dims))
     )
     local_array = global_array[slices]
 
-    io.save(local_array, ftmp, comm=cartesian2d)
+    io.save(local_array, ftmp, comm=comm)
 
     global_array = numpy.load(ftmp)
     assert (local_array == global_array[slices]).all()

@@ -4,12 +4,11 @@ import numpy as np
 import tempfile
 
 from lyncs_io.testing import dtype_loop, shape_loop
-from lyncs_utils import prod
 
 
 @dtype_loop
 @shape_loop
-def test_numpy(dtype, shape):
+def test_serial_hdf5(dtype, shape):
     arr = np.random.rand(*shape).astype(dtype)
     with tempfile.TemporaryDirectory() as tmp:
         ftmp = tmp + "/foo.h5/random"
