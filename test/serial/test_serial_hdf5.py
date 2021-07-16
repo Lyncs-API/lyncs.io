@@ -3,9 +3,10 @@ import lyncs_io as io
 import numpy as np
 import tempfile
 
-from lyncs_io.testing import dtype_loop, shape_loop
+from lyncs_io.testing import dtype_loop, shape_loop, skip_hdf5
 
 
+@skip_hdf5
 @dtype_loop
 @shape_loop
 def test_serial_hdf5(dtype, shape):

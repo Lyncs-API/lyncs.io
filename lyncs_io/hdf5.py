@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 from collections.abc import Mapping
-from h5py import File, Dataset, Group
+from h5py import File, Dataset, Group, h5
 from .archive import split_filename, Data, Loader, Archive
 from .convert import to_array, from_array
 from .header import Header
@@ -18,6 +18,8 @@ from .utils import default_names
 from .mpi_io import check_comm
 from .dask_io import is_dask_array
 from .decomposition import Decomposition
+
+mpi = h5.get_config().mpi
 
 
 def _load_dataset(dts, header_only=False, comm=None, **kwargs):

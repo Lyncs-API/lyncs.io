@@ -18,8 +18,18 @@ from pytest import fixture, mark
 import numpy
 
 from lyncs_utils import factors, prod
+from .formats import formats
 
 mark_mpi = mark.mpi(min_size=1)
+
+
+with_hdf5 = formats["hdf5"].error is None
+skip_hdf5 = mark.skipif(not with_hdf5, reason="hdf5 not available")
+if with_hdf5:
+    from .hdf5 import mpi as with_hdf5_mpi
+skip_hdf5_mpi = mark.skipif(
+    not with_hdf5 or not with_hdf5_mpi, reason="parallel hdf5 not available"
+)
 
 shape_loop = mark.parametrize(
     "shape",
