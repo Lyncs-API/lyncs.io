@@ -5,8 +5,8 @@ Archive class and utils
 from collections.abc import Mapping
 from typing import Any
 from dataclasses import dataclass
+from lyncs_utils import to_path
 from .header import Header
-from .utils import to_path
 
 
 @dataclass

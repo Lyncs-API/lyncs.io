@@ -6,8 +6,8 @@ import os
 import numpy
 
 from filelock import FileLock, Timeout
+from lyncs_utils import read, write
 from .convert import from_array
-from .utils import read, write
 
 
 def is_dask_array(obj):

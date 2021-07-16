@@ -2,12 +2,7 @@
 Function utils
 """
 
-import os
-import struct
-from functools import wraps, partial
-from io import IOBase, FileIO
-from pathlib import Path
-from lyncs_utils.io import *
+from functools import wraps
 
 
 def swap(fnc):

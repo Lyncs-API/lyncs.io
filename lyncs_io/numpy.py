@@ -24,11 +24,10 @@ from numpy.lib.format import (
     _write_array_header,
     header_data_from_array_1_0,
 )
-from lyncs_utils import is_keyword
+from lyncs_utils import is_keyword, open_file
 from .archive import split_filename, Data, Loader, Archive
 from .header import Header
-from .utils import swap, open_file
-
+from .utils import swap
 from .mpi_io import MpiIO, check_comm
 from .dask_io import DaskIO, is_dask_array
 
