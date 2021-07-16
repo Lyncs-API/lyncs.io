@@ -1,12 +1,13 @@
 """
 Parallel IO using Dask
 """
-from io import BytesIO
 from time import sleep
 import os
 import numpy
 
 from filelock import FileLock, Timeout
+from .convert import from_array
+from .utils import read, write
 
 
 def is_dask_array(obj):
@@ -41,7 +42,7 @@ class DaskIO:
         # convert to absolute
         self.filename = os.path.abspath(filename)
 
-    def load(self, domain, dtype, header_offset, chunks=None, order="C"):
+    def load(self, domain, dtype, offset, chunks=None, order="C", metadata=None):
         """
         Reads the global domain from a file and loads it in a dask array
 
@@ -54,9 +55,12 @@ class DaskIO:
         order: str
             whether data are stored in row/column
             major ('C', 'F') order in memory
-        header_offset: int
+        offset: int
             offset in bytes to where the
             data start in the file.
+        metadata: dict
+            if given, the array is converted appropriately
+            using `from_array`
 
         Returns:
         --------
@@ -68,13 +72,17 @@ class DaskIO:
             mode="r",
             shape=domain,
             dtype=dtype,
-            offset=header_offset,
+            offset=offset,
             order=order,
         )
+        array = self.dask.array.from_array(array, chunks=chunks)
 
-        return self.dask.array.from_array(array, chunks=chunks)
+        if metadata:
+            array = self.dask.array.map_blocks(from_array, array, metadata=metadata)
 
-    def save(self, array):
+        return array
+
+    def save(self, array, header=None, offset=None):
         """
         Writes the array in a npy file in parallel using dask
 
@@ -91,7 +99,14 @@ class DaskIO:
         if not is_dask_array(array):
             raise TypeError("array should be a Dask Array")
 
-        header = _build_header_from_dask_array(array)
+        if offset is None:
+            if header:
+                offset = len(header)
+            else:
+                offset = 0
+
+        if header is None:
+            header = b""
 
         return self.dask.array.map_blocks(
             _write_blockwise_to_npy,
@@ -99,41 +114,13 @@ class DaskIO:
             self.filename,
             header,
             array.shape,
+            offset,
             chunks=array.chunks,
             dtype=array.dtype,
         )
 
 
-def _get_dask_array_header_offset(header):
-    stream = BytesIO()
-    numpy.lib.format._write_array_header(stream, header)
-
-    return len(stream.getvalue())
-
-
-def _build_header_from_dask_array(array, order="C"):
-    header_dict = {"shape": array.shape}
-    header_dict["fortran_order"] = bool(order == "F")
-    header_dict["descr"] = numpy.lib.format.dtype_to_descr(array.dtype)
-
-    return header_dict
-
-
-def _build_header_from_file(filename):
-
-    with open(filename, "rb") as fptr:
-        version = numpy.lib.format.read_magic(fptr)
-        numpy.lib.format._check_version(version)
-        shape, fortran_order, dtype = numpy.lib.format._read_array_header(fptr, version)
-
-        header_dict = {"shape": shape}
-        header_dict["fortran_order"] = fortran_order
-        header_dict["descr"] = dtype
-
-    return header_dict
-
-
-def _write_npy_header(filename, header, interval=0.001):
+def _write_header(filename, header, interval=0.001):
 
     lock_path = filename + ".lock"
     lock = FileLock(lock_path)
@@ -143,18 +130,19 @@ def _write_npy_header(filename, header, interval=0.001):
         sleep(interval)
 
     # if file does not exist or header is wrong, then we write a new file
-    if not os.path.exists(filename) or header != _build_header_from_file(filename):
+    if not os.path.exists(filename) or header != read(filename, len(header)):
         try:
             # we use timeout smaller than poll_intervall so only one lock is acquired
             with lock.acquire(timeout=interval / 2, poll_intervall=interval):
-                with open(filename, "wb") as fptr:
-                    numpy.lib.format._write_array_header(fptr, header)
+                write(filename, header)
         except Timeout:
             # restart the function and wait for the writing to be completed
-            _write_npy_header(filename, header, interval=interval)
+            _write_header(filename, header, interval=interval)
 
 
-def _write_blockwise_to_npy(array_block, filename, header, shape, block_info=None):
+def _write_blockwise_to_npy(
+    array_block, filename, header, shape, offset, block_info=None
+):
     """
     Performs a lazy blockwise write of a dask array to file.
 
@@ -179,8 +167,7 @@ def _write_blockwise_to_npy(array_block, filename, header, shape, block_info=Non
     data : slice of the memmap written to the file
     """
 
-    _write_npy_header(filename, header)
-    offset = _get_dask_array_header_offset(header)
+    _write_header(filename, header)
 
     data = numpy.memmap(
         filename,

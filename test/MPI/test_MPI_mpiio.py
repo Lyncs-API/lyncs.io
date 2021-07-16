@@ -7,6 +7,7 @@ from numpy.lib.format import (
 
 from lyncs_io.mpi_io import MpiIO, Decomposition
 from lyncs_io import numpy as np
+from lyncs_io.numpy import _get_header_bytes
 
 from lyncs_io.testing import (
     mark_mpi,
@@ -141,14 +142,9 @@ def test_MPI_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 
     with MpiIO(comm, ftmp, mode="w") as mpiio:
         global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
-        assert global_shape == list(global_array.shape)
-
-        if mpiio.rank == 0:
-            header = header_data_from_array_1_0(local_array)
-            header["shape"] = tuple(global_shape)  # needs to be tuple
-            _write_array_header(mpiio.handler, header)
-
-        mpiio.save(local_array)
+        assert global_shape == global_array.shape
+        header = _get_header_bytes(local_array, shape=global_shape)
+        mpiio.save(local_array, header=header)
 
     global_array = numpy.load(ftmp)
     assert (local_array == global_array[slc]).all()
@@ -177,14 +173,9 @@ def test_MPI_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
 
     with MpiIO(comm, ftmp, mode="w") as mpiio:
         global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
-        assert global_shape == list(global_array.shape)
-
-        if mpiio.rank == 0:
-            header = header_data_from_array_1_0(local_array)
-            header["shape"] = tuple(global_shape)  # needs to be tuple
-            _write_array_header(mpiio.handler, header)
-
-        mpiio.save(local_array)
+        assert global_shape == global_array.shape
+        header = _get_header_bytes(local_array, shape=global_shape)
+        mpiio.save(local_array, header=header)
 
     global_array = numpy.load(ftmp)
     assert (local_array == global_array[slices]).all()

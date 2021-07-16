@@ -13,7 +13,7 @@ __all__ = [
     "savez",
 ]
 
-from io import UnsupportedOperation
+from io import UnsupportedOperation, BytesIO
 from functools import wraps
 import numpy
 from numpy.lib.npyio import NpzFile
@@ -78,15 +78,14 @@ def load(filename, chunks=None, comm=None, **kwargs):
     if comm is not None:
         check_comm(comm)
 
-        if comm.size > 1:
-            metadata = head(filename)
-            with MpiIO(comm, filename, mode="r") as mpiio:
-                return mpiio.load(
-                    metadata["shape"],
-                    metadata["dtype"],
-                    "F" if metadata["_fortran_order"] else "C",
-                    metadata["_offset"],
-                )
+        metadata = head(filename)
+        with MpiIO(comm, filename, mode="r") as mpiio:
+            return mpiio.load(
+                metadata["shape"],
+                metadata["dtype"],
+                "F" if metadata["_fortran_order"] else "C",
+                metadata["_offset"],
+            )
 
     return numpy.load(filename, **kwargs)
 
@@ -111,23 +110,35 @@ def save(array, filename, comm=None, **kwargs):
 
     if is_dask_array(array):
         daskio = DaskIO(filename)
-        return daskio.save(array)
+        header = _get_header_bytes(array, fortran_order=False)
+        return daskio.save(array, header=header)
 
     if comm is not None:
         check_comm(comm)
 
-        if comm.size > 1:
-            with MpiIO(comm, filename, mode="w") as mpiio:
-                global_shape, _, _ = mpiio.decomposition.compose(array.shape)
-
-                if mpiio.rank == 0:
-                    header = header_data_from_array_1_0(array)
-                    header["shape"] = tuple(global_shape)  # needs to be tuple
-                    _write_array_header(mpiio.handler, header)
-
-                return mpiio.save(array)
+        with MpiIO(comm, filename, mode="w") as mpiio:
+            global_shape, _, _ = mpiio.decomposition.compose(array.shape)
+            header = _get_header_bytes(array, shape=global_shape)
+            return mpiio.save(array, header=header)
 
     return numpy.save(filename, array, **kwargs)
+
+
+def _get_header(array, **header):
+    if "shape" not in header:
+        header["shape"] = array.shape
+    if "fortran_order" not in header:
+        header["fortran_order"] = numpy.isfortran(array)
+    if "descr" not in header:
+        header["descr"] = numpy.lib.format.dtype_to_descr(array.dtype)
+    return header
+
+
+def _get_header_bytes(array, **kwargs):
+    stream = BytesIO()
+    header = _get_header(array, **kwargs)
+    numpy.lib.format._write_array_header(stream, header)
+    return stream.getvalue()
 
 
 def _get_offset(npy):
