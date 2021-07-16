@@ -87,7 +87,7 @@ class Decomposition:
             sub_sizes[dim] = high - low
             starts[dim] = low
 
-        return sizes, sub_sizes, starts
+        return tuple(sizes), tuple(sub_sizes), tuple(starts)
 
     def compose(self, domain):
         """
@@ -138,7 +138,7 @@ class Decomposition:
             sizes[dim] = sum(sub_size)
             starts[dim] = numpy.cumsum([0] + sub_size)[self.coords[dim]]
 
-        return sizes, sub_sizes, starts
+        return tuple(sizes), tuple(sub_sizes), tuple(starts)
 
 
 def _split_work(load, workers, proc_id):
