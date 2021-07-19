@@ -7,6 +7,7 @@ from numpy.lib.format import (
 
 from lyncs_io.mpi_io import MpiIO, Decomposition
 from lyncs_io import numpy as np
+from lyncs_io.convert import to_array
 from lyncs_io.numpy import _get_header_bytes
 
 from lyncs_io.testing import (
@@ -135,15 +136,14 @@ def test_MPI_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
     mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
+    global_array, attrs = to_array(global_array)
+    header = _get_header_bytes(attrs)
     assert global_array.dtype.str != dtype
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
     local_array = global_array[slc]
 
     with MpiIO(comm, ftmp, mode="w") as mpiio:
-        global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
-        assert global_shape == global_array.shape
-        header = _get_header_bytes(local_array, shape=global_shape)
         mpiio.save(local_array, header=header)
 
     global_array = numpy.load(ftmp)
@@ -163,6 +163,8 @@ def test_MPI_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
     mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
     write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
     global_array = numpy.load(ftmp)
+    global_array, attrs = to_array(global_array)
+    header = _get_header_bytes(attrs)
     assert global_array.dtype.str != dtype
 
     slices = tuple(
@@ -172,9 +174,6 @@ def test_MPI_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
     local_array = global_array[slices]
 
     with MpiIO(comm, ftmp, mode="w") as mpiio:
-        global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
-        assert global_shape == global_array.shape
-        header = _get_header_bytes(local_array, shape=global_shape)
         mpiio.save(local_array, header=header)
 
     global_array = numpy.load(ftmp)
@@ -182,7 +181,7 @@ def test_MPI_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
 
 
 def order(header):
-    if header["_fortran_order"] is True:
+    if header["fortran_order"] is True:
         ordering = "Fortran"
     else:
         ordering = "C"

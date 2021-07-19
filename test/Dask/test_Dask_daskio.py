@@ -5,6 +5,7 @@ import dask.array as da
 import pytest
 
 from lyncs_utils import prod
+from lyncs_io.convert import to_array
 from lyncs_io.dask_io import DaskIO, is_dask_array
 from lyncs_io.numpy import _get_header_bytes
 import lyncs_io as io
@@ -43,7 +44,7 @@ def test_Dask_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
         header["dtype"],
         header["_offset"],
         chunks=chunksize,
-        order="F" if header["_fortran_order"] else "C",
+        order="F" if header["fortran_order"] else "C",
     )
 
     assert isinstance(x_lazy_in, da.Array)
@@ -69,7 +70,8 @@ def test_Dask_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
     ftmp = tempdir + "/foo_daskio_write.npy"
 
     x_ref = numpy.random.rand(*shape).astype(dtype)
-    header = _get_header_bytes(x_ref)
+    x_ref, attrs = to_array(x_ref)
+    header = _get_header_bytes(attrs)
     x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
     assert x_lazy.dtype.str != dtype
 
@@ -108,7 +110,8 @@ def test_Dask_daskio_write_update(client, tempdir, dtype, workers):
         chunks = tuple(chunksize for a in range(len(domain)))
 
         x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
-        header = _get_header_bytes(x_ref)
+        x_ref, attrs = to_array(x_ref)
+        header = _get_header_bytes(attrs)
         x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunks)
 
         x_lazy_out = daskio.save(x_lazy, header=header)
