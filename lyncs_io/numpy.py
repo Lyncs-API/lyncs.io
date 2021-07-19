@@ -26,6 +26,7 @@ from numpy.lib.format import (
 )
 from lyncs_utils import is_keyword, open_file
 from .archive import split_filename, Data, Loader, Archive
+from .convert import to_array
 from .header import Header
 from .utils import swap, is_dask_array
 from .mpi_io import MpiIO, check_comm
@@ -106,10 +107,11 @@ def save(array, filename, comm=None, **kwargs):
         A valid cartesian MPI Communicator.
 
     """
+    array, attrs = to_array(array)
 
     if is_dask_array(array):
         daskio = DaskIO(filename)
-        header = _get_header_bytes(array, fortran_order=False)
+        header = _get_header_bytes(attrs)
         return daskio.save(array, header=header)
 
     if comm is not None:
@@ -117,26 +119,17 @@ def save(array, filename, comm=None, **kwargs):
 
         with MpiIO(comm, filename, mode="w") as mpiio:
             global_shape, _, _ = mpiio.decomposition.compose(array.shape)
-            header = _get_header_bytes(array, shape=global_shape)
+            attrs["shape"] = global_shape
+            header = _get_header_bytes(attrs)
             return mpiio.save(array, header=header)
 
     return numpy.save(filename, array, **kwargs)
 
 
-def _get_header(array, **header):
-    if "shape" not in header:
-        header["shape"] = array.shape
-    if "fortran_order" not in header:
-        header["fortran_order"] = numpy.isfortran(array)
-    if "descr" not in header:
-        header["descr"] = numpy.lib.format.dtype_to_descr(array.dtype)
-    return header
-
-
-def _get_header_bytes(array, **kwargs):
+def _get_header_bytes(attrs):
     stream = BytesIO()
-    header = _get_header(array, **kwargs)
-    numpy.lib.format._write_array_header(stream, header)
+    keys = ["shape", "fortran_order", "descr"]
+    numpy.lib.format._write_array_header(stream, {key: attrs[key] for key in keys})
     return stream.getvalue()
 
 

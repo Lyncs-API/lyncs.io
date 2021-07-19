@@ -4,7 +4,8 @@ such that the array buffer can be converted back to the original data objects.
 """
 
 from datetime import datetime
-from numpy import frombuffer, array
+import numpy
+from .utils import is_dask_array
 from . import __version__
 
 
@@ -19,28 +20,45 @@ def get_attrs(data):
     }
 
 
+def get_array_attrs(data):
+    "Returns attributes of an array"
+    if is_dask_array(data):
+        fortran_order = False
+    else:
+        fortran_order = numpy.isfortran(data)
+    return {
+        "shape": data.shape,
+        "dtype": data.dtype,
+        "fortran_order": fortran_order,
+        "descr": numpy.lib.format.dtype_to_descr(data.dtype),
+    }
+
+
+def get_array(data):
+    "Converts data to array"
+    if is_dask_array(data):
+        return data
+    return numpy.array(data)
+
+
 def to_array(data):
     """
     Converts a data object to array. Returns also the list of attributes
     needed for reconstructing it.
     """
-    return array(data), get_attrs(data)
+    attrs = get_attrs(data)
+    data = get_array(data)
+    attrs.update(get_array_attrs(data))
+    return data, attrs
 
 
-def to_bytes(data, order="C"):
+def to_bytes(data):
     """
     Converts a data object to bytes. Returns also the list of attributes
     needed for reconstructing it.
     """
     arr, attrs = to_array(data)
-    attrs.update(
-        {
-            "shape": arr.shape,
-            "dtype": arr.dtype,
-            "bytes_order": order,
-        }
-    )
-    return arr.tobytes(order), attrs
+    return arr.tobytes(order="F" if attrs["fortran_order"] else "C"), attrs
 
 
 def from_bytes(data, attrs=None):
@@ -50,9 +68,10 @@ def from_bytes(data, attrs=None):
     attrs = attrs or dict()
     dtype = attrs.get("dtype", None)
     shape = attrs.get("shape", None)
-    order = attrs.get("bytes_order", None)
-    # TODO: use order
-    arr = frombuffer(data, dtype=dtype).reshape(shape)
+    fortran_order = attrs.get("fortran_order", None)
+    arr = numpy.frombuffer(data, dtype=dtype).reshape(
+        shape, order="F" if fortran_order else "C"
+    )
     return from_array(arr, attrs)
 
 
