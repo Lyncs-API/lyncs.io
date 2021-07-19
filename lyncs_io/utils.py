@@ -24,11 +24,11 @@ def find_file(filename):
 
     if not exists(filename):
         # A list with files matching the following pattern: filename.*
-        possible_files = [f for f in listdir(parent_dir_path) if splitext(f)[0] == basename(filename)]
+        possible_files = [f for f in listdir(parent_dir_path) if f.startswith(basename(filename))]
 
         # If only one such file exists, load that.
         if len(possible_files) == 1:
-            return possible_files[0]
+            return abspath(possible_files[0])
         elif len(possible_files) > 1:
             raise Exception(f'More than one {filename}.* exist')
         elif len(possible_files) < 1:
