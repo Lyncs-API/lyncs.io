@@ -71,7 +71,7 @@ def load(filename, chunks=None, comm=None, **kwargs):
             metadata["dtype"],
             metadata["_offset"],
             chunks=chunks,
-            order="F" if metadata["_fortran_order"] else "C",
+            order="F" if metadata["fortran_order"] else "C",
         )
 
     if comm is not None:
@@ -82,7 +82,7 @@ def load(filename, chunks=None, comm=None, **kwargs):
             return mpiio.load(
                 metadata["shape"],
                 metadata["dtype"],
-                "F" if metadata["_fortran_order"] else "C",
+                "F" if metadata["fortran_order"] else "C",
                 metadata["_offset"],
             )
 
@@ -157,9 +157,9 @@ def _get_head(npy):
         {
             "shape": shape,
             "dtype": dtype,
+            "fortran_order": fortran_order,
             "_offset": _get_offset(npy),
             "_numpy_version": version,
-            "_fortran_order": fortran_order,
         }
     )
 
