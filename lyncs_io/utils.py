@@ -7,6 +7,37 @@ from io import IOBase, FileIO
 from pathlib import Path
 
 
+def find_file(filename):
+    """
+    Finds a file in the directory that has the same name
+    as the parameter <filename>. If the file does not exist,
+    the directory is searched for <filename.*> instead, and if
+    only one match is found, that particular filename is returned.
+
+    """
+
+    from os import listdir
+    from os.path import dirname, abspath, splitext
+
+    abs_path = abspath(filename)  # Absolute path of filename
+    parent_dir_path = dirname(abs_path)  # Name of filename's parent directory
+
+    if not filename in listdir(parent_dir_path):
+        # A list with files matching the following pattern: filename.*
+        possible_files = [f for f in listdir(
+            parent_dir_path) if splitext(f)[0] == filename]
+
+        # If only one such file exists, load that.
+        if len(possible_files) == 1:
+            return possible_files[0]
+        elif len(possible_files) > 1:
+            raise Exception(f'More than one {filename}.* exist')
+        else:
+            raise Exception(f'No such file: {filename}, {filename}.*')
+    else:
+        return filename
+
+
 def swap(fnc):
     "Returns a wrapper that swaps the first two arguments of the function"
     return wraps(fnc)(
