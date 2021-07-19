@@ -27,9 +27,9 @@ from numpy.lib.format import (
 from lyncs_utils import is_keyword, open_file
 from .archive import split_filename, Data, Loader, Archive
 from .header import Header
-from .utils import swap
+from .utils import swap, is_dask_array
 from .mpi_io import MpiIO, check_comm
-from .dask_io import DaskIO, is_dask_array
+from .dask_io import DaskIO
 
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)

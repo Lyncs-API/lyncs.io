@@ -8,19 +8,7 @@ import numpy
 from filelock import FileLock, Timeout
 from lyncs_utils import read, write
 from .convert import from_array
-
-
-def is_dask_array(obj):
-    """
-    Function for checking if passed object is a dask Array
-    """
-    try:
-        # pylint: disable=C0415
-        from dask.array import Array
-
-        return isinstance(obj, Array)
-    except ImportError:
-        return False
+from .utils import is_dask_array
 
 
 class DaskIO:

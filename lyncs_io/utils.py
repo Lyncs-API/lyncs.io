@@ -5,6 +5,19 @@ Function utils
 from functools import wraps
 
 
+def is_dask_array(obj):
+    """
+    Function for checking if passed object is a dask Array
+    """
+    try:
+        # pylint: disable=C0415
+        from dask.array import Array
+
+        return isinstance(obj, Array)
+    except ImportError:
+        return False
+
+
 def swap(fnc):
     "Returns a wrapper that swaps the first two arguments of the function"
     return wraps(fnc)(

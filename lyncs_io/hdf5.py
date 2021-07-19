@@ -13,10 +13,8 @@ from h5py import File, Dataset, Group, h5
 from .archive import split_filename, Data, Loader, Archive
 from .convert import to_array, from_array
 from .header import Header
-from .utils import default_names
-
+from .utils import default_names, is_dask_array
 from .mpi_io import check_comm
-from .dask_io import is_dask_array
 from .decomposition import Decomposition
 
 mpi = h5.get_config().mpi
