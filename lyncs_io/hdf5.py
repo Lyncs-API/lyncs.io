@@ -138,7 +138,10 @@ def _write_dataset(grp, key, data, comm=None, **kwargs):
         grp.create_dataset(key, data=data)
 
     for attr, val in attrs.items():
-        grp[key].attrs[attr] = val
+        try:
+            grp[key].attrs[attr] = val
+        except TypeError:
+            grp[key].attrs[attr] = str(val)
 
 
 def split_key(key):
