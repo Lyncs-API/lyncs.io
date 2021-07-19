@@ -17,22 +17,21 @@ def find_file(filename):
     """
 
     from os import listdir
-    from os.path import dirname, abspath, splitext
+    from os.path import dirname, abspath, splitext, exists, basename
 
     abs_path = abspath(filename)  # Absolute path of filename
     parent_dir_path = dirname(abs_path)  # Name of filename's parent directory
 
-    if not filename in listdir(parent_dir_path):
+    if not exists(filename):
         # A list with files matching the following pattern: filename.*
-        possible_files = [f for f in listdir(
-            parent_dir_path) if splitext(f)[0] == filename]
+        possible_files = [f for f in listdir(parent_dir_path) if splitext(f)[0] == basename(filename)]
 
         # If only one such file exists, load that.
         if len(possible_files) == 1:
             return possible_files[0]
         elif len(possible_files) > 1:
             raise Exception(f'More than one {filename}.* exist')
-        else:
+        elif len(possible_files) < 1:
             raise Exception(f'No such file: {filename}, {filename}.*')
     else:
         return filename
