@@ -5,6 +5,7 @@ Import this file only if in a testing environment
 __all__ = [
     "mark_mpi",
     "shape_loop",
+    "dtype_loop",
     "chunksize_loop",
     "lshape_loop",
     "workers_loop",
@@ -38,6 +39,14 @@ shape_loop = mark.parametrize(
         (10, 10),
         (10, 10, 10),
         (10, 10, 10, 10),
+    ],
+)
+
+dtype_loop = mark.parametrize(
+    "dtype",
+    [
+        "float32",
+        "float64",
     ],
 )
 
@@ -131,7 +140,7 @@ def tempdir():
     tmp = tempfile.TemporaryDirectory()
     path = tmp.__enter__()
 
-    yield path
+    yield path + "/"
 
     tmp.__exit__(None, None, None)
 
