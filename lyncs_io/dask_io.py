@@ -72,7 +72,7 @@ class DaskIO:
 
     def save(self, array, header=None, offset=None):
         """
-        Writes the array in a npy file in parallel using dask
+        Writes the array in a binary file in parallel using dask
 
         Parameters
         ----------
