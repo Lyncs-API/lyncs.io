@@ -57,9 +57,9 @@ jobs:
         run: |
           coverage run --rcfile=setup.cfg -m pytest test/serial
 
-      - name: Run MPI tests (procs=2, 4, 7, 12)
+      - name: Run MPI tests (procs=2, 4, 7)
         run: |
-          PROCS=(2 4 7 12)
+          PROCS=(2 4 7)
           for proc in "${PROCS[@]}"
           do
             echo "::group::Run MPI tests (procs=$proc)"
