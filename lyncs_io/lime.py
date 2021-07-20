@@ -6,32 +6,29 @@ __all__ = [
     "save",
 ]
 
-import os
-import struct
 import pickle
-import xmltodict
 import re
-import numpy
 from io import SEEK_CUR, BytesIO
-from typing import Mapping
+import numpy
+import xmltodict
 from lyncs_utils import (
     prod,
     open_file,
     read_struct,
     write_struct,
     file_size,
-    write,
-    fopen,
 )
 from .convert import from_array, to_array
 from .header import Header
 from .utils import is_dask_array
+from .mpi_io import MpiIO, check_comm
+from .dask_io import DaskIO
 
 # Constants
-lime_header_size = 144
-lime_magic_number = 1164413355
-lime_file_version_number = 1
-lime_type_length = 128
+HEADER_SIZE = 144
+MAGIC_NUMBER = 1164413355
+FILE_VERSION_NUMBER = 1
+TYPE_LENGTH = 128
 
 
 def parse_num(val):
@@ -88,7 +85,7 @@ write_metadatas = {
     "lyncs-io-info": pickle.dumps,
 }
 
-# lime_type for records with datas
+# lime_type for records with data
 datas = [
     "lyncs-io-data",
     "ildg-binary-data",
@@ -98,17 +95,18 @@ datas = [
 def is_lime_file(_fp):
     "Whether is a lime file"
     magic_number = read_struct(_fp, ">l")[0]
-    return magic_number == lime_magic_number
+    return magic_number == MAGIC_NUMBER
 
 
 @open_file
 def read_record_header(_fp):
     "Reads the header of a record"
+    # pylint: disable=possibly-unused-variable
     magic_number, version, msg_bits, nbytes, lime_type = read_struct(
-        _fp, ">lHHQ%ds" % (lime_type_length,)
+        _fp, ">lHHQ%ds" % (TYPE_LENGTH,)
     )
     offset = _fp.tell()
-    if magic_number != lime_magic_number:
+    if magic_number != MAGIC_NUMBER:
         raise TypeError("Not a valid lime file")
     lime_type = lime_type.decode().split("\0")[0]
     begin = bool(msg_bits >> 15 & 0b1)
@@ -137,7 +135,7 @@ def read_records(_fp, maxsize=1000):
 
     records = []
     offset = 0
-    while offset + lime_header_size < fsize:
+    while offset + HEADER_SIZE < fsize:
         _fp.seek(offset)
         records.append(read_record(_fp, maxsize=maxsize))
         offset = (
@@ -155,8 +153,8 @@ def write_record_header(_fp, lime_type, nbytes, begin=False, end=False):
         lime_type = bytes(lime_type, "utf-8")
     if not isinstance(lime_type, bytes):
         raise TypeError("lime_type neither a string or bytes")
-    if len(lime_type) > lime_type_length:
-        raise ValueError(f"Length of lime_type exceeds {lime_type_length}")
+    if len(lime_type) > TYPE_LENGTH:
+        raise ValueError(f"Length of lime_type exceeds {TYPE_LENGTH}")
 
     msg_bits = 0
     if begin:
@@ -166,9 +164,9 @@ def write_record_header(_fp, lime_type, nbytes, begin=False, end=False):
 
     write_struct(
         _fp,
-        ">lHHQ%ds" % lime_type_length,
-        lime_magic_number,
-        1,  # Version number
+        ">lHHQ%ds" % TYPE_LENGTH,
+        MAGIC_NUMBER,
+        FILE_VERSION_NUMBER,  # Version number
         msg_bits,
         nbytes,
         lime_type,
@@ -192,7 +190,7 @@ def write_record(_fp, lime_type, data, begin=False, end=False):
 @open_file(flag="wb")
 def write_records(_fp, records):
     "Writes a list of records to file"
-    if not isinstance(records, Mapping):
+    if not isinstance(records, dict):
         records = dict(records)
     last = len(records) - 1
     for idx, (key, val) in enumerate(records.items()):
@@ -205,18 +203,18 @@ def write_data(_fp, data, metadata=None, lime_type=None):
         raise TypeError(f"expected bytes, got {type(data)}")
     if lime_type is None:
         lime_type = datas[0]
-    records={}
+    records = {}
     if metadata:
         for key, fnc in write_metadatas.items():
             try:
                 records[key] = fnc(metadata)
             except ValueError:
                 pass
-    records[lime_type] = data if write_data else len(data)
+    records[lime_type] = data
     write_records(_fp, records)
 
 
-def get_header_bytes(metadata, lyme_type=None):
+def get_header_bytes(metadata, lime_type=None):
     "Returns the bytes of the header of metadata"
     out = BytesIO()
     write_data(out, metadata["nbytes"], metadata=metadata, lime_type=lime_type)

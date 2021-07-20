@@ -34,7 +34,7 @@ def find_file(filename):
 
     if len(potential_files) == 1:
         return str(potential_files[0])
-    elif len(potential_files) > 1:
+    if len(potential_files) > 1:
         raise ValueError(f"More than one {filename}.* exist")
     raise FileNotFoundError(f"No such file: {filename}, {filename}.*")
 

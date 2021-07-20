@@ -22,7 +22,6 @@ from numpy.lib.format import (
     _check_version,
     _read_array_header,
     _write_array_header,
-    header_data_from_array_1_0,
 )
 from lyncs_utils import is_keyword, open_file
 from .archive import split_filename, Data, Loader, Archive
@@ -129,7 +128,7 @@ def save(array, filename, comm=None, **kwargs):
 def _get_header_bytes(attrs):
     stream = BytesIO()
     keys = ["shape", "fortran_order", "descr"]
-    numpy.lib.format._write_array_header(stream, {key: attrs[key] for key in keys})
+    _write_array_header(stream, {key: attrs[key] for key in keys})
     return stream.getvalue()
 
 
