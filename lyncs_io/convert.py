@@ -31,10 +31,11 @@ def get_array_attrs(data):
         "dtype": data.dtype,
         "fortran_order": fortran_order,
         "descr": numpy.lib.format.dtype_to_descr(data.dtype),
+        "nbytes": data.nbytes,
     }
 
 
-def get_array(data):
+def _to_array(data):
     "Converts data to array"
     if is_dask_array(data):
         return data
@@ -47,7 +48,7 @@ def to_array(data):
     needed for reconstructing it.
     """
     attrs = get_attrs(data)
-    data = get_array(data)
+    data = _to_array(data)
     attrs.update(get_array_attrs(data))
     return data, attrs
 
