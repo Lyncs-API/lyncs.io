@@ -17,16 +17,21 @@ def find_file(filename):
     """
 
     if isinstance(filename, FileLike):
-        return filename.name
+        return filename
 
     p = Path(filename)
     if p.exists():
         return filename
 
+    # Most probably is an archive
+    if not p.parent.is_dir():
+        return filename
+
     # A list with files matching the following pattern: filename.*
     potential_files = [
-        str(f) for f in p.parent.iterdir() if str(f).startswith(filename)
+        str(f) for f in p.parent.iterdir() if str(f).startswith(str(p))
     ]
+    print(potential_files)
 
     if len(potential_files) == 1:
         return str(potential_files[0])
