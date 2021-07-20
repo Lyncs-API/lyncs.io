@@ -59,7 +59,7 @@ def parse_ildg(info):
 def write_ildg(info):
     "Writer for ildg metadata"
     # TODO
-    return b""
+    raise ValueError()
 
 
 def parse_xlf(info):
@@ -83,13 +83,14 @@ parse_metadatas = {
 }
 
 write_metadatas = {
-    # "ildg-format": write_ildg,
+    "ildg-format": write_ildg,
     "xlf-info": write_xlf,
     "lyncs-io-info": pickle.dumps,
 }
 
 # lime_type for records with datas
 datas = [
+    "lyncs-io-data",
     "ildg-binary-data",
 ]
 
@@ -204,7 +205,13 @@ def write_data(_fp, data, metadata=None, lime_type=None):
         raise TypeError(f"expected bytes, got {type(data)}")
     if lime_type is None:
         lime_type = datas[0]
-    records = {key: fnc(metadata) for key, fnc in write_metadatas.items() if metadata}
+    records={}
+    if metadata:
+        for key, fnc in write_metadatas.items():
+            try:
+                records[key] = fnc(metadata)
+            except ValueError:
+                pass
     records[lime_type] = data if write_data else len(data)
     write_records(_fp, records)
 
