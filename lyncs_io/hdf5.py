@@ -44,7 +44,7 @@ def _load(h5f, depth=1, header_only=False, all_data=False, **kwargs):
     if isinstance(h5f, Group):
         return {
             key: _load(val, depth=depth - 1, all_data=all_data, **kwargs)
-            if all or depth > 0
+            if all_data or depth > 0 or isinstance(val, Dataset)
             else None
             for key, val in h5f.items()
         }
