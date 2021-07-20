@@ -5,6 +5,34 @@ Function utils
 from functools import wraps
 from io import IOBase, FileIO
 from pathlib import Path
+from pathlib import Path
+from lyncs_utils.io import FileLike
+
+
+def find_file(filename):
+    """
+    Finds a file in the directory that has the same name
+    as the parameter <filename>. If the file does not exist,
+    the directory is searched for <filename.*> instead, and if
+    only one match is found, that particular filename is returned.
+
+    """
+
+    if isinstance(filename, FileLike):
+        return filename.name
+
+    p = Path(filename)
+    if p.exists():
+        return filename
+
+    # A list with files matching the following pattern: filename.*
+    potential_files = [str(f) for f in p.parent.iterdir() if str(f).startswith(filename)]
+
+    if len(potential_files) == 1:
+        return str(potential_files[0])
+    elif len(potential_files) > 1:
+        raise ValueError(f'More than one {filename}.* exist')
+    raise FileNotFoundError(f'No such file: {filename}, {filename}.*')
 
 
 def swap(fnc):
