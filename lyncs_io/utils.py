@@ -29,11 +29,10 @@ def find_file(filename):
     potential_files = [str(f) for f in p.parent.iterdir() if str(f).startswith(filename)]
 
     if len(potential_files) == 1:
-        return f'{potential_files[0]}'
+        return str(potential_files[0])
     elif len(potential_files) > 1:
-        raise Exception(f'More than one {filename}.* exist')
-    elif len(potential_files) < 1:
-        raise Exception(f'No such file: {filename}, {filename}.*')
+        raise ValueError(f'More than one {filename}.* exist')
+    raise FileNotFoundError(f'No such file: {filename}, {filename}.*')
 
 
 def swap(fnc):
