@@ -5,6 +5,8 @@ Function utils
 from functools import wraps
 from io import IOBase, FileIO
 from pathlib import Path
+from pathlib import Path
+from lyncs_utils.io import FileLike
 
 
 def find_file(filename):
@@ -16,25 +18,22 @@ def find_file(filename):
 
     """
 
-    from os import listdir
-    from os.path import dirname, abspath, splitext, exists, basename
+    if isinstance(filename, FileLike):
+        return filename.name
 
-    abs_path = abspath(filename)  # Absolute path of filename
-    parent_dir_path = dirname(abs_path)  # Name of filename's parent directory
-
-    if not exists(filename):
-        # A list with files matching the following pattern: filename.*
-        possible_files = [f for f in listdir(parent_dir_path) if f.startswith(basename(filename))]
-
-        # If only one such file exists, load that.
-        if len(possible_files) == 1:
-            return abspath(possible_files[0])
-        elif len(possible_files) > 1:
-            raise Exception(f'More than one {filename}.* exist')
-        elif len(possible_files) < 1:
-            raise Exception(f'No such file: {filename}, {filename}.*')
-    else:
+    p = Path(filename)
+    if p.exists():
         return filename
+
+    # A list with files matching the following pattern: filename.*
+    potential_files = [str(f) for f in p.parent.iterdir() if str(f).startswith(filename)]
+
+    if len(potential_files) == 1:
+        return f'{potential_files[0]}'
+    elif len(potential_files) > 1:
+        raise Exception(f'More than one {filename}.* exist')
+    elif len(potential_files) < 1:
+        raise Exception(f'No such file: {filename}, {filename}.*')
 
 
 def swap(fnc):
