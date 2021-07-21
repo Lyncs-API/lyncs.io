@@ -23,6 +23,8 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_load_comm"
+    if format == "hdf5":
+        ftmp += ".h5/data"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -43,6 +45,8 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     rank = comm.rank
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_load_cart"
+    if format == "hdf5":
+        ftmp += ".h5/data"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -63,6 +67,8 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_save_comm"
+    if format == "hdf5":
+        ftmp += ".h5/data"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -86,6 +92,8 @@ def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
     comm = get_cart(procs=procs)
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_save_cart"
+    if format == "hdf5":
+        ftmp += ".h5/data"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
