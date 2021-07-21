@@ -1,4 +1,5 @@
 import numpy
+from lyncs_utils import read
 from lyncs_io.convert import to_bytes, from_bytes
 from lyncs_io.testing import tempdir, shape_loop, dtype_loop
 from lyncs_io.lime import (
@@ -11,6 +12,8 @@ from lyncs_io.lime import (
     head,
     load,
     save,
+    write_data,
+    get_header_bytes,
 )
 
 
@@ -64,6 +67,16 @@ def test_records(tempdir):
         else:
             assert rec["nbytes"] == len(val)
             assert rec["data"] == val
+
+
+def test_get_header_bytes(tempdir):
+    arr = numpy.random.rand(10, 10)
+    arr, attrs = to_bytes(arr)
+    filename = tempdir + "header"
+    write_data(filename, len(arr), metadata=attrs)
+    header = get_header_bytes(attrs)
+    ref = read(filename, len(header))
+    assert header == ref
 
 
 def test_reference():
