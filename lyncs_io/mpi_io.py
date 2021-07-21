@@ -87,7 +87,7 @@ class MpiIO:
 
         return local_array
 
-    def save(self, array):
+    def save(self, array, header=None, offset=None):
         """
         Writes the local array in a file in parallel
 
@@ -102,14 +102,16 @@ class MpiIO:
         else:
             raise NotImplementedError("Currently noy supporting FORTRAN ordering")
 
-        if self.rank == 0:
-            pos = self.handler.Get_position()
-        else:
-            pos = 0
+        if offset is None:
+            if header:
+                offset = len(header)
+            else:
+                offset = 0
 
-        pos = self.comm.bcast(pos, root=0)
+        if self.rank == 0 and header:
+            self.handler.Write(header)
 
-        self._set_view(array.shape, numpy.array(array).dtype, "C", pos, compose=True)
+        self._set_view(array.shape, numpy.array(array).dtype, "C", offset, compose=True)
 
         # collectively write the array to file
         self.handler.Write_all(array)

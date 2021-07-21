@@ -9,15 +9,15 @@ __all__ = [
 ]
 
 from collections.abc import Mapping
-from h5py import File, Dataset, Group
+from h5py import File, Dataset, Group, h5
 from .archive import split_filename, Data, Loader, Archive
 from .convert import to_array, from_array
 from .header import Header
-from .utils import default_names
-
+from .utils import default_names, is_dask_array
 from .mpi_io import check_comm
-from .dask_io import is_dask_array
 from .decomposition import Decomposition
+
+mpi = h5.get_config().mpi
 
 
 def _load_dataset(dts, header_only=False, comm=None, **kwargs):
@@ -44,7 +44,7 @@ def _load(h5f, depth=1, header_only=False, all_data=False, **kwargs):
     if isinstance(h5f, Group):
         return {
             key: _load(val, depth=depth - 1, all_data=all_data, **kwargs)
-            if all or depth > 0
+            if all_data or depth > 0 or isinstance(val, Dataset)
             else None
             for key, val in h5f.items()
         }
@@ -136,7 +136,10 @@ def _write_dataset(grp, key, data, comm=None, **kwargs):
         grp.create_dataset(key, data=data)
 
     for attr, val in attrs.items():
-        grp[key].attrs[attr] = val
+        try:
+            grp[key].attrs[attr] = val
+        except TypeError:
+            grp[key].attrs[attr] = str(val)
 
 
 def split_key(key):

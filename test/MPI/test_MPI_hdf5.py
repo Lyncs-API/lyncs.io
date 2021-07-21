@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy
+from h5py import h5
 import lyncs_io as io
 
 from lyncs_io.testing import (
@@ -10,7 +11,10 @@ from lyncs_io.testing import (
     parallel_loop,
     get_comm,
     get_cart,
+    skip_hdf5_mpi,
 )
+
+mpi = h5.get_config().mpi
 
 
 def construct_global_shape(lshape, mult=None):
@@ -37,6 +41,7 @@ def get_local_array_slice(dims, lshape, dtype, coords):
     return global_array[slices]
 
 
+@skip_hdf5_mpi
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
@@ -64,6 +69,7 @@ def test_MPI_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
     assert (local_slice * 2 == io.load(ftmp, comm=comm)["arr1"]).all()
 
 
+@skip_hdf5_mpi
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
@@ -92,6 +98,7 @@ def test_MPI_hdf5_load_dataset_cart(tempdir_MPI, dtype, lshape, procs):
     assert (local_slice * 2 == io.load(ftmp, comm=comm)["arr1"]).all()
 
 
+@skip_hdf5_mpi
 @mark_mpi
 @parallel_loop
 def test_MPI_hdf5_all_cart(tempdir_MPI, procs):

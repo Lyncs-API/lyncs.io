@@ -5,7 +5,9 @@ import dask.array as da
 import pytest
 
 from lyncs_utils import prod
+from lyncs_io.convert import to_array
 from lyncs_io.dask_io import DaskIO, is_dask_array
+from lyncs_io.numpy import _get_header_bytes
 import lyncs_io as io
 
 from lyncs_io.testing import (
@@ -42,7 +44,7 @@ def test_Dask_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
         header["dtype"],
         header["_offset"],
         chunks=chunksize,
-        order="F" if header["_fortran_order"] else "C",
+        order="F" if header["fortran_order"] else "C",
     )
 
     assert isinstance(x_lazy_in, da.Array)
@@ -68,11 +70,13 @@ def test_Dask_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
     ftmp = tempdir + "/foo_daskio_write.npy"
 
     x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_ref, attrs = to_array(x_ref)
+    header = _get_header_bytes(attrs)
     x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
     assert x_lazy.dtype.str != dtype
 
     daskio = DaskIO(ftmp)
-    x_lazy_out = daskio.save(x_lazy)
+    x_lazy_out = daskio.save(x_lazy, header=header)
     assert isinstance(x_lazy_out, da.Array)
     assert x_lazy_out.dtype.str != dtype
 
@@ -106,9 +110,11 @@ def test_Dask_daskio_write_update(client, tempdir, dtype, workers):
         chunks = tuple(chunksize for a in range(len(domain)))
 
         x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
+        x_ref, attrs = to_array(x_ref)
+        header = _get_header_bytes(attrs)
         x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunks)
 
-        x_lazy_out = daskio.save(x_lazy)
+        x_lazy_out = daskio.save(x_lazy, header=header)
         assert isinstance(x_lazy_out, da.Array)
         assert x_lazy_out.dtype.str != dtype
 
@@ -120,8 +126,7 @@ def test_Dask_daskio_write_update(client, tempdir, dtype, workers):
         assert (x_ref == x_ref_in).all()
 
         # ensure file size matches the size of the written array
-        header = io.dask_io._build_header_from_dask_array(x_lazy_out)
-        offset = io.dask_io._get_dask_array_header_offset(header)
+        offset = len(header)
         filesz = offset + size * x_out.itemsize
 
         assert os.stat(ftmp).st_size == filesz
