@@ -103,7 +103,7 @@ JSON   | json       | no     | no      | no           | no
 ASCII  | txt        | no     | no      | no           | no
 Numpy  | npy        | yes    | no      | yes          | yes
 Numpyz | npy        | yes    | yes     | TODO         | TODO
-HDF5   | hdf5,h5    | yes    | yes     | yes          | yes
+HDF5   | hdf5,h5    | yes    | yes     | yes          | TODO
 lime   | lime       | yes    | TODO    | yes          | yes
 
 ### IO with HDF5
@@ -146,6 +146,9 @@ assert (mydict["random"]["arr0"] == loaded_dict["random"]["arr0"]).all()
 assert (mydict["random"]["arr1"] == loaded_dict["random"]["arr1"]).all()
 assert (mydict["zeros"] == loaded_dict["zeros"]).all()
 ```
+
+Parallel IO via MPI can be enabled with a parallel installation of HDF5.
+For doing so, please refer to https://docs.h5py.org/en/stable/mpi.html.
 
 ### IO with MPI
 
