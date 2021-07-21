@@ -68,8 +68,7 @@ def test_MPI_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
     rank = comm.rank
     ftmp = tempdir_MPI + "/foo_mpiio_load_from_comm.npy"
 
-    mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
+    write_global_array(comm, ftmp, lshape, dtype=dtype)
     global_array = numpy.load(ftmp)
     assert global_array.dtype.str != dtype
     header = np.head(ftmp)
@@ -105,8 +104,7 @@ def test_MPI_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, procs):
     dims, _, coords = comm.Get_topo()
     ftmp = tempdir_MPI + "/foo_mpiio_load_from_cart.npy"
 
-    mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
+    write_global_array(comm, ftmp, lshape, dtype=dtype)
     global_array = numpy.load(ftmp)
     assert global_array.dtype.str != dtype
     header = np.head(ftmp)
@@ -133,8 +131,7 @@ def test_MPI_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
     rank = comm.rank
     ftmp = tempdir_MPI + "/foo_mpiio_save_from_comm.npy"
 
-    mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
+    write_global_array(comm, ftmp, lshape, dtype=dtype)
     global_array = numpy.load(ftmp)
     global_array, attrs = to_array(global_array)
     header = _get_header_bytes(attrs)
@@ -160,8 +157,7 @@ def test_MPI_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
     dims, _, coords = comm.Get_topo()
     ftmp = tempdir_MPI + "/foo_mpiio_save_from_cart.npy"
 
-    mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
+    write_global_array(comm, ftmp, lshape, dtype=dtype)
     global_array = numpy.load(ftmp)
     global_array, attrs = to_array(global_array)
     header = _get_header_bytes(attrs)
