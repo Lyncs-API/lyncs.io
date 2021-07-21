@@ -107,7 +107,7 @@ def read_record_header(_fp):
     )
     offset = _fp.tell()
     if magic_number != MAGIC_NUMBER:
-        raise TypeError("Not a valid lime file")
+        raise TypeError(f"Not a valid lime file. magic_number = {magic_number}")
     lime_type = lime_type.decode().split("\0")[0]
     begin = bool(msg_bits >> 15 & 0b1)
     end = bool(msg_bits >> 14 & 0b1)
@@ -199,8 +199,8 @@ def write_records(_fp, records):
 
 def write_data(_fp, data, metadata=None, lime_type=None):
     "Writes a data object to file and its metadata"
-    if not isinstance(data, bytes):
-        raise TypeError(f"expected bytes, got {type(data)}")
+    if not isinstance(data, (bytes, int)):
+        raise TypeError(f"expected bytes or int, got {type(data)}")
     if lime_type is None:
         lime_type = datas[0]
     records = {}
@@ -218,7 +218,7 @@ def get_header_bytes(metadata, lime_type=None):
     "Returns the bytes of the header of metadata"
     out = BytesIO()
     write_data(out, metadata["nbytes"], metadata=metadata, lime_type=lime_type)
-    return out.get_value()
+    return out.getvalue()
 
 
 @open_file
@@ -234,9 +234,15 @@ def head(_fp):
 
     records = {rec["lime_type"]: rec for rec in records}
 
-    data = "ildg-binary-data"
-    if not data in records:
+    data = []
+    for key in datas:
+        if key in records:
+            data.append(key)
+    if not data:
         raise ValueError("No data record in file")
+    if len(data) > 1:
+        raise ValueError("More than one data record in file")
+    data = data[0]
 
     header = Header()
     for key in parse_metadatas:
@@ -346,6 +352,7 @@ def save(array, filename, comm=None, metadata=None):
         with MpiIO(comm, filename, mode="w") as mpiio:
             global_shape, _, _ = mpiio.decomposition.compose(array.shape)
             attrs["shape"] = tuple(global_shape)
+            attrs["nbytes"] = prod(global_shape) * attrs["dtype"].itemsize
             header = get_header_bytes(attrs)
             return mpiio.save(array, header=header)
 
