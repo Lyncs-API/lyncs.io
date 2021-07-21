@@ -68,15 +68,6 @@ workers_loop = mark.parametrize(
     [1, 2, 4, 7, 12],
 )
 
-dtype_loop = mark.parametrize(
-    "dtype",
-    [
-        "float64",
-        "float32",
-    ],
-)
-
-
 @fixture(scope="session")
 def client():
     """
