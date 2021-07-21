@@ -7,6 +7,7 @@ from lyncs_io.testing import (
     lshape_loop,
     dtype_loop,
     parallel_loop,
+    parallel_format_loop,
     get_comm,
     get_cart,
     write_global_array,
@@ -16,17 +17,16 @@ from lyncs_io.testing import (
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_MPI_numpy_load_comm(tempdir_MPI, dtype, lshape):
+@parallel_format_loop
+def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
 
     comm = get_comm()
     rank = comm.rank
-    ftmp = tempdir_MPI + "/foo_numpy_mpiio_load_comm.npy"
+    ftmp = tempdir_MPI + "/mpiio_load_comm"
 
-    mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
-    global_array = numpy.load(ftmp)
-
-    local_array = io.load(ftmp, comm=comm)
+    write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
+    global_array = io.load(ftmp, format=format)
+    local_array = io.load(ftmp, comm=comm, format=format)
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
     assert (global_array[slc] == local_array).all()
@@ -36,21 +36,20 @@ def test_MPI_numpy_load_comm(tempdir_MPI, dtype, lshape):
 @dtype_loop
 @lshape_loop  # enables local domain
 @parallel_loop
-def ttest_MPI_numpy_load_cart(tempdir_MPI, dtype, lshape, procs):
+@parallel_format_loop
+def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
 
     comm = get_cart(procs=procs)
-    dims, _, coords = comm.Get_topo()
-    ftmp = tempdir_MPI + "/foo_numpy_mpiio_load_cart.npy"
+    rank = comm.rank
+    coords = comm.coords
+    ftmp = tempdir_MPI + "/mpiio_load_cart"
 
-    mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
-    global_array = numpy.load(ftmp)
-
-    local_array = io.load(ftmp, comm=comm)
+    write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
+    global_array = io.load(ftmp, format=format)
+    local_array = io.load(ftmp, comm=comm, format=format)
 
     slices = tuple(
-        slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
-        for i in range(len(dims))
+        slice(coord * size, (coord + 1) * size) for coord, size in zip(coords, lshape)
     )
     assert (global_array[slices] == local_array).all()
 
@@ -58,22 +57,22 @@ def ttest_MPI_numpy_load_cart(tempdir_MPI, dtype, lshape, procs):
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_MPI_numpy_save_comm(tempdir_MPI, dtype, lshape):
+@parallel_format_loop
+def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
 
     comm = get_comm()
     rank = comm.rank
-    ftmp = tempdir_MPI + "/foo_numpy_mpiio_save_comm.npy"
+    ftmp = tempdir_MPI + "/mpiio_save_comm"
 
-    mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
-    global_array = numpy.load(ftmp)
+    write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
+    global_array = io.load(ftmp, format=format)
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
     local_array = global_array[slc]
 
-    io.save(local_array, ftmp, comm=comm)
+    io.save(local_array, ftmp, comm=comm, format=format)
 
-    global_array = numpy.load(ftmp)
+    global_array = io.load(ftmp, format=format)
     assert (global_array[slc] == local_array).all()
 
 
@@ -81,23 +80,22 @@ def test_MPI_numpy_save_comm(tempdir_MPI, dtype, lshape):
 @dtype_loop
 @lshape_loop  # enables local domain
 @parallel_loop
-def test_MPI_numpy_save_cart(tempdir_MPI, dtype, lshape, procs):
+@parallel_format_loop
+def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
 
     comm = get_cart(procs=procs)
-    dims, _, coords = comm.Get_topo()
-    ftmp = tempdir_MPI + "/foo_numpy_mpiio_save_cart.npy"
+    coords = comm.coords
+    ftmp = tempdir_MPI + "/mpiio_save_cart"
 
-    mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
-    global_array = numpy.load(ftmp)
+    write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
+    global_array = io.load(ftmp, format=format)
 
     slices = tuple(
-        slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
-        for i in range(len(dims))
+        slice(coord * size, (coord + 1) * size) for coord, size in zip(coords, lshape)
     )
     local_array = global_array[slices]
 
-    io.save(local_array, ftmp, comm=comm)
+    io.save(local_array, ftmp, comm=comm, format=format)
 
-    global_array = numpy.load(ftmp)
+    global_array = io.load(ftmp, format=format)
     assert (local_array == global_array[slices]).all()
