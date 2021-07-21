@@ -77,7 +77,7 @@ jobs:
           coverage report
 
       - name: Upload Coverage report
-        if: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && matrix.py-version == '3.x' }}
+        if: ${{ matrix.py-version == '3.x' }}
         run: |
           coverage xml
           export CODECOV_TOKEN="${{ secrets.CODECOV_TOKEN }}"
