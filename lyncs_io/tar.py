@@ -71,3 +71,32 @@ def save(arr, tarball_name, filename):
         print("Success!")
 
     tar.close()
+
+
+def load(tarball_name, filename):
+    """
+    Return an array from the data of a file in a tarball.
+    """
+
+    mode_suffix = get_mode(get_extension(tarball_name))
+
+    arr = [] # store data in
+
+    if exists(tarball_name):
+        tar = tarfile.open(tarball_name, "r" + mode_suffix)
+    else:
+        raise FileNotFoundError(f"{tarball_name} does not exist.")
+
+    print(tar.getmembers())
+
+    with tempfile.TemporaryDirectory() as tmpf:
+        print(tmpf)
+        member = tar.getmember(filename)
+        tar.extract(member, path=tmpf) # extract to a temp location for reading
+        data_file = f"{tmpf}/{filename}"
+        with open(data_file, "r") as dat:
+            for line in dat.readlines():
+                line = line.replace('\n','') # remove the newline character
+                arr.append(line)
+    tar.close()
+    return arr
