@@ -20,12 +20,16 @@ all_extensions = [
 ]
 
 modes = {
+    # .gz, .bz2 and .xz should start with .tar
+    # .tar was removed because of splitext()
     ':gz': ['.gz', '.taz', '.tgz'],
     ':bz2': ['.bz2', '.tb2', '.tbz', '.tbz2', '.tz2'],
     ':xz': ['.xz', '.txz'],
     ':': ['.tar'],
 }
 
+# TODO: Test for a valid filename format & test
+# TODO: allow saving with no leaf (key) given & test
 
 # Given the tarball name, return the compression mode using modes
 def save(arr, filename):
@@ -101,7 +105,10 @@ def split_parent_tarball(path):
     for i, f in enumerate(path):
         for ext in all_extensions:
             if ext in f:
-                return '/'.join(path[:i]) + '/', '/'.join(path[i:])
+                pre = '/'.join(path[:i])
+                pre = pre + '/' if pre else pre # if pre is empty, do not append '/'
+                tarball_name = '/'.join(path[i:])
+                return pre, tarball_name
     raise ValueError("No tarball found in the path")
 
 
