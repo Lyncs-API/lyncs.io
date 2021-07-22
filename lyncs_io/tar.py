@@ -29,7 +29,9 @@ modes = {
 }
 
 # TODO: Test for a valid filename format & test
-# TODO: allow saving with no leaf (key) given & test
+# TODO: allow saving with no leaf (key) given & test [e.g. save(arr, tarball.tar)]
+# TODO: fix issues with compression in append mode
+
 
 # Given the tarball name, return the compression mode using modes
 def save(arr, filename):
@@ -49,7 +51,6 @@ def save(arr, filename):
 
     # create Tar if doesn't exist - append if it does
     if exists(tarball_path):
-        # TODO: fix issues with compression
         tar = tarfile.open(tarball_path, "a")
     else:
         tar = tarfile.open(tarball_path, "w" + mode_suffix)
