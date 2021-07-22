@@ -5,8 +5,8 @@ Archive class and utils
 from collections.abc import Mapping
 from typing import Any
 from dataclasses import dataclass
+from lyncs_utils import to_path
 from .header import Header
-from .utils import to_path
 
 
 @dataclass
@@ -124,10 +124,11 @@ class Archive(Mapping):
             if isinstance(val, (Data, Header)):
                 printer.text(f"{key} -> {val}")
                 continue
-            if not val:
+            if val is None:
                 printer.text(f"{key}/...")
                 continue
-            assert isinstance(val, dict)
+            if not isinstance(val, dict):
+                raise TypeError(f"Unexpected type {type(val)} for key {key}")
             printer.begin_group(ind, key + "/")
             self[key]._repr_pretty_(printer)
             printer.end_group(ind)
@@ -172,7 +173,7 @@ class Archive(Mapping):
 
         elif this in self:
             val = self._dict[this]
-            if not val:
+            if val is None:
                 self._dict[this] = self.load(this)
                 val = self._dict[this]
 
@@ -184,7 +185,10 @@ class Archive(Mapping):
                 pass
             else:
                 val = Archive(
-                    val, loader=self.loader, path=f"{self.path}/{this}", parent=self
+                    val,
+                    loader=self.loader,
+                    path=f"{self.path}/{this}",
+                    parent=self,
                 )
 
         else:

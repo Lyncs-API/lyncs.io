@@ -7,29 +7,30 @@ from numpy.lib.format import (
 
 from lyncs_io.mpi_io import MpiIO, Decomposition
 from lyncs_io import numpy as np
+from lyncs_io.convert import to_array
+from lyncs_io.numpy import _get_header_bytes
 
 from lyncs_io.testing import (
     mark_mpi,
     lshape_loop,
-    topo_dim_loop,
+    parallel_loop,
     dtype_loop,
     tempdir_MPI,
     write_global_array,
     get_comm,
-    get_topology_dims,
+    get_cart,
 )
 
 
 @mark_mpi
-@topo_dim_loop  # enables topology dimension
-def test_mpiio_constructor(topo_dim):
+def test_MPI_mpiio_constructor():
     from mpi4py import MPI
 
     comm = get_comm()
     # check mode is set to "r" by default
     assert MpiIO(comm, "").mode == "r"
 
-    topo = comm.Create_cart(dims=get_topology_dims(comm, topo_dim))
+    topo = get_cart()
     mpiio = MpiIO(topo, "testfile.npy", mode="w")
 
     assert isinstance(mpiio.comm, MPI.Cartcomm)
@@ -42,7 +43,7 @@ def test_mpiio_constructor(topo_dim):
 
 
 @mark_mpi
-def test_mpiio_file_handler(tempdir_MPI):
+def test_MPI_mpiio_file_handler(tempdir_MPI):
     from mpi4py import MPI
 
     comm = get_comm()
@@ -61,14 +62,13 @@ def test_mpiio_file_handler(tempdir_MPI):
 @mark_mpi
 @dtype_loop
 @lshape_loop  # enables local domain
-def test_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
+def test_MPI_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "/foo_mpiio_load_from_comm.npy"
 
-    mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
+    write_global_array(comm, ftmp, lshape, dtype=dtype)
     global_array = numpy.load(ftmp)
     assert global_array.dtype.str != dtype
     header = np.head(ftmp)
@@ -96,24 +96,20 @@ def test_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
 
 @mark_mpi
 @dtype_loop
-@lshape_loop  # enables local domain
-@topo_dim_loop  # enables topology dimension
-def test_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, topo_dim):
+@lshape_loop
+@parallel_loop
+def test_MPI_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, procs):
 
-    comm = get_comm()
-    rank = comm.rank
-    dims = get_topology_dims(comm, topo_dim)
-    cartesian2d = comm.Create_cart(dims=dims)
-    coords = cartesian2d.Get_coords(rank)
+    comm = get_cart(procs=procs)
+    dims, _, coords = comm.Get_topo()
     ftmp = tempdir_MPI + "/foo_mpiio_load_from_cart.npy"
 
-    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
+    write_global_array(comm, ftmp, lshape, dtype=dtype)
     global_array = numpy.load(ftmp)
     assert global_array.dtype.str != dtype
     header = np.head(ftmp)
 
-    with MpiIO(cartesian2d, ftmp, mode="r") as mpiio:
+    with MpiIO(comm, ftmp, mode="r") as mpiio:
         local_array = mpiio.load(
             header["shape"], header["dtype"], order(header), header["_offset"]
         )
@@ -121,38 +117,31 @@ def test_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, topo_dim):
 
     slices = tuple(
         slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
-        for i in range(topo_dim)
+        for i in range(len(dims))
     )
     assert (global_array[slices] == local_array).all()
 
 
 @mark_mpi
 @dtype_loop
-@lshape_loop  # enables local domain
-def test_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
+@lshape_loop
+def test_MPI_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "/foo_mpiio_save_from_comm.npy"
 
-    mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
+    write_global_array(comm, ftmp, lshape, dtype=dtype)
     global_array = numpy.load(ftmp)
+    global_array, attrs = to_array(global_array)
+    header = _get_header_bytes(attrs)
     assert global_array.dtype.str != dtype
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
     local_array = global_array[slc]
 
     with MpiIO(comm, ftmp, mode="w") as mpiio:
-        global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
-        assert global_shape == list(global_array.shape)
-
-        if mpiio.rank == 0:
-            header = header_data_from_array_1_0(local_array)
-            header["shape"] = tuple(global_shape)  # needs to be tuple
-            _write_array_header(mpiio.handler, header)
-
-        mpiio.save(local_array)
+        mpiio.save(local_array, header=header)
 
     global_array = numpy.load(ftmp)
     assert (local_array == global_array[slc]).all()
@@ -160,47 +149,35 @@ def test_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 
 @mark_mpi
 @dtype_loop
-@lshape_loop  # enables local domain
-@topo_dim_loop  # enables topology dimension
-def test_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, topo_dim):
+@lshape_loop
+@parallel_loop
+def test_MPI_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
 
-    comm = get_comm()
-    rank = comm.rank
-    dims = get_topology_dims(comm, topo_dim)
-
-    cartesian2d = comm.Create_cart(dims=dims)
-    coords = cartesian2d.Get_coords(rank)
-
+    comm = get_cart(procs=procs)
+    dims, _, coords = comm.Get_topo()
     ftmp = tempdir_MPI + "/foo_mpiio_save_from_cart.npy"
 
-    mult = tuple(dims[i] if i < topo_dim else 1 for i in range(len(lshape)))
-    write_global_array(comm, ftmp, lshape, dtype=dtype, mult=mult)
+    write_global_array(comm, ftmp, lshape, dtype=dtype)
     global_array = numpy.load(ftmp)
+    global_array, attrs = to_array(global_array)
+    header = _get_header_bytes(attrs)
     assert global_array.dtype.str != dtype
 
     slices = tuple(
         slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
-        for i in range(topo_dim)
+        for i in range(len(dims))
     )
     local_array = global_array[slices]
 
-    with MpiIO(cartesian2d, ftmp, mode="w") as mpiio:
-        global_shape, _, _ = mpiio.decomposition.compose(local_array.shape)
-        assert global_shape == list(global_array.shape)
-
-        if mpiio.rank == 0:
-            header = header_data_from_array_1_0(local_array)
-            header["shape"] = tuple(global_shape)  # needs to be tuple
-            _write_array_header(mpiio.handler, header)
-
-        mpiio.save(local_array)
+    with MpiIO(comm, ftmp, mode="w") as mpiio:
+        mpiio.save(local_array, header=header)
 
     global_array = numpy.load(ftmp)
     assert (local_array == global_array[slices]).all()
 
 
 def order(header):
-    if header["_fortran_order"] is True:
+    if header["fortran_order"] is True:
         ordering = "Fortran"
     else:
         ordering = "C"

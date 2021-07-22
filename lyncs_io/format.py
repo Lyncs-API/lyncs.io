@@ -4,8 +4,8 @@ Base class for file formats
 
 from dataclasses import dataclass
 from collections import OrderedDict
+from lyncs_utils import to_path
 from .archive import split_filename
-from .utils import to_path
 
 
 def not_implemented(*args, **kwargs):

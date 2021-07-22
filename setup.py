@@ -6,6 +6,7 @@ setup(
         "lyncs_utils",
         "numpy",
         "dataclasses",
+        "xmltodict",
     ],
     extras_require={
         "tree": ["ipython"],

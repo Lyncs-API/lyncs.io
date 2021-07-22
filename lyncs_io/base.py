@@ -11,6 +11,7 @@ __all__ = [
 ]
 
 from .formats import formats
+from .utils import find_file
 
 
 def load(filename, format=None, **kwargs):
@@ -27,6 +28,8 @@ def load(filename, format=None, **kwargs):
     format: str, Format
         One of the implemented formats. See documentation for more details.
     """
+
+    filename = find_file(filename)
 
     return formats.get_format(format, filename=filename).load(filename, **kwargs)
 
@@ -47,6 +50,8 @@ def head(filename, format=None, **kwargs):
         Additional options for performing the reading. The list of options depends
         on the format.
     """
+
+    filename = find_file(filename)
 
     return formats.get_format(format, filename=filename).head(filename, **kwargs)
 

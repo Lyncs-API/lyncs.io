@@ -13,7 +13,7 @@ __all__ = [
     "savez",
 ]
 
-from io import UnsupportedOperation
+from io import UnsupportedOperation, BytesIO
 from functools import wraps
 import numpy
 from numpy.lib.npyio import NpzFile
@@ -22,15 +22,14 @@ from numpy.lib.format import (
     _check_version,
     _read_array_header,
     _write_array_header,
-    header_data_from_array_1_0,
 )
-from lyncs_utils import is_keyword
+from lyncs_utils import is_keyword, open_file
 from .archive import split_filename, Data, Loader, Archive
+from .convert import to_array
 from .header import Header
-from .utils import swap, open_file
-
-from .mpi_io import MpiIO
-from .dask_io import DaskIO, is_dask_array
+from .utils import swap, is_dask_array
+from .mpi_io import MpiIO, check_comm
+from .dask_io import DaskIO
 
 loadtxt = numpy.loadtxt
 savetxt = swap(numpy.savetxt)
@@ -72,24 +71,20 @@ def load(filename, chunks=None, comm=None, **kwargs):
             metadata["dtype"],
             metadata["_offset"],
             chunks=chunks,
-            order="F" if metadata["_fortran_order"] else "C",
+            order="F" if metadata["fortran_order"] else "C",
         )
 
     if comm is not None:
-        if not hasattr(comm, "size"):
-            raise TypeError(
-                "comm variable needs to be a valid MPI communicator with size attribute."
-            )
+        check_comm(comm)
 
-        if comm.size > 1:
-            metadata = head(filename)
-            with MpiIO(comm, filename, mode="r") as mpiio:
-                return mpiio.load(
-                    metadata["shape"],
-                    metadata["dtype"],
-                    "F" if metadata["_fortran_order"] else "C",
-                    metadata["_offset"],
-                )
+        metadata = head(filename)
+        with MpiIO(comm, filename, mode="r") as mpiio:
+            return mpiio.load(
+                metadata["shape"],
+                metadata["dtype"],
+                "F" if metadata["fortran_order"] else "C",
+                metadata["_offset"],
+            )
 
     return numpy.load(filename, **kwargs)
 
@@ -111,29 +106,30 @@ def save(array, filename, comm=None, **kwargs):
         A valid cartesian MPI Communicator.
 
     """
+    array, attrs = to_array(array)
 
     if is_dask_array(array):
         daskio = DaskIO(filename)
-        return daskio.save(array)
+        header = _get_header_bytes(attrs)
+        return daskio.save(array, header=header)
 
     if comm is not None:
-        if not hasattr(comm, "size"):
-            raise TypeError(
-                "comm variable needs to be a valid MPI communicator with size attribute."
-            )
+        check_comm(comm)
 
-        if comm.size > 1:
-            with MpiIO(comm, filename, mode="w") as mpiio:
-                global_shape, _, _ = mpiio.decomposition.compose(array.shape)
-
-                if mpiio.rank == 0:
-                    header = header_data_from_array_1_0(array)
-                    header["shape"] = tuple(global_shape)  # needs to be tuple
-                    _write_array_header(mpiio.handler, header)
-
-                return mpiio.save(array)
+        with MpiIO(comm, filename, mode="w") as mpiio:
+            global_shape, _, _ = mpiio.decomposition.compose(array.shape)
+            attrs["shape"] = global_shape
+            header = _get_header_bytes(attrs)
+            return mpiio.save(array, header=header)
 
     return numpy.save(filename, array, **kwargs)
+
+
+def _get_header_bytes(attrs):
+    stream = BytesIO()
+    keys = ["shape", "fortran_order", "descr"]
+    _write_array_header(stream, {key: attrs[key] for key in keys})
+    return stream.getvalue()
 
 
 def _get_offset(npy):
@@ -153,9 +149,9 @@ def _get_head(npy):
         {
             "shape": shape,
             "dtype": dtype,
+            "fortran_order": fortran_order,
             "_offset": _get_offset(npy),
             "_numpy_version": version,
-            "_fortran_order": fortran_order,
         }
     )
 
