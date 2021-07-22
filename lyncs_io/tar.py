@@ -2,9 +2,16 @@
 Interface for Tar format
 """
 
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from os.path import exists, splitext
+from .archive import split_filename
 import tarfile
 import tempfile
+
 
 all_extensions = [
     '.tar',
@@ -31,6 +38,7 @@ modes = {
 # TODO: Test for a valid filename format & test
 # TODO: allow saving with no leaf (key) given & test [e.g. save(arr, tarball.tar)]
 # TODO: fix issues with compression in append mode
+# TODO: implement head()
 
 
 # Given the tarball name, return the compression mode using modes
@@ -96,23 +104,6 @@ def load(filename):
     return arr
 
 
-def split_parent_tarball(path):
-    """
-    Return the name of the first tarball from a path and its parent directory.
-    e.g. /home/user/tarball.tar/data/arr.npy --> /home/user/, tarball.tar/data/arr.npy
-    """
-    path = path.split('/')
-
-    for i, f in enumerate(path):
-        for ext in all_extensions:
-            if ext in f:
-                pre = '/'.join(path[:i])
-                pre = pre + '/' if pre else pre # if pre is empty, do not append '/'
-                tarball_name = '/'.join(path[i:])
-                return pre, tarball_name
-    raise ValueError("No tarball found in the path")
-
-
 def get_mode(filename):
     """
     Returns the mode (from modes) with which the tarball should be read/written as
@@ -132,16 +123,16 @@ def get_extension(filename):
     return splitext(filename)[1]
 
 
-def split_filename(filename):
+def split_parts(path):
     """
-    Splits the filename into 3 parts:
+    Splits the filename into 3 parts using archive.split_filename()
     - The parent directory of the tarball
     - The name of the tarball
     - The file to read/write in the tarball
     """
-    pre, filename = split_parent_tarball(filename)
+    pre, filename = split_filename(path)
     cont = filename.split('/')
     tarball_name = cont[0]
     leaf = '/'.join(cont[1:])
     return pre, tarball_name, leaf
-    
+

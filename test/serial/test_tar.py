@@ -42,20 +42,6 @@ def test_load(tempdir):
     assert load(tempdir + '/tarball.tar/datafile.txt') == arr_a
 
 
-def test_split_parent_tarball():
-    path_a = '/home/user/tarball.tar.gz/datafile'
-    assert split_parent_tarball(path_a)[0] == '/home/user/'
-    assert split_parent_tarball(path_a)[1] == 'tarball.tar.gz/datafile'
-
-    path_b = 'dir/tarball.txz'
-    assert split_parent_tarball(path_b)[0] == 'dir/'
-    assert split_parent_tarball(path_b)[1] == 'tarball.txz'
-
-    path_c = '/home/user/datafile'
-    with pytest.raises(ValueError):
-        split_parent_tarball(path_c)
-
-
 def test_get_mode():
     assert get_mode('tarball.tar.gz') == ':gz'
     assert get_mode('tarball.tb2') == ':bz2'
