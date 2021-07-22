@@ -38,14 +38,17 @@ def save(arr, filename):
     tarball_name: The name of the tarball.
     filename: The name of the file to save the data to.
     """
+
     pre, tarball_name, leaf = split_filename(filename)
-    mode_suffix = get_mode(get_extension(tarball_name))
+    mode_suffix = get_mode(tarball_name)
+    tarball_path = pre + tarball_name
 
     # create Tar if doesn't exist - append if it does
-    if exists(pre + tarball_name):
-        tar = tarfile.open(pre + tarball_name, "a")
+    if exists(tarball_path):
+        # TODO: fix issues with compression
+        tar = tarfile.open(tarball_path, "a")
     else:
-        tar = tarfile.open(pre + tarball_name, "w" + mode_suffix)
+        tar = tarfile.open(tarball_path, "w" + mode_suffix)
 
     # A temporary directory is created to write a new file in.
     # The new file is then added to the tarball before being deleted.
@@ -60,53 +63,53 @@ def save(arr, filename):
     tar.close()
 
 
-
-# def load(tarball_name, filename):
 def load(filename):
     """
     Return an array from the data of a file in a tarball.
     """
-
     pre, tarball_name, leaf = split_filename(filename)
-    mode_suffix = get_mode(get_extension(tarball_name))
+    mode_suffix = get_mode(tarball_name)
+    tarball_path = pre + tarball_name
 
-    arr = [] # store data in
+    arr = []  # store data in
 
-    if exists(pre + tarball_name):
-        tar = tarfile.open(pre + tarball_name, "r" + mode_suffix)
+    if exists(tarball_path):
+        tar = tarfile.open(tarball_path, "r" + mode_suffix)
     else:
         raise FileNotFoundError(f"{tarball_name} does not exist.")
 
     with tempfile.TemporaryDirectory() as tmpf:
         member = tar.getmember(leaf)
-        tar.extract(member, path=tmpf) # extract to a temp location for reading
+        # extract to a temp location for reading
+        tar.extract(member, path=tmpf)
         data_file = f"{tmpf}/{leaf}"
         with open(data_file, "r") as dat:
             for line in dat.readlines():
-                line = line.replace('\n','') # remove the newline character
+                line = line.replace('\n', '')  # remove the newline character
                 arr.append(line)
     tar.close()
     return arr
 
 
-def get_tarball_from_path(path):
+def split_parent_tarball(path):
     """
     Return the name of the first tarball from a path and its parent directory.
     e.g. /home/user/tarball.tar/data/arr.npy --> /home/user/, tarball.tar/data/arr.npy
     """
-    
     path = path.split('/')
-    
+
     for i, f in enumerate(path):
-        if '.tar' in f:
-            return '/'.join(path[:i]) + '/' ,'/'.join(path[i:])
+        for ext in all_extensions:
+            if ext in f:
+                return '/'.join(path[:i]) + '/', '/'.join(path[i:])
     raise ValueError("No tarball found in the path")
 
 
-def get_mode(ext):
+def get_mode(filename):
     """
     Returns the mode (from modes) with which the tarball should be read/written as
     """
+    ext = get_extension(filename)
     for key, val in modes.items():
         if ext in val:
             return key
@@ -128,16 +131,9 @@ def split_filename(filename):
     - The name of the tarball
     - The file to read/write in the tarball
     """
-    pre, filename = get_tarball_from_path(filename)
+    pre, filename = split_parent_tarball(filename)
     cont = filename.split('/')
     tarball_name = cont[0]
     leaf = '/'.join(cont[1:])
     return pre, tarball_name, leaf
-
-# Demo:
-# --------------
-# save an array to a location and load the array to x
-# 
-# save([0,0,1,0,1,1,0], '/home/alexandros/tarball.tar/dir1/datafile.txt')
-# x = load('/home/alexandros/tarball.tar/dir1/datafile.txt')
-# print(x)
+    
