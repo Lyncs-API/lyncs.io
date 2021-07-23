@@ -7,10 +7,12 @@ __all__ = [
 
 import pickle
 import json
+from lyncs_utils import open_file
 from .format import Formats
 from .utils import open_file
 from . import numpy
 from . import tar
+from . import numpy, lime
 
 formats = Formats()
 register = formats.register
@@ -113,15 +115,13 @@ register(
     **_,
 )
 
-"""
+
 register(
     "lime",
     extensions=["lime"],
-    modules={
-        "lime": "lime",
-        "clime": "lyncs_clime",
-    },
     description="LQCD lime format",
-    archive=True,
+    head=lime.head,
+    load=lime.load,
+    save=lime.save,
+    # archive=True, # Supporting single dataset for now
 )
-"""

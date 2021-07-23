@@ -28,10 +28,13 @@ The main features of this module are
   the content can be accessed directly by specifying it in the path.
   For instance with `directory/file.h5/content`, `directory/file.h5`
   is the file path, and the remaining is content to be accessed that
-  will be searched inside the file.
+  will be searched inside the file (this is inspired by `h5py`).
 
-- **Support for Parallel IO**. Where possible, the option `chunks`
-  can be used for enabling parallel IO via `Dask`.
+- **Support for Parallel IO**. Where possible and implemented,
+  parallel IO is supported. This is enabled either via MPI providing
+  a valid communicator with the option `comm`, or via [Dask](https://dask.org)
+  providing the option `chunks` (see
+  [Dask's Array](https://docs.dask.org/en/latest/array-api.html)).
 
 - **Omission of extension**. When saving, if the extension is omitted,
   the optimal file format is deduced from the data type and the extension
@@ -67,7 +70,43 @@ pip install [--user] lyncs_io[mpi]
 
 ## Documentation
 
-The high-level `load` and `save` (or `dump` as alias of `save`) functions provided by the Lyncs IO can be used as follows:
+The package provides three high-level functions:
+- `head`: loads the metadata of a file (e.g. `shape`, `dtype`, etc)
+- `load`: loads the content of a file
+- `save` or `dump`: saves data to file
+
+```python
+import numpy as np
+import lyncs_io as io
+
+arr1 = np.random.rand(10,10,10)
+io.save(arr1, "data.npy")
+
+arr2 = io.load("data.npy")
+
+assert (arr1 == arr2).all()
+```
+
+NOTE: for `save` we use the order `data, filename`. This is the opposite
+of what done in `numpy` but consistent with `pickle`'s `dump`. This order
+is preferred because the function can be used directly as a method
+for a class since `self`, i.e. the `data`, would be passed as the first
+argument of `save`.
+
+### Supported file formats
+
+Format | Extensions | Binary | Archive | Parallel MPI | Parallel Dask
+-------|------------|--------|---------|--------------|--------------
+pickle | pkl        | yes    | no      | no           | no
+dill   | dll        | yes    | no      | no           | no
+JSON   | json       | no     | no      | no           | no
+ASCII  | txt        | no     | no      | no           | no
+Numpy  | npy        | yes    | no      | yes          | yes
+Numpyz | npy        | yes    | yes     | TODO         | TODO
+HDF5   | hdf5,h5    | yes    | yes     | yes          | TODO
+lime   | lime       | yes    | TODO    | yes          | yes
+
+### IO with HDF5
 
 ```python
 import numpy as np
@@ -84,11 +123,32 @@ assert (arr1 == arrs["random"]).all()
 assert (arr2 == arrs["zeros"]).all()
 ```
 
-NOTE: for `save` we use the order `data, filename`. This is the opposite
-of what done in `numpy` but consistent with `pickle`'s `dump`. This order
-is preferred because the function can be used directly as a method
-for a class since `self`, i.e. the `data`, would be passed as the first
-argument of `save`.
+Also the content of nexted dictionary can be stored with HDF5:
+
+```python
+import numpy as np
+import lyncs_io as io
+
+mydict = {
+        "random": {
+            "arr0": np.random.rand(10,10,10),
+            "arr1": np.random.rand(5,5),
+        },
+        "zeros":  np.zeros((4, 4, 4, 4)),
+    }
+# once a dictionary (or mapping) is passed it is written as a group
+io.save(mydict, "data.h5")
+
+# all the datasets in the .h5 file are loaded here using all_data argument
+loaded_dict = io.load("data.h5", all_data=True)
+
+assert (mydict["random"]["arr0"] == loaded_dict["random"]["arr0"]).all()
+assert (mydict["random"]["arr1"] == loaded_dict["random"]["arr1"]).all()
+assert (mydict["zeros"] == loaded_dict["zeros"]).all()
+```
+
+Parallel IO via MPI can be enabled with a parallel installation of HDF5.
+For doing so, please refer to https://docs.h5py.org/en/stable/mpi.html.
 
 ### IO with MPI
 
@@ -99,7 +159,7 @@ from mpi4py import MPI
 
 # Assume 2D cartesian topology
 comm = MPI.COMM_WORLD
-dims = MPI.Compute_dims(comm.size, 2)
+dims = (2,2) # e.g. 4 procs
 cartesian2d = comm.Create_cart(dims=dims)
 
 oarr = np.random.rand(6, 4, 2, 2)
@@ -131,67 +191,24 @@ client.shutdown()
 
 NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` routine using `chunks` parameter. For `save` routine, the DaskIO is enabled only if the array passed is a Dask Array. Currently only `numpy` format supports this functionality.
 
-### IO with HDF5
-
-```python
-import numpy as np
-import lyncs_io as io
-from mpi4py import MPI
-
-# Assume 2D cartesian topology
-comm = MPI.COMM_WORLD
-dims = MPI.Compute_dims(comm.size, 2)
-cartesian2d = comm.Create_cart(dims=dims)
-
-arr1 = np.random.rand(10,10,10)
-# write as "random" dataset using the filename
-io.save(arr1, "data.h5/random", comm=comm)
-
-arr2 = np.zeros_like(arr1)
-# write as "zeros" dataset using the key argument
-io.save(arr2, "data.h5", key="zeros", comm=comm)
-
-# load the headers of all the available datasets
-arrs = io.load("data.h5", comm=comm)
-
-# actual datasets are loaded here on demand
-assert (arr1 == arrs["random"]).all()
-assert (arr2 == arrs["zeros"]).all()
-```
-
-```python
-import numpy as np
-import lyncs_io as io
-from mpi4py import MPI
-
-# Assume 2D cartesian topology
-comm = MPI.COMM_WORLD
-dims = MPI.Compute_dims(comm.size, 2)
-cartesian2d = comm.Create_cart(dims=dims)
-
-mydict = {
-        "random": {
-            "arr0": np.random.rand(10,10,10),
-            "arr1": np.random.rand(5,5),
-        },
-        "zeros":  np.zeros((4, 4, 4, 4)),
-    }
-# once a dictionary (or mapping) is passed it is written as a group
-io.save(mydict, "data.h5/dict", comm=comm)
-
-# all the datasets in the .h5 file are loaded here using all_data argument
-loaded_dict = io.load("data.h5", comm=comm, all_data=True)
-
-assert (mydict["random"]["arr0"] == loaded_dict["dict"]["random"]["arr0"]).all()
-assert (mydict["random"]["arr1"] == loaded_dict["dict"]["random"]["arr1"]).all()
-assert (mydict["zeros"] == loaded_dict["dict"]["zeros"]).all()
-```
-
-NOTE: Parallel IO for HDF5 is enabled once a valid cartesian communicator is passed to `load` or `save` routines, otherwise Serial IO is performed. 
-
-### File formats
-
 ### Adding a file format
+
+New file formats can be registered providing providing where possible the respective `head`, `load` and `save` functions.
+For example the `pickle` file format can be registered as follow:
+
+```python
+import pickle
+from lyncs_io.formats import register
+
+register(
+    "pickle",                         # Name of the format
+    extensions=["pkl"],               # List of extensions
+    head=None,                        # Function called by head (omitted)
+    load=pickle.load,                 # Function called by load
+    save=pickle.dump,                 # Function called by save
+    description="Pickle file format", # Short description
+)
+```
 
 ## Acknowledgments
 

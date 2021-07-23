@@ -5,10 +5,12 @@ Import this file only if in a testing environment
 __all__ = [
     "mark_mpi",
     "shape_loop",
+    "dtype_loop",
     "chunksize_loop",
     "lshape_loop",
     "workers_loop",
     "parallel_loop",
+    "parallel_format_loop",
 ]
 
 import os
@@ -18,8 +20,28 @@ from pytest import fixture, mark
 import numpy
 
 from lyncs_utils import factors, prod
+from .formats import formats
+from .base import save
 
 mark_mpi = mark.mpi(min_size=1)
+
+parallel_format_loop = mark.parametrize(
+    "format",
+    [
+        "numpy",
+        "lime",
+    ],
+)
+
+with_hdf5 = formats["hdf5"].error is None
+skip_hdf5 = mark.skipif(not with_hdf5, reason="hdf5 not available")
+if with_hdf5:
+    from .hdf5 import mpi as with_hdf5_mpi
+skip_hdf5_mpi = mark.skipif(
+    not with_hdf5 or not with_hdf5_mpi, reason="parallel hdf5 not available"
+)
+if not skip_hdf5_mpi.args[0]:
+    parallel_format_loop.args[1].append("hdf5")
 
 shape_loop = mark.parametrize(
     "shape",
@@ -28,6 +50,14 @@ shape_loop = mark.parametrize(
         (10, 10),
         (10, 10, 10),
         (10, 10, 10, 10),
+    ],
+)
+
+dtype_loop = mark.parametrize(
+    "dtype",
+    [
+        "float32",
+        "float64",
     ],
 )
 
@@ -47,14 +77,6 @@ lshape_loop = mark.parametrize(
 workers_loop = mark.parametrize(
     "workers",
     [1, 2, 4, 7, 12],
-)
-
-dtype_loop = mark.parametrize(
-    "dtype",
-    [
-        "float64",
-        "float32",
-    ],
 )
 
 
@@ -121,23 +143,25 @@ def tempdir():
     tmp = tempfile.TemporaryDirectory()
     path = tmp.__enter__()
 
-    yield path
+    yield path + "/"
 
     tmp.__exit__(None, None, None)
 
 
-def write_global_array(comm, filename, lshape, dtype="int64", mult=None):
+def write_global_array(comm, filename, lshape, dtype="int64", format="numpy"):
     """
     Writes the global array from a local domain using MPI
     """
     if comm.rank == 0:
-        gshape = lshape
+        if not comm.is_topo:
+            mult = tuple(comm.size if i == 0 else 1 for i in range(len(lshape)))
+        else:
+            dims = comm.dims
+            mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
 
-        if mult:
-            gshape = tuple(a * b for a, b in zip(gshape, mult))
-
+        gshape = tuple(a * b for a, b in zip(lshape, mult))
         master_array = numpy.random.rand(*gshape).astype(dtype)
-        numpy.save(filename, master_array)
+        save(master_array, filename, format=format)
     comm.Barrier()  # make sure file is created and visible by all
 
 
