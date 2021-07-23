@@ -77,22 +77,24 @@ def load(filename):
     tarball_path, leaf = split_filename(filename)
     mode_suffix = _get_mode(tarball_path)
 
-    arr = []  # store data in
-
     if exists(tarball_path):
         tar = tarfile.open(tarball_path, "r" + mode_suffix)
     else:
         raise FileNotFoundError(f"{tarball_path} does not exist.")
 
-    with tempfile.TemporaryDirectory() as tmpf:
-        member = tar.getmember(leaf)
+    member = tar.getmember(leaf)
+    f = tar.extractfile(member)
+    arr = [x.decode('utf-8').replace('\n', '') for x in f.readlines()]
+
+    # with tempfile.TemporaryDirectory() as tmpf:
         # extract to a temp location for reading
-        tar.extract(member, path=tmpf)
-        data_file = f"{tmpf}/{leaf}"
-        with open(data_file, "r") as dat:
-            for line in dat.readlines():
-                line = line.replace('\n', '')  # remove the newline character
-                arr.append(line)
+        # tar.extract(member, path=tmpf)
+        # data_file = f"{tmpf}/{leaf}"
+        # with open(data_file, "r") as dat:
+        #     for line in dat.readlines():
+        #         line = line.replace('\n', '')  # remove the newline character
+        #         arr.append(line)
+
     tar.close()
     return arr
 
