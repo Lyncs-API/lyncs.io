@@ -2,11 +2,6 @@
 Interface for Tar format
 """
 
-import sys
-import os
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
 from os.path import exists, splitext
 from .archive import split_filename
 import tarfile
@@ -53,9 +48,8 @@ def save(arr, filename):
     filename: The name of the file to save the data to.
     """
 
-    pre, tarball_name, leaf = split_filename(filename)
-    mode_suffix = get_mode(tarball_name)
-    tarball_path = pre + tarball_name
+    tarball_path, leaf = split_filename(filename)
+    mode_suffix = _get_mode(tarball_path)
 
     # create Tar if doesn't exist - append if it does
     if exists(tarball_path):
@@ -80,16 +74,15 @@ def load(filename):
     """
     Return an array from the data of a file in a tarball.
     """
-    pre, tarball_name, leaf = split_filename(filename)
-    mode_suffix = get_mode(tarball_name)
-    tarball_path = pre + tarball_name
+    tarball_path, leaf = split_filename(filename)
+    mode_suffix = _get_mode(tarball_path)
 
     arr = []  # store data in
 
     if exists(tarball_path):
         tar = tarfile.open(tarball_path, "r" + mode_suffix)
     else:
-        raise FileNotFoundError(f"{tarball_name} does not exist.")
+        raise FileNotFoundError(f"{tarball_path} does not exist.")
 
     with tempfile.TemporaryDirectory() as tmpf:
         member = tar.getmember(leaf)
@@ -104,35 +97,17 @@ def load(filename):
     return arr
 
 
-def get_mode(filename):
+def head():
+    pass
+
+
+def _get_mode(filename):
     """
     Returns the mode (from modes) with which the tarball should be read/written as
     """
-    ext = get_extension(filename)
+    ext = splitext(filename)[-1]
     for key, val in modes.items():
         if ext in val:
             return key
     raise ValueError(f"{ext} is not supported.")
-
-
-def get_extension(filename):
-    """
-    Returns the extension from the filename
-    e.g. 
-    """
-    return splitext(filename)[1]
-
-
-def split_parts(path):
-    """
-    Splits the filename into 3 parts using archive.split_filename()
-    - The parent directory of the tarball
-    - The name of the tarball
-    - The file to read/write in the tarball
-    """
-    pre, filename = split_filename(path)
-    cont = filename.split('/')
-    tarball_name = cont[0]
-    leaf = '/'.join(cont[1:])
-    return pre, tarball_name, leaf
 

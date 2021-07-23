@@ -1,4 +1,4 @@
-from lyncs_io.tar import *
+from lyncs_io.tar import load, save
 from lyncs_io.testing import tempdir
 import pytest
 import tempfile
@@ -40,39 +40,4 @@ def test_load(tempdir):
             tar.add(dat.name, arcname='datafile.txt')
         
     assert load(tempdir + '/tarball.tar/datafile.txt') == arr_a
-
-
-def test_get_mode():
-    assert get_mode('tarball.tar.gz') == ':gz'
-    assert get_mode('tarball.tb2') == ':bz2'
-    assert get_mode('tarball.tar.xz') == ':xz'
-    assert get_mode('tarball.tar') == ':'
-    
-    with pytest.raises(ValueError):
-        get_mode('tarball.txt')
-
-
-def test_get_extension():
-    assert get_extension('tarball.tar.gz') == '.gz'
-    assert get_extension('') == ''
-
-
-def test_split_filename():
-    path_a = '/home/user/tarball.tar/dir/data'
-    assert split_filename(path_a)[0] == '/home/user/'
-    assert split_filename(path_a)[1] == 'tarball.tar'
-    assert split_filename(path_a)[2] == 'dir/data'
-    assert len(split_filename(path_a)) == 3
-
-    path_b = 'tarball.tar.gz/data'
-    assert split_filename(path_b)[0] == ''
-    assert split_filename(path_b)[1] == 'tarball.tar.gz'
-    assert split_filename(path_b)[2] == 'data'
-    assert len(split_filename(path_b)) == 3
-
-    path_c = 'tarball.tar.gz'
-    assert split_filename(path_c)[0] == ''
-    assert split_filename(path_c)[1] == 'tarball.tar.gz'
-    assert split_filename(path_c)[2] == ''
-    assert len(split_filename(path_c)) == 3
 

@@ -10,6 +10,7 @@ import json
 from .format import Formats
 from .utils import open_file
 from . import numpy
+from . import tar
 
 formats = Formats()
 register = formats.register
@@ -77,6 +78,16 @@ register(
     load=numpy.loadz,
     save=numpy.savez,
     description="Numpy zip format",
+    archive=True,
+)
+
+register(
+    "Tar",
+    extensions=tar.all_extensions,
+    head=tar.head,
+    load=tar.load,
+    save=tar.save,
+    description="",
     archive=True,
 )
 
