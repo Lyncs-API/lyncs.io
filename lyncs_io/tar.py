@@ -4,8 +4,10 @@ Interface for Tar format
 
 from os.path import exists, splitext, basename
 from .archive import split_filename
+from io import BytesIO
 import tarfile
 import tempfile
+
 
 
 all_extensions = [
@@ -62,7 +64,7 @@ def save(arr, filename):
     tar.close()
 
 
-def load(filename):
+def load(filename, header_only=False):
     """
     Return an array from the data of a file in a tarball.
     """
@@ -72,30 +74,30 @@ def load(filename):
     # module 'lyncs_io.base' (most likely due to a circular import)
     
     from .base import load as b_load
+    from .base import head as b_head
+    from .formats import formats
 
     tarball_path, leaf = split_filename(filename)
     mode_suffix = _get_mode(tarball_path)
 
-    if exists(tarball_path):
-        tar = tarfile.open(tarball_path, "r" + mode_suffix)
-    else:
-        raise FileNotFoundError(f"{tarball_path} does not exist.")
+    with tarfile.open(tarball_path, "r" + mode_suffix) as tar:
+        member = tar.getmember(leaf)
+        f = BytesIO()
+        f.write(tar.extractfile(member).read())
+        f.seek(0)
 
-    member = tar.getmember(leaf)
-    with tempfile.TemporaryDirectory() as tmpf:
-        f = tar.extractfile(member)
-        # TODO: load without extracting to a temp location
-        # tar.extract(member, path=tmpf)
-        x = b_load(f, format='txt')
-        # NOTE: Importing get_format from .format causes ImportError
-        # x = b_load(f, format=get_format(basename(leaf))) 
+        if header_only:
+            return b_head(f, format=formats.get_format(filename=basename(leaf)))
+            
 
-    tar.close()
-    return x
+        return b_load(f, format=formats.get_format(filename=basename(leaf))) 
 
 
-def head():
-    pass
+def head(filename):
+    return load(filename, header_only=True)
+
+
+
 
 
 def _get_mode(filename):
