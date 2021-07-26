@@ -9,7 +9,6 @@ import tarfile
 import tempfile
 
 
-
 all_extensions = [
     '.tar',
     '.tar.bz2', '.tb2', '.tbz', '.tbz2', '.tz2',
@@ -33,14 +32,13 @@ modes = {
 }
 
 # TODO: fix issues with compression in append mode
-# TODO: implement head()
 
-
-# Given the tarball name, return the compression mode using modes
 def save(arr, filename):
-    """
-    Save data from an array to a file in a tarball.
-    """
+
+    from .base import save as b_save
+    from .formats import formats
+    from lyncs_utils.io import IOBase
+    from sys import getsizeof
 
     tarball_path, leaf = split_filename(filename)
     mode_suffix = _get_mode(tarball_path)
@@ -51,28 +49,21 @@ def save(arr, filename):
     else:
         tar = tarfile.open(tarball_path, "w" + mode_suffix)
 
-    # A temporary directory is created to write a new file in.
-    # The new file is then added to the tarball before being deleted.
-    with tempfile.TemporaryDirectory() as tmpf:
-        dat = open(tmpf + "/data.txt", 'w')
-        for elt in arr:
-            dat.write(str(elt) + '\n')
-        dat.flush()  # flush data before adding the file to the archive
-        tar.add(dat.name, arcname=leaf)
-        dat.close()
+    f = BytesIO()
+    b_save(arr, f, format=formats.get_format(filename=basename(leaf)))
+    size = f.tell()  # get the size of the file object to write in the tarball
+    f.seek(0)
+    tarinfo = tarfile.TarInfo(name=basename(leaf))
+    tarinfo.size = size
+    tar.addfile(tarinfo, f)
 
     tar.close()
 
+    return f
+
 
 def load(filename, header_only=False):
-    """
-    Return an array from the data of a file in a tarball.
-    """
-    
-    # placing the import at the top causes:
-    # ImportError: cannot import name 'load' from partially initialized
-    # module 'lyncs_io.base' (most likely due to a circular import)
-    
+
     from .base import load as b_load
     from .base import head as b_head
     from .formats import formats
@@ -88,16 +79,12 @@ def load(filename, header_only=False):
 
         if header_only:
             return b_head(f, format=formats.get_format(filename=basename(leaf)))
-            
 
-        return b_load(f, format=formats.get_format(filename=basename(leaf))) 
+        return b_load(f, format=formats.get_format(filename=basename(leaf)))
 
 
 def head(filename):
     return load(filename, header_only=True)
-
-
-
 
 
 def _get_mode(filename):
@@ -109,4 +96,3 @@ def _get_mode(filename):
         if ext in val:
             return key
     raise ValueError(f"{ext} is not supported.")
-
