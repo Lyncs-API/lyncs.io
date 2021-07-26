@@ -9,7 +9,6 @@ import pickle
 import json
 from lyncs_utils import open_file
 from .format import Formats
-from .utils import open_file
 from . import numpy
 from . import tar
 from . import numpy, lime

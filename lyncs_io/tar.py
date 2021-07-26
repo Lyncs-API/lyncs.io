@@ -2,7 +2,7 @@
 Interface for Tar format
 """
 
-from os.path import exists, splitext
+from os.path import exists, splitext, basename
 from .archive import split_filename
 import tarfile
 import tempfile
@@ -30,8 +30,6 @@ modes = {
     ':': ['.tar'],
 }
 
-# TODO: Test for a valid filename format & test
-# TODO: allow saving with no leaf (key) given & test [e.g. save(arr, tarball.tar)]
 # TODO: fix issues with compression in append mode
 # TODO: implement head()
 
@@ -40,12 +38,6 @@ modes = {
 def save(arr, filename):
     """
     Save data from an array to a file in a tarball.
-
-    Params:
-    -------
-    arr: The array to save the data from.
-    tarball_name: The name of the tarball.
-    filename: The name of the file to save the data to.
     """
 
     tarball_path, leaf = split_filename(filename)
@@ -74,6 +66,13 @@ def load(filename):
     """
     Return an array from the data of a file in a tarball.
     """
+    
+    # placing the import at the top causes:
+    # ImportError: cannot import name 'load' from partially initialized
+    # module 'lyncs_io.base' (most likely due to a circular import)
+    
+    from .base import load as b_load
+
     tarball_path, leaf = split_filename(filename)
     mode_suffix = _get_mode(tarball_path)
 
@@ -83,20 +82,16 @@ def load(filename):
         raise FileNotFoundError(f"{tarball_path} does not exist.")
 
     member = tar.getmember(leaf)
-    f = tar.extractfile(member)
-    arr = [x.decode('utf-8').replace('\n', '') for x in f.readlines()]
-
-    # with tempfile.TemporaryDirectory() as tmpf:
-        # extract to a temp location for reading
+    with tempfile.TemporaryDirectory() as tmpf:
+        f = tar.extractfile(member)
+        # TODO: load without extracting to a temp location
         # tar.extract(member, path=tmpf)
-        # data_file = f"{tmpf}/{leaf}"
-        # with open(data_file, "r") as dat:
-        #     for line in dat.readlines():
-        #         line = line.replace('\n', '')  # remove the newline character
-        #         arr.append(line)
+        x = b_load(f, format='txt')
+        # NOTE: Importing get_format from .format causes ImportError
+        # x = b_load(f, format=get_format(basename(leaf))) 
 
     tar.close()
-    return arr
+    return x
 
 
 def head():
