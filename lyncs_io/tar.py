@@ -33,6 +33,7 @@ modes = {
 
 # TODO: fix issues with compression in append mode
 
+
 def save(arr, filename):
 
     from .base import save as b_save
@@ -50,6 +51,8 @@ def save(arr, filename):
         tar = tarfile.open(tarball_path, "w" + mode_suffix)
 
     f = BytesIO()
+    # f.name = 'temp.h5'
+
     b_save(arr, f, format=formats.get_format(filename=basename(leaf)))
     size = f.tell()  # get the size of the file object to write in the tarball
     f.seek(0)
@@ -62,25 +65,41 @@ def save(arr, filename):
     return f
 
 
-def load(filename, header_only=False):
+def load(filename, header_only=False, **kwargs):
 
     from .base import load as b_load
     from .base import head as b_head
     from .formats import formats
+    from .archive import Loader, Archive, Data
+    from .numpy import load as nload
 
     tarball_path, leaf = split_filename(filename)
     mode_suffix = _get_mode(tarball_path)
 
     with tarfile.open(tarball_path, "r" + mode_suffix) as tar:
-        member = tar.getmember(leaf)
-        f = BytesIO()
-        f.write(tar.extractfile(member).read())
-        f.seek(0)
+        if leaf:
+            member = tar.getmember(leaf)
+            f = BytesIO()
+            f.name = 'temp.h5'
+            f.write(tar.extractfile(member).read())
+            f.seek(0)
 
-        if header_only:
-            return b_head(f, format=formats.get_format(filename=basename(leaf)))
+            if header_only:
+                return b_head(f, format=formats.get_format(filename=basename(leaf)))
 
-        return b_load(f, format=formats.get_format(filename=basename(leaf)))
+            return b_load(f, format=formats.get_format(filename=basename(leaf)))
+        else:
+            content = dict()
+            for member in tar.getmembers():
+                f = BytesIO()
+                # f.name = 'temp.h5'
+                f.write(tar.extractfile(member).read())
+                f.seek(0)
+                header = b_head(f, format=formats.get_format(filename=basename(member.name)))
+                data_obj = Data(header, None)
+                content[member.name] = data_obj
+            loader = Loader(load, filename='tarfile.tar/data.npy', kwargs=kwargs)
+            return Archive(content, loader)
 
 
 def head(filename):
