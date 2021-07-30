@@ -5,6 +5,7 @@ Function utils
 from functools import wraps
 from pathlib import Path
 from lyncs_utils.io import FileLike
+from collections import defaultdict
 
 
 def find_file(filename):
@@ -63,3 +64,16 @@ def default_names(i=0):
     "Infinite generator of default names ('arrN') for entries of an archive."
     yield f"arr{i}"
     yield from default_names(i + 1)
+
+
+def nested_dict():
+    """
+    Creates a default dictionary where each value is an other default dictionary.
+    """
+    return defaultdict(nested_dict)
+
+
+def default_to_regular(d):
+    if isinstance(d, defaultdict):
+        d = {k: default_to_regular(v) for k, v in d.items()}
+    return d
