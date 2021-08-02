@@ -5,12 +5,12 @@ Interface for Tar format
 from os.path import exists, splitext, basename
 from .archive import split_filename
 from io import BytesIO
-from .utils import nested_dict, default_to_regular
+from .utils import nested_dict, default_to_regular, default_names
 import tarfile
 import tempfile
 
 
-all_extensions = [
+_all_extensions = [
     '.tar',
     '.tar.bz2', '.tb2', '.tbz', '.tbz2', '.tz2',
     '.tar.gz', '.taz', '.tgz',
@@ -23,6 +23,12 @@ all_extensions = [
     # source: wikipedia
 ]
 
+# format extension to be used by formats.get_format
+all_extensions = [splitext(ext)[-1][1:]
+                if sum([1 for x in ext if x == '.']) > 1
+                else ext[1:]
+                for ext in _all_extensions]
+
 modes = {
     # .gz, .bz2 and .xz should start with .tar
     # .tar was removed because of splitext()
@@ -34,34 +40,41 @@ modes = {
 
 # TODO: fix issues with compression in append mode
 # TODO: issues with h5 files
+# TODO: deduce data format from the data argument (for saving with a default key)
+# TODO: change test_tar.test_serial_tar, use ['arr0'] instead (omit ext)
 
 
-def save(arr, filename):
+def save(arr, filename, key=None, **kwargs):
     from .base import save as b_save
     from .formats import formats
     from lyncs_utils.io import IOBase
     from sys import getsizeof
 
-    tarball_path, leaf = split_filename(filename)
-    mode_suffix = _get_mode(tarball_path)
+    filename, key = split_filename(filename, key)
+    mode_suffix = _get_mode(filename)
+
 
     # create Tar if doesn't exist - append if it does
-    if exists(tarball_path):
-        tar = tarfile.open(tarball_path, "a")
+    if exists(filename):
+        tar = tarfile.open(filename, "a")
     else:
-        tar = tarfile.open(tarball_path, "w" + mode_suffix)
+        tar = tarfile.open(filename, "w" + mode_suffix)
+
+    if not key:
+        for name in default_names():
+            if name +'.npy' not in [m.name for m in tar.getmembers()]:
+                key = name + '.npy'
+                break
 
     f = BytesIO()
 
-    b_save(arr, f, format=formats.get_format(filename=basename(leaf)))
+    b_save(arr, f, format=formats.get_format(filename=basename(key)))
     size = f.tell()  # get the size of the file object to write in the tarball
     f.seek(0)
-    tarinfo = tarfile.TarInfo(name=leaf)
+    tarinfo = tarfile.TarInfo(name=key)
     tarinfo.size = size
     tar.addfile(tarinfo, f)
     tar.close()
-
-    return f
 
 
 def _format_key(key):
@@ -85,14 +98,13 @@ def _is_dir(tar, key):
     return False
 
 
-def _load_member(tar, member, header_only=False, as_data=False):
+def _load_member(tar, member, header_only, as_data=False):
     from .base import head as bhead
     from .base import load as bload
     from .archive import Data
     from .formats import formats
 
     f = BytesIO()
-    f.name = 'foo.h5'
     f.write(tar.extractfile(member).read())
     f.seek(0)
     header = bhead(f, format=formats.get_format(filename=basename(member.name)))
@@ -113,7 +125,7 @@ def _load(paths, tar):
             marcher = new_path_dict
             for key in parts[:-1]:
                 marcher = marcher[key]
-            header = _load_member(tar, tar.getmember(path), header_only=True, as_data=True)
+            header = _load_member(tar, _find_member(tar, tar.getmember(path).name), header_only=True, as_data=True)
             marcher[parts[-1]] = header
     return default_to_regular(new_path_dict)
 
@@ -137,9 +149,23 @@ def _load_dispatch(tar, key, loader, header_only, depth=1, all_data=False, ** kw
         _dict = _load(paths, tar)[key[:-1]] if key != '/' else _load(paths, tar)
         return Archive(_dict, loader=loader, path=key)
 
+    return _load_member(tar, _find_member(tar, key), header_only)
+
+
+def _find_member(tar, key):
+    if splitext(key)[-1]:
+            member = tar.getmember(key)
     else:
-        member = tar.getmember(key)
-        return _load_member(tar, member)
+        potential_members = [f.name for f in tar.getmembers() if splitext(f.name)[0] == key]
+        num = len(potential_members)
+        if num == 1:
+            member =  tar.getmember(potential_members[0])
+        elif num > 1:
+            raise KeyError(f"Can't omit extension when multiple files with the same name exist: {','.join(potential_members)}")
+        else:
+            raise KeyError(f"No such file: {key}, {key}.*")
+    return member
+
 
 
 def load(filename, key=None, header_only=False, **kwargs):
