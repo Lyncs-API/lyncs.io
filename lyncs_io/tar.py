@@ -66,24 +66,25 @@ def save(arr, filename):
     return f
 
 
+def _format_key(key):
+    if key:
+        return key if key[-1] == '/' else key + '/'
+    return '/'
+
+
+def _get_depth(path, key):
+    key_depth = sum([1 for char in key if char == '/'])
+    path_depth = sum([1 for char in path if char == '/'])
+    diff = path_depth - key_depth
+    return diff + 1 if key != '/' else diff + 2
+
+
+
 def _is_dir(tar, key):
     for member in tar.getmembers():
-        if not key or member.name.startswith(key + '/'):
+        if key == '/' or member.name.startswith(key):
             return True
     return False
-
-
-def _get_content(tar, key):
-    from .archive import Data
-    from .base import head as bhead
-    from .formats import formats
-
-    cont = dict()
-    for member in tar.getmembers():
-        if not key or member.name.startswith(key + '/'):
-            data_obj = _load_member(tar, member, header_only=False)
-            cont[basename(member.name)] = data_obj
-    return cont
 
 
 def _load_member(tar, member, header_only=False):
@@ -118,15 +119,19 @@ def _load(paths, tar):
     return default_to_regular(new_path_dict)
 
 
-def _load_dispatch(tar, key, loader, header_only, **kwargs):
+def _load_dispatch(tar, key, loader, header_only, depth=1, all_data=False, ** kwargs):
     from .base import head as bhead
     from .base import load as bload
     from .formats import formats
     from .archive import Archive
 
     if _is_dir(tar, key):
-        paths = [member.name for member in tar.getmembers()]
-        return Archive(_load(paths, tar), loader=loader, path=key)
+        paths = [member.name for member in tar.getmembers()
+                if ((member.name.startswith(key) or key=='/')
+                and (_get_depth(member.name, key) <= depth or all_data))]
+        # avoid {dir : {data}}. Return {data} instead if key is given.
+        _dict = _load(paths, tar)[key[:-1]] if key != '/' else _load(paths, tar)
+        return Archive(_dict, loader=loader, path=key)
 
     else:
         member = tar.getmember(key)
@@ -134,6 +139,7 @@ def _load_dispatch(tar, key, loader, header_only, **kwargs):
             f = BytesIO()
             f.write(tar.extractfile(member).read())
             f.seek(0)
+
             if header_only:
                 return bhead(f, format=formats.get_format(filename=basename(key)))
 
@@ -142,20 +148,18 @@ def _load_dispatch(tar, key, loader, header_only, **kwargs):
 
 def load(filename, key=None, header_only=False, **kwargs):
     from .archive import Loader
-    from .base import load as bload
-    from .base import head as bhead
-    from .formats import formats
 
     filename, key = split_filename(filename, key)
     mode_suffix = _get_mode(filename)
     loader = Loader(load, filename, kwargs=kwargs)
 
     with tarfile.open(filename, "r" + mode_suffix) as tar:
-        return _load_dispatch(tar, key, loader, header_only, **kwargs)
+        return _load_dispatch(tar, _format_key(key), loader, header_only, **kwargs)
 
 
 def head(filename):
     return load(filename, header_only=True)
+
 
 def _get_mode(filename):
     """
