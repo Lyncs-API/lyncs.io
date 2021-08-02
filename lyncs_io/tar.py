@@ -52,7 +52,6 @@ def save(arr, filename):
         tar = tarfile.open(tarball_path, "w" + mode_suffix)
 
     f = BytesIO()
-    # f.name = 'temp.h5'
 
     b_save(arr, f, format=formats.get_format(filename=basename(leaf)))
     size = f.tell()  # get the size of the file object to write in the tarball
@@ -60,7 +59,6 @@ def save(arr, filename):
     tarinfo = tarfile.TarInfo(name=leaf)
     tarinfo.size = size
     tar.addfile(tarinfo, f)
-
     tar.close()
 
     return f
@@ -87,23 +85,24 @@ def _is_dir(tar, key):
     return False
 
 
-def _load_member(tar, member, header_only=False):
+def _load_member(tar, member, header_only=False, as_data=False):
     from .base import head as bhead
     from .base import load as bload
     from .archive import Data
     from .formats import formats
 
     f = BytesIO()
+    f.name = 'foo.h5'
     f.write(tar.extractfile(member).read())
     f.seek(0)
     header = bhead(f, format=formats.get_format(filename=basename(member.name)))
+
+    if header_only:
+        return Data(header, None) if as_data else header
+
     f.seek(0)
-
-    if not header_only:
-        data = bload(f, format=formats.get_format(filename=basename(member.name)))
-        return Data(header, data)
-
-    return Data(header, None)
+    data = bload(f, format=formats.get_format(filename=basename(member.name)))
+    return Data(header, data) if as_data else data
 
 
 def _load(paths, tar):
@@ -114,7 +113,7 @@ def _load(paths, tar):
             marcher = new_path_dict
             for key in parts[:-1]:
                 marcher = marcher[key]
-            header = _load_member(tar, tar.getmember(path), header_only=True)
+            header = _load_member(tar, tar.getmember(path), header_only=True, as_data=True)
             marcher[parts[-1]] = header
     return default_to_regular(new_path_dict)
 
@@ -125,7 +124,12 @@ def _load_dispatch(tar, key, loader, header_only, depth=1, all_data=False, ** kw
     from .formats import formats
     from .archive import Archive
 
-    if _is_dir(tar, key):
+    # if .h5
+    if key and key.split('/')[0].endswith('.h5'):
+        raise NotImplementedError(f"HDF5 file {key} is not supported when inside a tarball")
+
+    if _is_dir(tar, _format_key(key)):
+        key = _format_key(key)
         paths = [member.name for member in tar.getmembers()
                 if ((member.name.startswith(key) or key=='/')
                 and (_get_depth(member.name, key) <= depth or all_data))]
@@ -135,15 +139,7 @@ def _load_dispatch(tar, key, loader, header_only, depth=1, all_data=False, ** kw
 
     else:
         member = tar.getmember(key)
-        if member.isfile():
-            f = BytesIO()
-            f.write(tar.extractfile(member).read())
-            f.seek(0)
-
-            if header_only:
-                return bhead(f, format=formats.get_format(filename=basename(key)))
-
-            return bload(f, format=formats.get_format(filename=basename(key)))
+        return _load_member(tar, member)
 
 
 def load(filename, key=None, header_only=False, **kwargs):
@@ -154,7 +150,7 @@ def load(filename, key=None, header_only=False, **kwargs):
     loader = Loader(load, filename, kwargs=kwargs)
 
     with tarfile.open(filename, "r" + mode_suffix) as tar:
-        return _load_dispatch(tar, _format_key(key), loader, header_only, **kwargs)
+        return _load_dispatch(tar, key, loader, header_only, **kwargs)
 
 
 def head(filename):
