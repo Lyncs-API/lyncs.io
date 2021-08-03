@@ -98,30 +98,27 @@ def _is_dir(tar, key):
     return False
 
 
-def _load_member(tar, member, header_only, as_data=False, from_head=False):
+def _load_member(tar, member, header_only, as_data=False):
     from .base import head as bhead
     from .base import load as bload
     from .archive import Data
     from .formats import formats
+    from .header import Header
 
     f = BytesIO()
     f.write(tar.extractfile(member).read())
     f.seek(0)
-    header = bhead(f, format=formats.get_format(filename=basename(member.name)))
-
-    if from_head:
-        return header
+    header = Header(bhead(f, format=formats.get_format(filename=basename(member.name))))
 
     if header_only:
-        # return header
-        return Data(header, None) if as_data else header
+        return header
 
     f.seek(0)
     data = bload(f, format=formats.get_format(filename=basename(member.name)))
-    return Data(header, None) if as_data else data
+    return Data(header, data) if as_data else data
 
 
-def _load(paths, tar, **kwargs):
+def _load(paths, tar, header_only, **kwargs):
     new_path_dict = nested_dict()
     for path in paths:
         parts = path.split('/')
@@ -129,7 +126,7 @@ def _load(paths, tar, **kwargs):
             marcher = new_path_dict
             for key in parts[:-1]:
                 marcher = marcher[key]
-            header = _load_member(tar, _find_member(tar, tar.getmember(path).name), header_only=True, as_data=True)
+            header = _load_member(tar, _find_member(tar, tar.getmember(path).name), header_only=header_only, as_data=True,)
             marcher[parts[-1]] = header
     return default_to_regular(new_path_dict)
 
@@ -151,10 +148,21 @@ def _load_dispatch(tar, key, loader, header_only, depth=1, all_data=False, from_
                 and (_get_depth(member.name, key) <= depth or all_data))]
 
         # avoid {dir : {data}}. Return {data} instead if key is given.
-        _dict = _load(paths, tar)[key[:-1]] if key != '/' else _load(paths, tar)
+        _dict = _load(paths, tar, header_only)[key[:-1]] if key != '/' else _load(paths, tar, header_only)
         return Archive(_dict, loader=loader, path=key)
 
-    return _load_member(tar, _find_member(tar, key), header_only, from_head=from_head)
+    return _load_member(tar, _find_member(tar, key), header_only)
+
+
+def load(filename, key=None, header_only=False, **kwargs):
+    from .archive import Loader
+
+    filename, key = split_filename(filename, key)
+    mode_suffix = _get_mode(filename)
+    loader = Loader(load, filename, kwargs=kwargs)
+
+    with tarfile.open(filename, "r" + mode_suffix) as tar:
+        return _load_dispatch(tar, key, loader, header_only)
 
 
 def _find_member(tar, key):
@@ -172,20 +180,8 @@ def _find_member(tar, key):
     return member
 
 
-
-def load(filename, key=None, header_only=False, from_head=False, **kwargs):
-    from .archive import Loader
-
-    filename, key = split_filename(filename, key)
-    mode_suffix = _get_mode(filename)
-    loader = Loader(load, filename, kwargs=kwargs)
-
-    with tarfile.open(filename, "r" + mode_suffix) as tar:
-        return _load_dispatch(tar, key, loader, header_only, from_head=from_head)
-
-
-def head(filename):
-    return load(filename, header_only=True, from_head=True)
+def head(filename, **kwargs):
+    return load(filename, header_only=True)
 
 
 def _get_mode(filename):
