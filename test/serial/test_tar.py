@@ -37,10 +37,8 @@ def test_serial_tar(tempdir, dtype, shape):
     assert (arr * 2 == io.load(ftmp)["arr1.npy"]).all()
 
     # Testing Head
-    # assert list(io.load(ftmp).keys()) == list(io.head(ftmp).keys())
+    assert list(io.load(ftmp).keys()) == list(io.head(ftmp).keys())
     # assert io.load(ftmp)["arr0.npy"].shape == io.head(ftmp)["arr0.npy"]["shape"]
-
-    # arr = np.random.rand(10)
 
     # for mode in modes:
     #     for form in formats:
