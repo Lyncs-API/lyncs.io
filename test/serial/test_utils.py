@@ -26,6 +26,7 @@ def test_find_file(tempdir):
     with open(tempdir + "data.npy", "w") as data:
         assert find_file(data) is data
 
+
 def test_get_depth():
     path = "home/user/bar/foo.npy"
     key = "/"
