@@ -106,9 +106,10 @@ def _load_member(tar, member, header_only=False, as_data=False, comm=None, **kwa
     fptr = BytesIO()
     fptr.write(tar.extractfile(member).read())
     fptr.seek(0)
-    
+
     header = Header(
-        base.head(fptr, format=formats.get_format(filename=basename(member.name))), **kwargs
+        base.head(fptr, format=formats.get_format(filename=basename(member.name))),
+        **kwargs,
     )
 
     if header_only:
