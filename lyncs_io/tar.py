@@ -63,11 +63,11 @@ modes = {
 
 
 def _save(arr, tar, key, **kwargs):
-    from .base import save as bsave
+    from . import base
     from .formats import formats
 
     fptr = BytesIO()
-    bsave(arr, fptr, format=formats.get_format(filename=basename(key)), **kwargs)
+    base.save(arr, fptr, format=formats.get_format(filename=basename(key)), **kwargs)
     size = fptr.tell()  # get the size of the file object to write in the tarball
     fptr.seek(0)
     tarinfo = tarfile.TarInfo(name=key)
@@ -99,23 +99,23 @@ def save(arr, filename, key=None, comm=None, **kwargs):
     _save(arr, tar, key, **kwargs)
 
 
-def _load_member(tar, member, header_only=False, as_data=False, **kwargs):
-    from .base import head as bhead
-    from .base import load as bload
+def _load_member(tar, member, header_only=False, as_data=False, comm=None, **kwargs):
+    from . import base
     from .formats import formats
 
     fptr = BytesIO()
     fptr.write(tar.extractfile(member).read())
     fptr.seek(0)
+    
     header = Header(
-        bhead(fptr, format=formats.get_format(filename=basename(member.name))), **kwargs
+        base.head(fptr, format=formats.get_format(filename=basename(member.name))), **kwargs
     )
 
     if header_only:
         return header
 
     fptr.seek(0)
-    data = bload(
+    data = base.load(
         fptr, format=formats.get_format(filename=basename(member.name)), **kwargs
     )
     return Data(header, data) if as_data else data
