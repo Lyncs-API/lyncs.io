@@ -9,9 +9,7 @@ import pickle
 import json
 from lyncs_utils import open_file
 from .format import Formats
-from . import numpy
-from . import tar
-from . import numpy, lime
+from . import numpy, lime, tar
 
 formats = Formats()
 register = formats.register
@@ -88,7 +86,7 @@ register(
     head=tar.head,
     load=tar.load,
     save=tar.save,
-    description="",
+    description="Tar/Tarball archive format",
     archive=True,
 )
 

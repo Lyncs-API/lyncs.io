@@ -30,6 +30,8 @@ parallel_format_loop = mark.parametrize(
     [
         "numpy",
         "lime",
+        "tar",
+        "hdf5",
     ],
 )
 
@@ -77,6 +79,31 @@ lshape_loop = mark.parametrize(
 workers_loop = mark.parametrize(
     "workers",
     [1, 2, 4, 7, 12],
+)
+
+tar_mode_loop = mark.parametrize(
+    "mode",
+    [
+        ".tar.gz",
+        ".taz",
+        ".tgz",
+        ".tar.bz2",
+        ".tb2",
+        ".tbz",
+        ".tbz2",
+        ".tz2",
+        ".tar.xz",
+        ".txz",
+        ".tar",
+    ],
+)
+
+ext_loop = mark.parametrize(
+    "ext",
+    [
+        ".npy",
+        # TODO: ".txt", ".h5"
+    ],
 )
 
 

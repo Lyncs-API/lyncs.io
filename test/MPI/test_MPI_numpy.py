@@ -26,6 +26,9 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
     if format == "hdf5":
         ftmp += ".h5/data"
 
+    if format == "tar":
+        ftmp += ".tar/data.npy"
+
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
     local_array = io.load(ftmp, comm=comm, format=format)
@@ -48,6 +51,9 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     if format == "hdf5":
         ftmp += ".h5/data"
 
+    if format == "tar":
+        ftmp += ".tar/data.npy"
+
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
     local_array = io.load(ftmp, comm=comm, format=format)
@@ -69,6 +75,9 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
     ftmp = tempdir_MPI + "/mpiio_save_comm"
     if format == "hdf5":
         ftmp += ".h5/data"
+
+    if format == "tar":
+        return
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -94,6 +103,9 @@ def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
     ftmp = tempdir_MPI + "/mpiio_save_cart"
     if format == "hdf5":
         ftmp += ".h5/data"
+
+    if format == "tar":
+        return
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)

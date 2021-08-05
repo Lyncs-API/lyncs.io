@@ -3,7 +3,7 @@ import os
 import tempfile
 import pytest
 from pathlib import Path
-from lyncs_io.utils import find_file
+from lyncs_io.utils import find_file, get_depth
 from lyncs_io.testing import tempdir
 
 
@@ -25,3 +25,24 @@ def test_find_file(tempdir):
     # test FileLike objects
     with open(tempdir + "data.npy", "w") as data:
         assert find_file(data) is data
+
+def test_get_depth():
+    path = "home/user/bar/foo.npy"
+    key = "/"
+    assert get_depth(path, key) == 3
+
+    path = "user//bar//foo.npy"
+    key = "user"
+    assert get_depth(path, key) == 1
+
+    key = "user/bar/.."
+    assert get_depth(path, key) == 1
+
+    key = "user/bar/../././"
+    assert get_depth(path, key) == 1
+
+    key = "user/bar/.././../"
+    assert get_depth(path, key) == 2
+
+    key = "user/bar/.."
+    assert get_depth(path, key) == 1
