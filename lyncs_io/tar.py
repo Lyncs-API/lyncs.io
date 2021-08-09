@@ -3,6 +3,8 @@ Interface for Tar format
 """
 
 import tarfile
+import tempfile
+from .mpi_io import check_comm
 from io import BytesIO
 from os.path import exists, splitext, basename
 from .header import Header
@@ -66,12 +68,17 @@ def _save(arr, tar, key, **kwargs):
     from . import base
     from .formats import formats
 
+    # if comm -> filename
+    # else -> bytesio
+
     fptr = BytesIO()
     base.save(arr, fptr, format=formats.get_format(filename=basename(key)), **kwargs)
     size = fptr.tell()  # get the size of the file object to write in the tarball
     fptr.seek(0)
     tarinfo = tarfile.TarInfo(name=key)
     tarinfo.size = size
+
+    # addfile v add (comm(one process extracts, the rest of the processes read)) depends on fptr
     tar.addfile(tarinfo, fptr)
     tar.close()
 
@@ -99,25 +106,33 @@ def save(arr, filename, key=None, comm=None, **kwargs):
     _save(arr, tar, key, **kwargs)
 
 
-def _load_member(tar, member, header_only=False, as_data=False, comm=None, **kwargs):
+def _load_member(tar, member, header_only=False, as_data=False, **kwargs):
     from . import base
     from .formats import formats
 
-    fptr = BytesIO()
-    fptr.write(tar.extractfile(member).read())
-    fptr.seek(0)
+    # 1. get buffer (extractfile (fileno issues)),
+    # 2. extract to a temp file,
+    # 3. read buffer (as it's now),
+    # 4. do nothing/wait (one process extracts, the rest of the processes read)
+
+    temp = None
+    if kwargs['comm']:
+        temp = tempfile.TemporaryDirectory()
+
+    fptr = _extract(tar, member, temp=temp, **kwargs)
     
     header = Header(
         base.head(fptr, format=formats.get_format(filename=basename(member.name))), **kwargs
     )
-
     if header_only:
         return header
 
-    fptr.seek(0)
+    not kwargs['comm'] and fptr.seek(0)
+
     data = base.load(
         fptr, format=formats.get_format(filename=basename(member.name)), **kwargs
     )
+        
     return Data(header, data) if as_data else data
 
 
@@ -208,3 +223,27 @@ def is_dir(tar, key):
         if key == "/" or member.name.startswith(key):
             return True
     return False
+
+def _extract(tar, member, get_buff=False, wait=False, temp=None, **kwargs):
+    import os
+    from . import base
+
+    if get_buff:
+        raise NotImplementedError
+
+    if wait:
+        raise NotImplementedError
+
+    if kwargs['comm']:
+        check_comm(kwargs['comm'])
+        tar.extract(member, path=temp.name)
+        return temp.name +'/'+ os.listdir(temp.name)[0]
+    
+    fptr = BytesIO()
+    fptr.write(tar.extractfile(member).read())
+    fptr.seek(0)
+    return fptr
+
+
+
+
