@@ -4,7 +4,7 @@ Interface for Tar format
 
 import tarfile
 import tempfile
-from .mpi_io import check_comm
+from .mpi_io import check_comm, tempdir_MPI
 from io import BytesIO
 from os.path import exists, splitext, basename
 from .header import Header
@@ -70,6 +70,13 @@ def _save(arr, tar, key, **kwargs):
 
     # if comm -> filename
     # else -> bytesio
+    if kwargs['comm']:
+        check_comm(kwargs['comm'])
+        with tempdir_MPI() as temp:
+            base.save(arr, temp +'/' + key, format=formats.get_format(filename=basename(key)), **kwargs)
+            tar.add(temp +'/'+ key, arcname=key)
+            tar.close()
+            return
 
     fptr = BytesIO()
     base.save(arr, fptr, format=formats.get_format(filename=basename(key)), **kwargs)

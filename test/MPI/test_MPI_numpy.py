@@ -86,7 +86,7 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
         ftmp += ".h5/data"
 
     if format == "tar":
-        return
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -116,7 +116,7 @@ def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
         ftmp += ".h5/data"
 
     if format == "tar":
-        return
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
