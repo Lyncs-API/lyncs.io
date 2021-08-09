@@ -122,7 +122,8 @@ def _load_member(tar, member, header_only=False, as_data=False, **kwargs):
     fptr = _extract(tar, member, temp=temp, **kwargs)
     
     header = Header(
-        base.head(fptr, format=formats.get_format(filename=basename(member.name))), **kwargs
+        base.head(fptr, format=formats.get_format(filename=basename(member.name))),
+        **kwargs,
     )
     if header_only:
         return header
