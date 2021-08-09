@@ -116,11 +116,11 @@ def _load_member(tar, member, header_only=False, as_data=False, **kwargs):
     # 4. do nothing/wait (one process extracts, the rest of the processes read)
 
     temp = None
-    if kwargs['comm']:
+    if kwargs["comm"]:
         temp = tempfile.TemporaryDirectory()
 
     fptr = _extract(tar, member, temp=temp, **kwargs)
-    
+
     header = Header(
         base.head(fptr, format=formats.get_format(filename=basename(member.name))),
         **kwargs,
@@ -128,12 +128,12 @@ def _load_member(tar, member, header_only=False, as_data=False, **kwargs):
     if header_only:
         return header
 
-    not kwargs['comm'] and fptr.seek(0)
+    not kwargs["comm"] and fptr.seek(0)
 
     data = base.load(
         fptr, format=formats.get_format(filename=basename(member.name)), **kwargs
     )
-        
+
     return Data(header, data) if as_data else data
 
 
@@ -225,6 +225,7 @@ def is_dir(tar, key):
             return True
     return False
 
+
 def _extract(tar, member, get_buff=False, wait=False, temp=None, **kwargs):
     import os
     from . import base
@@ -235,16 +236,12 @@ def _extract(tar, member, get_buff=False, wait=False, temp=None, **kwargs):
     if wait:
         raise NotImplementedError
 
-    if kwargs['comm']:
-        check_comm(kwargs['comm'])
+    if kwargs["comm"]:
+        check_comm(kwargs["comm"])
         tar.extract(member, path=temp.name)
-        return temp.name +'/'+ os.listdir(temp.name)[0]
-    
+        return temp.name + "/" + os.listdir(temp.name)[0]
+
     fptr = BytesIO()
     fptr.write(tar.extractfile(member).read())
     fptr.seek(0)
     return fptr
-
-
-
-
