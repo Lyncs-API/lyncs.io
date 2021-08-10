@@ -19,13 +19,14 @@ def check_comm(comm):
             "comm variable needs to be a valid MPI communicator with size attribute."
         )
 
+
 def _tempdir_MPI():
     """
     Creates a temporary directory to be used during testing
     """
 
     from .testing import get_comm, mpi
-    
+
     comm = get_comm()
     if comm.rank == 0:
         tmp = tempfile.TemporaryDirectory()
@@ -51,7 +52,9 @@ def _tempdir_MPI():
     if comm.rank == 0:
         tmp.__exit__(None, None, None)
 
+
 tempdir_MPI = contextmanager(_tempdir_MPI)
+
 
 class MpiIO:
     """

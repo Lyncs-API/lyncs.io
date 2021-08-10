@@ -70,11 +70,16 @@ def _save(arr, tar, key, **kwargs):
 
     # if comm -> filename
     # else -> bytesio
-    if kwargs['comm']:
-        check_comm(kwargs['comm'])
+    if kwargs["comm"]:
+        check_comm(kwargs["comm"])
         with tempdir_MPI() as temp:
-            base.save(arr, temp +'/' + key, format=formats.get_format(filename=basename(key)), **kwargs)
-            tar.add(temp +'/'+ key, arcname=key)
+            base.save(
+                arr,
+                temp + "/" + key,
+                format=formats.get_format(filename=basename(key)),
+                **kwargs,
+            )
+            tar.add(temp + "/" + key, arcname=key)
             tar.close()
             return
 
