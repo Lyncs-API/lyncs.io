@@ -74,7 +74,7 @@ def _save(arr, tar, key, **kwargs):
         check_comm(kwargs["comm"])
         with tempdir_MPI() as temp:
             base.save(arr, temp + "/" + key, format=_format, **kwargs)
-            if kwargs["comm"].rank == 0 :
+            if kwargs["comm"].rank == 0:
                 tar.add(temp + "/" + key, arcname=key)
     else:
         fptr = BytesIO()
@@ -239,7 +239,7 @@ def _extract(tar, member, get_buff=False, **kwargs):
                 tar.extract(member, path=temp)
             kwargs["comm"].Barrier()
             yield temp + "/" + listdir(temp)[0]
-    elif get_buff:        
+    elif get_buff:
         yield tar.extractfile(member)
     else:
         # This is what's used at the moment
