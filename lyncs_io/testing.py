@@ -17,7 +17,7 @@ import os
 import tempfile
 from itertools import product
 from pytest import fixture, mark
-import numpy
+import numpy as np
 
 from lyncs_utils import factors, prod
 from .formats import formats
@@ -110,6 +110,25 @@ ext_loop = mark.parametrize(
         # TODO: ".txt", ".h5"
     ],
 )
+
+def generate_rand_arr(shape, dtype, **kwargs):
+
+    def rand_int(shape, dtype, low=0, high=1):
+        return np.random.randint(low=low, high=high, size=shape)
+
+    def rand_complex(shape, dtype):
+        return np.zeros(shape=shape, dtype=np.complex)
+
+    def rand_float(shape, dtype):
+        return np.random.rand(*shape)
+    
+    rand_arr = {
+        "int" : rand_int,
+        "float" : rand_float,
+        "complex" : rand_complex,
+    }
+
+    return rand_arr[dtype](shape, dtype, **kwargs)
 
 
 @fixture(scope="session")
