@@ -71,13 +71,11 @@ def _save(arr, tar, key, **kwargs):
     key = key[1:] if key[0] == "/" else key
 
     if kwargs["comm"]:
-        check_comm(kwargs["comm"])
         with tempdir_MPI() as temp:
             base.save(arr, temp + "/" + key, format=_format, **kwargs)
-            if kwargs["comm"].rank == 0:
+            # Only rank 0 does the writing
+            if tar is not None:
                 tar.add(temp + "/" + key, arcname=key)
-            # make processes wait to avoid race conditions
-            kwargs["comm"].Barrier()
     else:
         fptr = BytesIO()
         base.save(arr, fptr, format=_format, **kwargs)
@@ -95,6 +93,25 @@ def _write_dispatch(arr, tar, key, **kwargs):
     else:
         _save(arr, tar, key, **kwargs)
 
+@contextmanager
+def _open_for_saving(filename, mode_suffix, comm=None):
+    if comm is not None and comm.rank != 0:
+        tar = None
+    elif exists(filename):
+        if mode_suffix != ":":
+            raise ValueError("Appending in a compressed tarball is not supported")
+        tar = tarfile.open(filename, "a")
+    else:
+        tar = tarfile.open(filename, "w" + mode_suffix)
+
+    yield tar
+    
+    if tar is not None:
+        tar.close()
+    if comm is not None:
+        # make processes wait to avoid race conditions
+        comm.Barrier()
+    
 
 def save(arr, filename, key=None, comm=None, **kwargs):
     """
@@ -103,17 +120,12 @@ def save(arr, filename, key=None, comm=None, **kwargs):
     filename, key = split_filename(filename, key)
     mode_suffix = _get_mode(filename)
     kwargs = {"comm": comm, **kwargs}
+    
+    if comm is not None:
+        check_comm(kwargs["comm"])
 
-    if exists(filename):
-        if mode_suffix != ":":
-            raise ValueError("Appending in a compressed tarball is not supported")
-        tar = tarfile.open(filename, "a")
-
-    else:
-        tar = tarfile.open(filename, "w" + mode_suffix)
-
-    _write_dispatch(arr, tar, key, **kwargs)
-    tar.close()
+    with _open_for_saving(filename, mode_suffix, comm=comm) as tar:
+        _write_dispatch(arr, tar, key, **kwargs)
 
 
 def _load_member(tar, member, header_only=False, as_data=False, **kwargs):
