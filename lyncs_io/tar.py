@@ -74,7 +74,8 @@ def _save(arr, tar, key, **kwargs):
         check_comm(kwargs["comm"])
         with tempdir_MPI() as temp:
             base.save(arr, temp + "/" + key, format=_format, **kwargs)
-            tar.add(temp + "/" + key, arcname=key)
+            if kwargs["comm"].rank == 0 :
+                tar.add(temp + "/" + key, arcname=key)
     else:
         fptr = BytesIO()
         base.save(arr, fptr, format=_format, **kwargs)
@@ -233,11 +234,15 @@ def _extract(tar, member, get_buff=False, **kwargs):
     if kwargs.get("comm"):
         with tempdir_MPI() as temp:
             check_comm(kwargs["comm"])
-            tar.extract(member, path=temp)
+            if kwargs["comm"].rank == 0:
+                tar.extract(member, path=temp)
+            kwargs["comm"].Barrier()
             yield temp + "/" + listdir(temp)[0]
-    elif get_buff:
-        raise NotImplementedError
+    elif get_buff:        
+        yield tar.extractfile(member)
     else:
+        # This is what's used at the moment
+        # get_buff raises errors ('fileno')
         fptr = BytesIO()
         fptr.write(tar.extractfile(member).read())
         fptr.seek(0)

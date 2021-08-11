@@ -39,6 +39,7 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
     assert global_array[slc].shape == local_array.shape
+    assert (global_array[slc] == local_array).all()
 
 
 @mark_mpi
@@ -67,6 +68,7 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     slices = tuple(
         slice(coord * size, (coord + 1) * size) for coord, size in zip(coords, lshape)
     )
+    assert global_array[slices].shape == local_array.shape
     assert (global_array[slices] == local_array).all()
 
 

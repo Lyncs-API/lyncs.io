@@ -191,6 +191,52 @@ client.shutdown()
 
 NOTE: Parallel IO with Dask is enabled once a valid chunk size is passed to `load` routine using `chunks` parameter. For `save` routine, the DaskIO is enabled only if the array passed is a Dask Array. Currently only `numpy` format supports this functionality.
 
+### IO with Tar
+
+```python
+import numpy as np
+import lyncs_io as io
+
+arr1 = np.random.rand(10,10,10)
+io.save(arr1, "data.tar/random.npy")
+
+arr2 = np.zeros_like(arr1)
+io.save(arr2, "data.tar/zeros.npy")
+
+arrs = io.load("data.tar")
+
+assert (arr1 == arrs["random.npy"]).all()
+assert (arr2 == arrs["zeros.npy"]).all()
+```
+
+Also the content of nested dictionary can be stored with Tar:
+
+```python
+mydict = {
+
+  "random": {
+
+		"arr0.npy": np.random.rand(10,10,10),
+
+		"arr1.npy": np.random.rand(5,5),
+
+		},
+
+	"zeros.npy": np.zeros((4, 4, 4, 4)),
+	}
+
+io.save(mydict, 'data.npy')
+
+loaded_dict = io.load('data.npy', all_data=True)
+
+assert (mydict["random"]["arr0.npy"] == loaded_dict["random"]["arr0.npy"]).all()
+assert (mydict["random"]["arr1.npy"] == loaded_dict["random"]["arr1.npy"]).all()
+assert (mydict["zeros.npy"] == loaded_dict["zeros.npy"]).all()
+```
+#### Note:
+- Some formats inside a Tar are not currently supported. (See [Issues](https://github.com/Lyncs-API/lyncs.io/issues))
+- When loading/saving a file in series, it's done directly on the memory. When in parallel, files are first written on the secondary storage before being saved/loaded.
+
 ### Adding a file format
 
 New file formats can be registered providing providing where possible the respective `head`, `load` and `save` functions.
