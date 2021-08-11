@@ -1,19 +1,25 @@
 """
 Interface for Tar format
 """
+# disable import outside top-level warnings
+# pylint: disable=C0415
+
+# disable spelling warnings
+# pylint: disable=C0401
 
 import tarfile
-import tempfile
-from .mpi_io import check_comm, tempdir_MPI
-from io import BytesIO
+from collections.abc import Mapping
+from contextlib import contextmanager
+from os import listdir
 from os.path import exists, splitext, basename
+from io import BytesIO
+from .mpi_io import check_comm, tempdir_MPI
 from .header import Header
 from .archive import split_filename, Data, Archive, Loader
 from .utils import (
     format_key,
     nested_dict,
     default_to_regular,
-    default_names,
     find_member,
     get_depth,
 )
@@ -43,56 +49,48 @@ _all_extensions = [
     # Source: Wikipedia
 ]
 
-# format extension to be used by formats.get_format
+# Format extensions for later use
 all_extensions = [
     splitext(ext)[-1][1:] if sum([1 for x in ext if x == "."]) > 1 else ext[1:]
     for ext in _all_extensions
 ]
 
 modes = {
-    # .gz, .bz2 and .xz should start with .tar
-    # .tar was removed because of splitext()
     ":gz": [".gz", ".taz", ".tgz"],
     ":bz2": [".bz2", ".tb2", ".tbz", ".tbz2", ".tz2"],
     ":xz": [".xz", ".txz"],
     ":": [".tar"],
 }
 
-# TODO: fix issues with compression in append mode
-# TODO: issues with h5 files
-# TODO: deduce data format from the data argument (for saving with a default key)
-# TODO: test parallel save/load
-
 
 def _save(arr, tar, key, **kwargs):
     from . import base
     from .formats import formats
 
-    # if comm -> filename
-    # else -> bytesio
+    _format = formats.get_format(filename=basename(key))
+    key = key[1:] if key[0] == '/' else key
+
     if kwargs["comm"]:
         check_comm(kwargs["comm"])
         with tempdir_MPI() as temp:
-            base.save(
-                arr,
-                temp + "/" + key,
-                format=formats.get_format(filename=basename(key)),
-                **kwargs,
-            )
+            base.save(arr, temp + "/" + key, format=_format, **kwargs)
             tar.add(temp + "/" + key, arcname=key)
-            tar.close()
-            return
+    else:
+        fptr = BytesIO()
+        base.save(arr, fptr, format=_format, **kwargs)
+        size = fptr.tell()  # get the size of the file object to write in the tarball
+        fptr.seek(0)
+        tarinfo = tarfile.TarInfo(name=key)
+        tarinfo.size = size
+        tar.addfile(tarinfo, fptr)
 
-    fptr = BytesIO()
-    base.save(arr, fptr, format=formats.get_format(filename=basename(key)), **kwargs)
-    size = fptr.tell()  # get the size of the file object to write in the tarball
-    fptr.seek(0)
-    tarinfo = tarfile.TarInfo(name=key)
-    tarinfo.size = size
 
-    # addfile v add (comm(one process extracts, the rest of the processes read)) depends on fptr
-    tar.addfile(tarinfo, fptr)
-    tar.close()
+def _write_dispatch(arr, tar, key, **kwargs):
+    if isinstance(arr, Mapping):
+        for mkey, val in arr.items():
+            _write_dispatch(val, tar, key + '/' + mkey, **kwargs)
+    else:
+        _save(arr, tar, key, **kwargs)
 
 
 def save(arr, filename, key=None, comm=None, **kwargs):
@@ -103,50 +101,41 @@ def save(arr, filename, key=None, comm=None, **kwargs):
     mode_suffix = _get_mode(filename)
     kwargs = {"comm": comm, **kwargs}
 
-    # create Tar if doesn't exist - append if it does
     if exists(filename):
+        if mode_suffix != ":":
+            raise ValueError("Appending in a compressed tarball is not supported")
         tar = tarfile.open(filename, "a")
+
     else:
         tar = tarfile.open(filename, "w" + mode_suffix)
 
-    if not key:
-        for name in default_names():
-            if name + ".npy" not in [m.name for m in tar.getmembers()]:
-                key = name + ".npy"
-                break
-
-    _save(arr, tar, key, **kwargs)
-
+    _write_dispatch(arr, tar, key, **kwargs)
+    tar.close()
 
 def _load_member(tar, member, header_only=False, as_data=False, **kwargs):
     from . import base
     from .formats import formats
 
-    # 1. get buffer (extractfile (fileno issues)),
-    # 2. extract to a temp file,
-    # 3. read buffer (as it's now),
-    # 4. do nothing/wait (one process extracts, the rest of the processes read)
+    _format = formats.get_format(filename=basename(member.name))
 
-    temp = None
-    if kwargs["comm"]:
-        temp = tempfile.TemporaryDirectory()
+    # 1. get buffer (extractfile) but causes fileno issues
+    # 2. extract to a temporary file for parallel read
+    # 3. read buffer (as is now)
 
-    fptr = _extract(tar, member, temp=temp, **kwargs)
+    with _extract(tar, member, **kwargs) as fptr:
 
-    header = Header(
-        base.head(fptr, format=formats.get_format(filename=basename(member.name))),
-        **kwargs,
-    )
-    if header_only:
-        return header
+        header = Header(
+            base.head(fptr, format=_format),
+            **kwargs,
+        )
+        if header_only:
+            return header
 
-    not kwargs["comm"] and fptr.seek(0)
+        _ = not kwargs["comm"] and fptr.seek(0)
 
-    data = base.load(
-        fptr, format=formats.get_format(filename=basename(member.name)), **kwargs
-    )
+        data = base.load(fptr, format=_format, **kwargs)
 
-    return Data(header, data) if as_data else data
+        return Data(header, data) if as_data else data
 
 
 def _load(paths, tar, **kwargs):
@@ -182,12 +171,13 @@ def _load_dispatch(tar, key, loader, depth=1, all_data=False, **kwargs):
             )
         ]
 
-        # avoid {dir : {data}}. Return {data} instead if key is given.
+         # avoid {dir : {data}}. Return {data} instead if key is given.
         _dict = (
             _load(paths, tar, **kwargs)[key[:-1]]
             if key != "/"
             else _load(paths, tar, **kwargs)
         )
+
         return Archive(_dict, loader=loader, path=key)
 
     return _load_member(tar, find_member(tar, key), **kwargs)
@@ -238,22 +228,17 @@ def is_dir(tar, key):
     return False
 
 
-def _extract(tar, member, get_buff=False, wait=False, temp=None, **kwargs):
-    import os
-    from . import base
-
-    if get_buff:
+@contextmanager
+def _extract(tar, member, get_buff=False, **kwargs):
+    if kwargs.get("comm"):
+        with tempdir_MPI() as temp:
+            check_comm(kwargs["comm"])
+            tar.extract(member, path=temp)
+            yield temp + "/" + listdir(temp)[0]
+    elif get_buff:
         raise NotImplementedError
-
-    if wait:
-        raise NotImplementedError
-
-    if kwargs["comm"]:
-        check_comm(kwargs["comm"])
-        tar.extract(member, path=temp.name)
-        return temp.name + "/" + os.listdir(temp.name)[0]
-
-    fptr = BytesIO()
-    fptr.write(tar.extractfile(member).read())
-    fptr.seek(0)
-    return fptr
+    else:
+        fptr = BytesIO()
+        fptr.write(tar.extractfile(member).read())
+        fptr.seek(0)
+        yield fptr

@@ -74,10 +74,13 @@ def nested_dict():
     return defaultdict(nested_dict)
 
 
-def default_to_regular(d):
-    if isinstance(d, defaultdict):
-        d = {k: default_to_regular(v) for k, v in d.items()}
-    return d
+def default_to_regular(dic):
+    """
+    Convert a dictionary from default to regular
+    """
+    if isinstance(dic, defaultdict):
+        dic = {k: default_to_regular(v) for k, v in dic.items()}
+    return dic
 
 
 def find_member(tar, key):

@@ -38,7 +38,6 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
     local_array = io.load(ftmp, comm=comm, format=format)
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
-    # assert global_array.shape == local_array.shape
     assert global_array[slc].shape == local_array.shape
 
 
