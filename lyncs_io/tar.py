@@ -93,6 +93,7 @@ def _write_dispatch(arr, tar, key, **kwargs):
     else:
         _save(arr, tar, key, **kwargs)
 
+
 @contextmanager
 def _open_for_saving(filename, mode_suffix, comm=None):
     if comm is not None and comm.rank != 0:
@@ -105,13 +106,13 @@ def _open_for_saving(filename, mode_suffix, comm=None):
         tar = tarfile.open(filename, "w" + mode_suffix)
 
     yield tar
-    
+
     if tar is not None:
         tar.close()
     if comm is not None:
         # make processes wait to avoid race conditions
         comm.Barrier()
-    
+
 
 def save(arr, filename, key=None, comm=None, **kwargs):
     """
@@ -120,7 +121,7 @@ def save(arr, filename, key=None, comm=None, **kwargs):
     filename, key = split_filename(filename, key)
     mode_suffix = _get_mode(filename)
     kwargs = {"comm": comm, **kwargs}
-    
+
     if comm is not None:
         check_comm(kwargs["comm"])
 
