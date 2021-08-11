@@ -23,7 +23,6 @@ def test_serial_tar(tempdir, dtype, shape, mode, ext):
     ftmp = tempdir + f"tarball{mode}/foo{ext}"
     io.save(arr, ftmp)
 
-
     assert (arr == io.load(ftmp)).all()
     assert (arr == io.load(ftmp, format="Tar")).all()
     assert io.load(ftmp).shape == io.head(ftmp)["shape"]
@@ -45,12 +44,12 @@ def test_serial_tar(tempdir, dtype, shape, mode, ext):
 
     ftmp = tempdir + "map_tar.tar"
     mydict = {
-            "random": {
-                "arr0.npy": np.random.rand(10,10,10),
-                "arr1.npy": np.random.rand(5,5),
-            },
-            "zeros.npy":  np.zeros((4, 4, 4, 4)),
-        }
+        "random": {
+            "arr0.npy": np.random.rand(10, 10, 10),
+            "arr1.npy": np.random.rand(5, 5),
+        },
+        "zeros.npy": np.zeros((4, 4, 4, 4)),
+    }
     io.save(mydict, ftmp)
 
     loaded_dict = io.load(ftmp, all_data=True)
@@ -58,4 +57,3 @@ def test_serial_tar(tempdir, dtype, shape, mode, ext):
     assert (mydict["random"]["arr0.npy"] == loaded_dict["random"]["arr0.npy"]).all()
     assert (mydict["random"]["arr1.npy"] == loaded_dict["random"]["arr1.npy"]).all()
     assert (mydict["zeros.npy"] == loaded_dict["zeros.npy"]).all()
-

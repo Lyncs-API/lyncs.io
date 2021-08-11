@@ -68,7 +68,7 @@ def _save(arr, tar, key, **kwargs):
     from .formats import formats
 
     _format = formats.get_format(filename=basename(key))
-    key = key[1:] if key[0] == '/' else key
+    key = key[1:] if key[0] == "/" else key
 
     if kwargs["comm"]:
         check_comm(kwargs["comm"])
@@ -88,7 +88,7 @@ def _save(arr, tar, key, **kwargs):
 def _write_dispatch(arr, tar, key, **kwargs):
     if isinstance(arr, Mapping):
         for mkey, val in arr.items():
-            _write_dispatch(val, tar, key + '/' + mkey, **kwargs)
+            _write_dispatch(val, tar, key + "/" + mkey, **kwargs)
     else:
         _save(arr, tar, key, **kwargs)
 
@@ -111,6 +111,7 @@ def save(arr, filename, key=None, comm=None, **kwargs):
 
     _write_dispatch(arr, tar, key, **kwargs)
     tar.close()
+
 
 def _load_member(tar, member, header_only=False, as_data=False, **kwargs):
     from . import base
@@ -171,7 +172,7 @@ def _load_dispatch(tar, key, loader, depth=1, all_data=False, **kwargs):
             )
         ]
 
-         # avoid {dir : {data}}. Return {data} instead if key is given.
+        # avoid {dir : {data}}. Return {data} instead if key is given.
         _dict = (
             _load(paths, tar, **kwargs)[key[:-1]]
             if key != "/"
