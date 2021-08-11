@@ -111,8 +111,8 @@ ext_loop = mark.parametrize(
     ],
 )
 
-def generate_rand_arr(shape, dtype, **kwargs):
 
+def generate_rand_arr(shape, dtype, **kwargs):
     def rand_int(shape, dtype, low=0, high=1):
         return np.random.randint(low=low, high=high, size=shape)
 
@@ -121,11 +121,11 @@ def generate_rand_arr(shape, dtype, **kwargs):
 
     def rand_float(shape, dtype):
         return np.random.rand(*shape)
-    
+
     rand_arr = {
-        "int" : rand_int,
-        "float" : rand_float,
-        "complex" : rand_complex,
+        "int": rand_int,
+        "float": rand_float,
+        "complex": rand_complex,
     }
 
     return rand_arr[dtype](shape, dtype, **kwargs)
