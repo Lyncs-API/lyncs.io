@@ -257,6 +257,7 @@ register(
 ### Authors
 - Simone Bacchio (sbacchio)
 - Christodoulos Stylianou (cstyl)
+- Alexandros Angeli (alexandrosangeli)
 
 ### Fundings
 - PRACE-6IP, Grant agreement ID: 823767, Project name: LyNcs.
