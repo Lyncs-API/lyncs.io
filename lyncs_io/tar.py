@@ -76,6 +76,8 @@ def _save(arr, tar, key, **kwargs):
             base.save(arr, temp + "/" + key, format=_format, **kwargs)
             if kwargs["comm"].rank == 0:
                 tar.add(temp + "/" + key, arcname=key)
+            # make processes wait to avoid race conditions
+            kwargs["comm"].Barrier()
     else:
         fptr = BytesIO()
         base.save(arr, fptr, format=_format, **kwargs)

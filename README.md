@@ -214,17 +214,12 @@ Also the content of nested dictionary can be stored with Tar:
 
 ```python
 mydict = {
-
   "random": {
-
 		"arr0.npy": np.random.rand(10,10,10),
-
 		"arr1.npy": np.random.rand(5,5),
-
-		},
-
+	},
 	"zeros.npy": np.zeros((4, 4, 4, 4)),
-	}
+}
 
 io.save(mydict, 'data.npy')
 
