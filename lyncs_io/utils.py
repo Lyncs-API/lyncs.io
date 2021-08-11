@@ -4,6 +4,8 @@ Function utils
 
 from functools import wraps
 from pathlib import Path
+from os.path import splitext
+from collections import defaultdict
 from lyncs_utils.io import FileLike
 
 
@@ -63,3 +65,69 @@ def default_names(i=0):
     "Infinite generator of default names ('arrN') for entries of an archive."
     yield f"arr{i}"
     yield from default_names(i + 1)
+
+
+def nested_dict():
+    """
+    Creates a default dictionary where each value is an other default dictionary.
+    """
+    return defaultdict(nested_dict)
+
+
+def default_to_regular(dic):
+    """
+    Convert a dictionary from default to regular
+    """
+    if isinstance(dic, defaultdict):
+        dic = {k: default_to_regular(v) for k, v in dic.items()}
+    return dic
+
+
+def find_member(tar, key):
+    """
+    Similar to find_file but with members in a taball.
+    """
+    if splitext(key)[-1]:
+        member = tar.getmember(key)
+    else:
+        potential_members = [
+            f.name for f in tar.getmembers() if splitext(f.name)[0] == key
+        ]
+        num = len(potential_members)
+        if num == 1:
+            member = tar.getmember(potential_members[0])
+        elif num > 1:
+            raise KeyError(
+                f"Can't omit extension when multiple files with the same name exist: {','.join(potential_members)}"
+            )
+        else:
+            raise KeyError(f"No such file: {key}, {key}.*")
+    return member
+
+
+def get_depth(path, key):
+    """
+    Returns the depth of a key relatively to a path.
+    E.g. /bar1/bar2/bar3/foo.npy is at depth=2 relatively to /bar1/bar2/
+    """
+    path = str(Path(path))
+    key = str(Path(key)) + "/" if key != "/" else str(Path(key))
+    key_depth = sum([1 for char in key if char == "/"])
+    path_depth = sum([1 for char in path if char == "/"])
+    diff = (
+        path_depth
+        - key_depth
+        + sum([2 for c in key.split("/") if c == ".."])
+        + sum([1 for c in key.split("/") if c == "."])
+    )
+    # key[0] will never be "/" since absolute paths cannot be used in a tarball
+    return diff + 1 if key[0] == "/" else diff
+
+
+def format_key(key):
+    """
+    Format the key provided for consistency.
+    """
+    if key:
+        return key if key[-1] == "/" else key + "/"
+    return "/"

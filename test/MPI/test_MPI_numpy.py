@@ -13,6 +13,8 @@ from lyncs_io.testing import (
     write_global_array,
 )
 
+from lyncs_io.hdf5 import mpi as hdf5_mpi
+
 
 @mark_mpi
 @dtype_loop
@@ -24,13 +26,19 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_load_comm"
     if format == "hdf5":
+        if not hdf5_mpi:
+            return
         ftmp += ".h5/data"
+
+    if format == "tar":
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
     local_array = io.load(ftmp, comm=comm, format=format)
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
+    assert global_array[slc].shape == local_array.shape
     assert (global_array[slc] == local_array).all()
 
 
@@ -46,7 +54,12 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_load_cart"
     if format == "hdf5":
+        if not hdf5_mpi:
+            return
         ftmp += ".h5/data"
+
+    if format == "tar":
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -55,6 +68,7 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     slices = tuple(
         slice(coord * size, (coord + 1) * size) for coord, size in zip(coords, lshape)
     )
+    assert global_array[slices].shape == local_array.shape
     assert (global_array[slices] == local_array).all()
 
 
@@ -68,7 +82,12 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_save_comm"
     if format == "hdf5":
+        if not hdf5_mpi:
+            return
         ftmp += ".h5/data"
+
+    if format == "tar":
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -93,7 +112,12 @@ def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_save_cart"
     if format == "hdf5":
+        if not hdf5_mpi:
+            return
         ftmp += ".h5/data"
+
+    if format == "tar":
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)

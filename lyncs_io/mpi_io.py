@@ -5,7 +5,10 @@ Parallel IO using MPI
 __all__ = ["MpiIO"]
 
 import numpy
+import os
+import tempfile
 
+from contextlib import contextmanager
 from .decomposition import Decomposition
 
 
@@ -15,6 +18,42 @@ def check_comm(comm):
         raise TypeError(
             "comm variable needs to be a valid MPI communicator with size attribute."
         )
+
+
+def _tempdir_MPI():
+    """
+    Creates a temporary directory to be used during testing
+    """
+
+    from .testing import get_comm, mpi
+
+    comm = get_comm()
+    if comm.rank == 0:
+        tmp = tempfile.TemporaryDirectory()
+        name = tmp.__enter__()
+    else:
+        name = ""
+    path = comm.bcast(name, root=0)
+
+    # test path exists for all
+    has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
+    all_access = comm.allreduce(has_access, op=mpi().LAND)
+    if not all_access:
+        raise ValueError(
+            "Some processes are unable to access the temporary directory. \n\
+                Set TMPDIR, TEMP or TMP environment variables with the temporary \n\
+                directory to be used across processes. "
+        )
+
+    yield path + "/"
+
+    # make sure file exists until everyone is done
+    comm.Barrier()
+    if comm.rank == 0:
+        tmp.__exit__(None, None, None)
+
+
+tempdir_MPI = contextmanager(_tempdir_MPI)
 
 
 class MpiIO:

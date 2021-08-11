@@ -22,6 +22,7 @@ import numpy
 from lyncs_utils import factors, prod
 from .formats import formats
 from .base import save
+from .mpi_io import _tempdir_MPI
 
 mark_mpi = mark.mpi(min_size=1)
 
@@ -30,6 +31,8 @@ parallel_format_loop = mark.parametrize(
     [
         "numpy",
         "lime",
+        "tar",
+        "hdf5",
     ],
 )
 
@@ -42,6 +45,10 @@ skip_hdf5_mpi = mark.skipif(
 )
 if not skip_hdf5_mpi.args[0]:
     parallel_format_loop.args[1].append("hdf5")
+
+
+tempdir_MPI = fixture(_tempdir_MPI)
+
 
 shape_loop = mark.parametrize(
     "shape",
@@ -79,6 +86,31 @@ workers_loop = mark.parametrize(
     [1, 2, 4, 7, 12],
 )
 
+tar_mode_loop = mark.parametrize(
+    "mode",
+    [
+        ".tar.gz",
+        ".taz",
+        ".tgz",
+        ".tar.bz2",
+        ".tb2",
+        ".tbz",
+        ".tbz2",
+        ".tz2",
+        ".tar.xz",
+        ".txz",
+        ".tar",
+    ],
+)
+
+ext_loop = mark.parametrize(
+    "ext",
+    [
+        ".npy",
+        # TODO: ".txt", ".h5"
+    ],
+)
+
 
 @fixture(scope="session")
 def client():
@@ -101,37 +133,6 @@ def mpi():
     from mpi4py import MPI
 
     return MPI
-
-
-@fixture
-def tempdir_MPI():
-    """
-    Creates a temporary directory to be used during testing
-    """
-    comm = get_comm()
-    if comm.rank == 0:
-        tmp = tempfile.TemporaryDirectory()
-        name = tmp.__enter__()
-    else:
-        name = ""
-    path = comm.bcast(name, root=0)
-
-    # test path exists for all
-    has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
-    all_access = comm.allreduce(has_access, op=mpi().LAND)
-    if not all_access:
-        raise ValueError(
-            "Some processes are unable to access the temporary directory. \n\
-                Set TMPDIR, TEMP or TMP environment variables with the temporary \n\
-                directory to be used across processes. "
-        )
-
-    yield path + "/"
-
-    # make sure file exists until everyone is done
-    comm.Barrier()
-    if comm.rank == 0:
-        tmp.__exit__(None, None, None)
 
 
 @fixture
