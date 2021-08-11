@@ -102,9 +102,10 @@ dill   | dll        | yes    | no      | no           | no
 JSON   | json       | no     | no      | no           | no
 ASCII  | txt        | no     | no      | no           | no
 Numpy  | npy        | yes    | no      | yes          | yes
-Numpyz | npy        | yes    | yes     | TODO         | TODO
+Numpyz | npz        | yes    | yes     | TODO         | TODO
 HDF5   | hdf5,h5    | yes    | yes     | yes          | TODO
 lime   | lime       | yes    | TODO    | yes          | yes
+Tar    | tar, tar.* |    -   | yes     | yes          | no
 
 ### IO with HDF5
 
@@ -123,7 +124,7 @@ assert (arr1 == arrs["random"]).all()
 assert (arr2 == arrs["zeros"]).all()
 ```
 
-Also the content of nexted dictionary can be stored with HDF5:
+Also the content of nested dictionary can be stored with HDF5:
 
 ```python
 import numpy as np
