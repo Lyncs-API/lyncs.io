@@ -6,7 +6,14 @@ import pytest
 from pathlib import Path
 import numpy as np
 import lyncs_io as io
-from lyncs_io.testing import dtype_loop, shape_loop, ext_loop, tar_mode_loop, tempdir, generate_rand_arr
+from lyncs_io.testing import (
+    dtype_loop,
+    shape_loop,
+    ext_loop,
+    tar_mode_loop,
+    tempdir,
+    generate_rand_arr,
+)
 
 
 @tar_mode_loop

@@ -13,7 +13,7 @@ from lyncs_io.testing import (
     workers_loop,
     chunksize_loop,
     tempdir,
-    generate_rand_arr
+    generate_rand_arr,
 )
 
 

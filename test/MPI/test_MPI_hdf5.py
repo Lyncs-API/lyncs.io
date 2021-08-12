@@ -12,7 +12,7 @@ from lyncs_io.testing import (
     get_comm,
     get_cart,
     skip_hdf5_mpi,
-    generate_rand_arr
+    generate_rand_arr,
 )
 
 mpi = h5.get_config().mpi
