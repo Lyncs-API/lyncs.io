@@ -69,18 +69,14 @@ dtype_loop = mark.parametrize(
         "float32",
         "float64",
         "float128",
-
         "complex64",
         "complex128",
         "complex256",
-
         "int8",
         "int16",
         "int32",
         "int64",
-
-        "bool8"
-
+        "bool8",
     ],
 )
 
@@ -140,8 +136,8 @@ def generate_rand_arr(shape, dtype):
         arr = numpy.random.rand(*shape)
         return numpy.around(arr).astype("bool8")
 
-    if fdtype == 'int':
-        high = 2**(int(bits)-1) - 1
+    if fdtype == "int":
+        high = 2 ** (int(bits) - 1) - 1
         low = -high - 1
         return numpy.random.randint(low=low, high=high, size=shape, dtype=dtype)
 

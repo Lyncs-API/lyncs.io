@@ -18,7 +18,7 @@ def test_serial_numpy(tempdir, dtype, shape):
     assert io.load(ftmp).dtype == io.head(ftmp)["dtype"]
 
     # skip these dtypes: Scientific notation causes tests to fail
-    if dtype in ['bool8', 'int64']:
+    if dtype in ["bool8", "int64"]:
         return
 
     # 1D or 2D arrays only for savetxt
