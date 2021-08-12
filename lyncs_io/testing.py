@@ -122,19 +122,19 @@ def generate_rand_arr(shape, dtype):
     fdtype = re.findall("[a-zA-Z]+", dtype)[0]
     bits = re.findall("[0-9]+", dtype)[0]
 
-    if fdtype == 'bool':
+    if fdtype == "bool":
         arr = numpy.random.rand(*shape)
-        return numpy.around(arr).astype('bool8')
+        return numpy.around(arr).astype("bool8")
 
-    if fdtype == 'int':
-        high = 2**(bits-1) - 1
+    if fdtype == "int":
+        high = 2 ** (bits - 1) - 1
         low = -high - 1
         return numpy.random.randint(low=low, high=high, size=shape, dtype=dtype)
 
-    if fdtype == 'complex':
+    if fdtype == "complex":
         bits = str(round(int(bits) / 2))
-        reals = numpy.random.rand(*shape).astype('float' + bits)
-        imag = numpy.random.rand(*shape).astype('float' + bits) * 1j
+        reals = numpy.random.rand(*shape).astype("float" + bits)
+        imag = numpy.random.rand(*shape).astype("float" + bits) * 1j
         return reals + imag
 
     return numpy.random.rand(*shape).astype(dtype)
