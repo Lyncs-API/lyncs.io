@@ -12,6 +12,7 @@ from lyncs_io.testing import (
     get_comm,
     get_cart,
     skip_hdf5_mpi,
+    generate_rand_arr
 )
 
 mpi = h5.get_config().mpi
@@ -31,7 +32,7 @@ def get_local_array_slice(dims, lshape, dtype, coords):
 
     mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
     gshape = construct_global_shape(lshape, mult=mult)
-    global_array = numpy.random.rand(*gshape).astype(dtype)
+    global_array = generate_rand_arr(gshape, dtype)
 
     slices = tuple(
         slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])

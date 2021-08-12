@@ -1,14 +1,14 @@
 import lyncs_io as io
 import numpy as np
 
-from lyncs_io.testing import dtype_loop, shape_loop, tempdir
+from lyncs_io.testing import dtype_loop, shape_loop, tempdir, generate_rand_arr
 from lyncs_utils import prod
 
 
 @dtype_loop
 @shape_loop
 def test_serial_numpy(tempdir, dtype, shape):
-    arr = np.random.rand(*shape).astype(dtype)
+    arr = generate_rand_arr(shape, dtype)
 
     ftmp = tempdir + "/foo.npy"
     io.save(arr, ftmp)

@@ -13,6 +13,7 @@ from lyncs_io.testing import (
     workers_loop,
     chunksize_loop,
     tempdir,
+    generate_rand_arr
 )
 
 
@@ -23,7 +24,7 @@ from lyncs_io.testing import (
 def test_Dask_numpy_load(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_numpy_daskio_load.npy"
-    x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_ref = generate_rand_arr(shape, dtype)
     io.save(x_ref, ftmp)
 
     x_lazy_in = io.load(ftmp, chunks=chunksize)
@@ -41,7 +42,7 @@ def ttest_Dask_numpy_write(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_numpy_daskio_write.npy"
 
-    x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_ref = generate_rand_arr(shape, dtype)
     x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
     assert x_lazy.dtype.str != dtype
 
@@ -75,7 +76,7 @@ def test_Dask_numpy_write_update(client, tempdir, dtype, workers):
     for domain in domains:
         size = prod(domain)
 
-        x_ref = numpy.random.rand(*domain).astype(dtype)
+        x_ref = generate_rand_arr(domain, dtype)
         x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
 
         x_lazy_out = io.save(x_lazy, ftmp)

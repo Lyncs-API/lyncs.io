@@ -3,14 +3,14 @@ import lyncs_io as io
 import numpy as np
 import tempfile
 
-from lyncs_io.testing import dtype_loop, shape_loop, skip_hdf5
+from lyncs_io.testing import dtype_loop, shape_loop, skip_hdf5, generate_rand_arr
 
 
 @skip_hdf5
 @dtype_loop
 @shape_loop
 def test_serial_hdf5(dtype, shape):
-    arr = np.random.rand(*shape).astype(dtype)
+    arr = generate_rand_arr(shape, dtype)
     with tempfile.TemporaryDirectory() as tmp:
         ftmp = tmp + "/foo.h5/random"
 
