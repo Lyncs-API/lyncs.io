@@ -51,7 +51,7 @@ def test_record(tempdir):
 def test_records(tempdir, shape, dtype):
     filename = tempdir + "records"
     records = {
-        "foo": generate_rand_arr(shape, dtype).tobytes(),
+        "foo": numpy.random.rand(100).tobytes(),
         "bar": numpy.random.rand(100).tobytes(),
         "size_only": 1234,
     }
