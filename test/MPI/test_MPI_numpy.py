@@ -5,7 +5,7 @@ from lyncs_io.testing import (
     mark_mpi,
     tempdir_MPI,
     lshape_loop,
-    dtype_loop,
+    dtype_mpi_loop,
     parallel_loop,
     parallel_format_loop,
     get_comm,
@@ -17,11 +17,10 @@ from lyncs_io.hdf5 import mpi as hdf5_mpi
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_format_loop
 def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
-
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_load_comm"
@@ -43,7 +42,7 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_loop
 @parallel_format_loop
@@ -73,7 +72,7 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_format_loop
 def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
@@ -102,12 +101,11 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_loop
 @parallel_format_loop
 def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
-
     comm = get_cart(procs=procs)
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_save_cart"

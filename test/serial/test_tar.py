@@ -6,7 +6,14 @@ import pytest
 from pathlib import Path
 import numpy as np
 import lyncs_io as io
-from lyncs_io.testing import dtype_loop, shape_loop, ext_loop, tar_mode_loop, tempdir
+from lyncs_io.testing import (
+    dtype_loop,
+    shape_loop,
+    ext_loop,
+    tar_mode_loop,
+    tempdir,
+    generate_rand_arr,
+)
 
 
 @tar_mode_loop
@@ -18,7 +25,7 @@ def test_serial_tar(tempdir, dtype, shape, mode, ext):
     Test all the basic functionality of saving, loading
     and getting the header of a file in a tarball
     """
-    arr = np.random.rand(*shape).astype(dtype)
+    arr = generate_rand_arr(shape, dtype)
 
     ftmp = tempdir + f"tarball{mode}/foo{ext}"
     io.save(arr, ftmp)
@@ -45,8 +52,8 @@ def test_serial_tar(tempdir, dtype, shape, mode, ext):
     ftmp = tempdir + "map_tar.tar"
     mydict = {
         "random": {
-            "arr0.npy": np.random.rand(10, 10, 10),
-            "arr1.npy": np.random.rand(5, 5),
+            "arr0.npy": generate_rand_arr(shape, dtype),
+            "arr1.npy": generate_rand_arr(shape, dtype),
         },
         "zeros.npy": np.zeros((4, 4, 4, 4)),
     }

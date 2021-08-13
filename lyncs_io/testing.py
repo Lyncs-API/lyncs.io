@@ -13,7 +13,7 @@ __all__ = [
     "parallel_format_loop",
 ]
 
-import os
+import re
 import tempfile
 from itertools import product
 from pytest import fixture, mark
@@ -60,11 +60,40 @@ shape_loop = mark.parametrize(
     ],
 )
 
-dtype_loop = mark.parametrize(
+# includes all dtypes as dtype_loop but float16 as it's not supported
+dtype_mpi_loop = mark.parametrize(
     "dtype",
     [
         "float32",
         "float64",
+        "float128",
+        "complex64",
+        "complex128",
+        "complex256",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "bool",
+    ],
+)
+
+
+dtype_loop = mark.parametrize(
+    "dtype",
+    [
+        "float16",
+        "float32",
+        "float64",
+        "float128",
+        "complex64",
+        "complex128",
+        "complex256",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "bool",
     ],
 )
 
@@ -110,6 +139,33 @@ ext_loop = mark.parametrize(
         # TODO: ".txt", ".h5"
     ],
 )
+
+
+def generate_rand_arr(shape, dtype):
+
+    if type(shape) == int:
+        shape = (shape,)
+
+    if dtype != "bool":
+        bits = re.findall("[0-9]+", dtype)[0]
+    fdtype = re.findall("[a-zA-Z]+", dtype)[0]
+
+    if fdtype == "bool":
+        arr = numpy.random.rand(*shape)
+        return numpy.around(arr).astype("bool8")
+
+    if fdtype == "int":
+        high = 2 ** (int(bits) - 1) - 1
+        low = -high - 1
+        return numpy.random.randint(low=low, high=high, size=shape, dtype=dtype)
+
+    if fdtype == "complex":
+        bits = str(round(int(bits) / 2))
+        reals = numpy.random.rand(*shape).astype("float" + bits)
+        imag = numpy.random.rand(*shape).astype("float" + bits) * 1j
+        return reals + imag
+
+    return numpy.random.rand(*shape).astype(dtype)
 
 
 @fixture(scope="session")
@@ -210,4 +266,4 @@ def get_procs_list(comm_size=None, max_size=None, repeat=1):
     return procs[:max_size]
 
 
-parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4))
+parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4, max_size=2))

@@ -17,6 +17,7 @@ from lyncs_io.testing import (
     workers_loop,
     chunksize_loop,
     tempdir,
+    generate_rand_arr,
 )
 
 
@@ -33,7 +34,7 @@ def test_Dask_daskio_abspath(client, tempdir):
 def test_Dask_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_daskio_load.npy"
-    x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_ref = generate_rand_arr(shape, dtype)
     io.save(x_ref, ftmp)
 
     daskio = DaskIO(ftmp)
@@ -69,7 +70,7 @@ def test_Dask_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_daskio_write.npy"
 
-    x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_ref = generate_rand_arr(shape, dtype)
     x_ref, attrs = to_array(x_ref)
     header = _get_header_bytes(attrs)
     x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
@@ -109,7 +110,7 @@ def test_Dask_daskio_write_update(client, tempdir, dtype, workers):
         # chunks should have the same length as domain
         chunks = tuple(chunksize for a in range(len(domain)))
 
-        x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
+        x_ref = generate_rand_arr(domain, dtype).reshape(domain)
         x_ref, attrs = to_array(x_ref)
         header = _get_header_bytes(attrs)
         x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunks)

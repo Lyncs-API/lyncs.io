@@ -14,12 +14,32 @@ from lyncs_io.testing import (
     mark_mpi,
     lshape_loop,
     parallel_loop,
-    dtype_loop,
+    dtype_mpi_loop,
     tempdir_MPI,
     write_global_array,
     get_comm,
     get_cart,
 )
+
+
+@dtype_mpi_loop
+def test_dtype_to_mpi(tempdir_MPI, dtype):
+    comm = get_comm()
+    ftmp = tempdir_MPI + "/foo.npy"
+    mpi = MpiIO(comm, ftmp)
+    _dict = mpi.MPI._typedict
+    objs = _dict.values()
+
+    assert mpi._dtype_to_mpi(dtype) in objs
+
+
+def test_float16_not_supported(tempdir_MPI):
+    comm = get_comm()
+    ftmp = tempdir_MPI + "/foo.npy"
+    mpi = MpiIO(comm, ftmp)
+
+    with pytest.raises(TypeError):
+        mpi._dtype_to_mpi("float16")
 
 
 @mark_mpi
@@ -60,7 +80,7 @@ def test_MPI_mpiio_file_handler(tempdir_MPI):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 def test_MPI_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
 
@@ -81,7 +101,7 @@ def test_MPI_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
     # test invalid dtype
     with pytest.raises(TypeError):
         with MpiIO(comm, ftmp, mode="r") as mpiio:
-            mpiio.load(header["shape"], "j", "Fortran", header["_offset"])
+            mpiio.load(header["shape"], "j", header["_offset"])
 
     # valid usage
     with MpiIO(comm, ftmp, mode="r") as mpiio:
@@ -95,7 +115,7 @@ def test_MPI_mpiio_load_from_comm(tempdir_MPI, dtype, lshape):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop
 @parallel_loop
 def test_MPI_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, procs):
@@ -123,7 +143,7 @@ def test_MPI_mpiio_load_from_cart(tempdir_MPI, dtype, lshape, procs):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop
 def test_MPI_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 
@@ -148,7 +168,7 @@ def test_MPI_mpiio_save_from_comm(tempdir_MPI, dtype, lshape):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop
 @parallel_loop
 def test_MPI_mpiio_save_from_cart(tempdir_MPI, dtype, lshape, procs):
