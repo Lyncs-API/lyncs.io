@@ -9,6 +9,15 @@ import tempfile
 import os
 import numpy
 
+# pylint: disable=C0103
+try:
+    import mpi4py
+
+    with_mpi = True
+except ImportError:
+    with_mpi = False
+
+
 from .decomposition import Decomposition
 
 

@@ -22,7 +22,7 @@ import numpy
 from lyncs_utils import factors, prod
 from .formats import formats
 from .base import save
-from .mpi_io import _tempdir_MPI
+from .mpi_io import _tempdir_MPI, with_mpi
 
 mark_mpi = mark.mpi(min_size=1)
 
@@ -266,4 +266,7 @@ def get_procs_list(comm_size=None, max_size=None, repeat=1):
     return procs[:max_size]
 
 
-parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4, max_size=2))
+if with_mpi:
+    parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4, max_size=2))
+else:
+    parallel_loop = mark.skipif(True, reason="MPI not installed")
