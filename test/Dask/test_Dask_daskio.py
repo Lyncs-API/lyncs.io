@@ -1,7 +1,5 @@
 import os
 import numpy
-import dask
-import dask.array as da
 import pytest
 
 from lyncs_utils import prod
@@ -20,6 +18,11 @@ from lyncs_io.testing import (
     generate_rand_arr,
     mark_dask,
 )
+
+try:
+    import dask.array as da
+except ImportError:
+    pass
 
 
 @mark_dask
