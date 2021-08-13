@@ -22,7 +22,12 @@ class DaskIO:
         Property for importing Dask wherever necessary
         """
         # pylint: disable=C0415
-        import dask
+        try:
+            import dask
+        except ImportError as err:
+            raise ImportError(
+                "Dask not available. Consider installing `lyncs_io[dask]`."
+            ) from err
 
         return dask
 

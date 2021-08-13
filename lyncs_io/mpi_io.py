@@ -68,7 +68,12 @@ class MpiIO:
         Property for importing MPI wherever necessary
         """
         # pylint: disable=C0415
-        from mpi4py import MPI
+        try:
+            from mpi4py import MPI
+        except ImportError as err:
+            raise ImportError(
+                "MPI not available. Consider installing `lyncs_io[mpi]`."
+            ) from err
 
         return MPI
 
