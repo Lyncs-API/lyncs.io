@@ -7,7 +7,7 @@ from lyncs_utils import prod
 
 @dtype_loop
 @shape_loop
-def test_serial_numpy(tempdir, dtype, shape):
+def test_serial_numpy_with_npy(tempdir, dtype, shape):
     arr = generate_rand_arr(shape, dtype)
 
     ftmp = tempdir + "/foo.npy"
@@ -17,13 +17,11 @@ def test_serial_numpy(tempdir, dtype, shape):
     assert io.load(ftmp).shape == io.head(ftmp)["shape"]
     assert io.load(ftmp).dtype == io.head(ftmp)["dtype"]
 
-    # skip txt for now
-    # 1D or 2D arrays only for savetxt
-    # if len(arr.shape) <= 2:
-    #     ftmp = tempdir + "/foo.txt"
-    #     io.save(arr, ftmp)
-    #     assert np.allclose(arr, io.load(ftmp, dtype=dtype))
-    #     assert np.allclose(arr, io.load(ftmp, format="ascii", dtype=dtype))
+
+@dtype_loop
+@shape_loop
+def test_serial_numpy_with_npyz(tempdir, dtype, shape):
+    arr = generate_rand_arr(shape, dtype)
 
     ftmp = tempdir + "/foo.npz"
     io.save(arr, ftmp)
@@ -39,3 +37,17 @@ def test_serial_numpy(tempdir, dtype, shape):
     assert (arr == io.load(ftmp, format="numpyz")).all()
     assert io.load(ftmp).shape == io.head(ftmp)["shape"]
     assert io.load(ftmp).dtype == io.head(ftmp)["dtype"]
+
+
+@dtype_loop
+@shape_loop
+def test_serial_numpy_with_txt(tempdir, dtype, shape):
+    arr = generate_rand_arr(shape, dtype)
+
+    # skip txt for now
+    # 1D or 2D arrays only for savetxt
+    if len(arr.shape) <= 2 or dtype not in ["bool", "int64"]:
+        ftmp = tempdir + "/foo.txt"
+        io.save(arr, ftmp)
+        assert np.allclose(arr, io.load(ftmp, dtype=dtype))
+        assert np.allclose(arr, io.load(ftmp, format="ascii", dtype=dtype))

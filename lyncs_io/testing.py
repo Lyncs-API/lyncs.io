@@ -62,7 +62,7 @@ shape_loop = mark.parametrize(
 
 # includes all dtypes as dtype_loop but float16 as it's not supported
 dtype_mpi_loop = mark.parametrize(
-    "dtype_mpi",
+    "dtype",
     [
         "float32",
         "float64",
