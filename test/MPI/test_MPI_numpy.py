@@ -11,9 +11,8 @@ from lyncs_io.testing import (
     get_comm,
     get_cart,
     write_global_array,
+    skip_hdf5_mpi,
 )
-
-from lyncs_io.hdf5 import mpi as hdf5_mpi
 
 
 @mark_mpi
@@ -25,7 +24,7 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_load_comm"
     if format == "hdf5":
-        if not hdf5_mpi:
+        if skip_hdf5_mpi.args[0]:
             return
         ftmp += ".h5/data"
 
@@ -53,7 +52,7 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_load_cart"
     if format == "hdf5":
-        if not hdf5_mpi:
+        if skip_hdf5_mpi.args[0]:
             return
         ftmp += ".h5/data"
 
@@ -81,7 +80,7 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_save_comm"
     if format == "hdf5":
-        if not hdf5_mpi:
+        if skip_hdf5_mpi.args[0]:
             return
         ftmp += ".h5/data"
 
@@ -110,7 +109,7 @@ def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_save_cart"
     if format == "hdf5":
-        if not hdf5_mpi:
+        if skip_hdf5_mpi.args[0]:
             return
         ftmp += ".h5/data"
 
