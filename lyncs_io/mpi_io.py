@@ -29,14 +29,15 @@ def check_comm(comm):
         )
 
 
-def _tempdir_MPI():
+def _tempdir_MPI(comm=None):
     """
     Creates a temporary directory to be used during testing
     """
 
-    from .testing import get_comm, mpi
+    if comm is None:
+        from mpi4py import MPI
 
-    comm = get_comm()
+        comm = MPI.COMM_WORLD
     if comm.rank == 0:
         tmp = tempfile.TemporaryDirectory()
         name = tmp.__enter__()

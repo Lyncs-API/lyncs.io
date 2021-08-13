@@ -48,10 +48,6 @@ skip_hdf5_mpi = mark.skipif(
 if not skip_hdf5_mpi.args[0]:
     parallel_format_loop.args[1].append("hdf5")
 
-
-tempdir_MPI = fixture(_tempdir_MPI)
-
-
 shape_loop = mark.parametrize(
     "shape",
     [
@@ -205,6 +201,12 @@ def tempdir():
     yield path + "/"
 
     tmp.__exit__(None, None, None)
+
+
+if with_mpi:
+    tempdir_MPI = fixture(_tempdir_MPI)
+else:
+    tempdir_MPI = tempdir
 
 
 def write_global_array(comm, filename, lshape, dtype="int64", format="numpy"):
