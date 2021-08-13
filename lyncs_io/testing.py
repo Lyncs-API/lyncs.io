@@ -146,8 +146,9 @@ def generate_rand_arr(shape, dtype):
     if type(shape) == int:
         shape = (shape,)
 
+    if dtype != "bool":
+        bits = re.findall("[0-9]+", dtype)[0]
     fdtype = re.findall("[a-zA-Z]+", dtype)[0]
-    bits = re.findall("[0-9]+", dtype)[0]
 
     if fdtype == "bool":
         arr = numpy.random.rand(*shape)
