@@ -41,7 +41,7 @@ jobs:
 
       - name: Run serial tests
         run: |
-          pytest test/serial
+          pytest
 
   tests:
     runs-on: ubuntu-latest
