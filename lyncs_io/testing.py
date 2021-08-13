@@ -266,4 +266,4 @@ def get_procs_list(comm_size=None, max_size=None, repeat=1):
     return procs[:max_size]
 
 
-parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4))
+parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4, max_size=2))
