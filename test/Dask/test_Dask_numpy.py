@@ -14,9 +14,11 @@ from lyncs_io.testing import (
     chunksize_loop,
     tempdir,
     generate_rand_arr,
+    mark_dask,
 )
 
 
+@mark_dask
 @dtype_loop
 @shape_loop
 @chunksize_loop
@@ -34,6 +36,7 @@ def test_Dask_numpy_load(client, tempdir, dtype, shape, chunksize, workers):
     assert x_lazy_in.dtype.str != dtype
 
 
+@mark_dask
 @dtype_loop
 @shape_loop
 @chunksize_loop
@@ -58,6 +61,7 @@ def ttest_Dask_numpy_write(client, tempdir, dtype, shape, chunksize, workers):
     assert (x_ref == x_ref_in).all()
 
 
+@mark_dask
 @dtype_loop
 @workers_loop
 def test_Dask_numpy_write_update(client, tempdir, dtype, workers):

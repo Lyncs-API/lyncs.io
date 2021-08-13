@@ -23,8 +23,10 @@ from lyncs_utils import factors, prod
 from .formats import formats
 from .base import save
 from .mpi_io import _tempdir_MPI, with_mpi
+from .dask_io import with_dask
 
 mark_mpi = mark.mpi(min_size=1)
+mark_dask = mark.skipif(not with_dask, reason="dask not available")
 
 parallel_format_loop = mark.parametrize(
     "format",

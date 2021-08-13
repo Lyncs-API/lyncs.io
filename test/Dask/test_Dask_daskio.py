@@ -18,15 +18,18 @@ from lyncs_io.testing import (
     chunksize_loop,
     tempdir,
     generate_rand_arr,
+    mark_dask,
 )
 
 
+@mark_dask
 def test_Dask_daskio_abspath(client, tempdir):
 
     assert os.path.isabs(DaskIO(tempdir + "/foo_daskio_load.npy").filename)
     assert os.path.isabs(DaskIO("./foo_daskio_load.npy").filename)
 
 
+@mark_dask
 @dtype_loop
 @shape_loop
 @chunksize_loop
@@ -53,6 +56,7 @@ def test_Dask_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
     assert (x_ref == x_lazy_in.compute(num_workers=workers)).all()
 
 
+@mark_dask
 def test_Dask_daskio_write_exceptions(client, tempdir):
 
     assert not is_dask_array(numpy.zeros(10))
@@ -62,6 +66,7 @@ def test_Dask_daskio_write_exceptions(client, tempdir):
         DaskIO(tempdir + "/foo_daskio_write_exceptions.npy").save(numpy.zeros(10))
 
 
+@mark_dask
 @dtype_loop
 @shape_loop
 @chunksize_loop
@@ -89,6 +94,7 @@ def test_Dask_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
     assert (x_ref == x_ref_in).all()
 
 
+@mark_dask
 @dtype_loop
 @workers_loop
 def test_Dask_daskio_write_update(client, tempdir, dtype, workers):
