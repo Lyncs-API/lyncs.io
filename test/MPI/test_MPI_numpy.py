@@ -5,7 +5,7 @@ from lyncs_io.testing import (
     mark_mpi,
     tempdir_MPI,
     lshape_loop,
-    dtype_loop,
+    dtype_mpi_loop,
     parallel_loop,
     parallel_format_loop,
     get_comm,
@@ -17,10 +17,10 @@ from lyncs_io.hdf5 import mpi as hdf5_mpi
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_format_loop
-def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
+def test_MPI_load_comm(tempdir_MPI, dtype_mpi, lshape, format):
 
     comm = get_comm()
     rank = comm.rank
@@ -33,7 +33,7 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
     if format == "tar":
         ftmp += ".tar/data.npy"
 
-    write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
+    write_global_array(comm, ftmp, lshape, dtype=dtype_mpi, format=format)
     global_array = io.load(ftmp, format=format)
     local_array = io.load(ftmp, comm=comm, format=format)
 
@@ -43,11 +43,11 @@ def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_loop
 @parallel_format_loop
-def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
+def test_MPI_load_cart(tempdir_MPI, dtype_mpi, lshape, procs, format):
 
     comm = get_cart(procs=procs)
     rank = comm.rank
@@ -61,7 +61,7 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     if format == "tar":
         ftmp += ".tar/data.npy"
 
-    write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
+    write_global_array(comm, ftmp, lshape, dtype=dtype_mpi, format=format)
     global_array = io.load(ftmp, format=format)
     local_array = io.load(ftmp, comm=comm, format=format)
 
@@ -73,10 +73,10 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_format_loop
-def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
+def test_MPI_save_comm(tempdir_MPI, dtype_mpi, lshape, format):
 
     comm = get_comm()
     rank = comm.rank
@@ -89,7 +89,7 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
     if format == "tar":
         ftmp += ".tar/data.npy"
 
-    write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
+    write_global_array(comm, ftmp, lshape, dtype=dtype_mpi, format=format)
     global_array = io.load(ftmp, format=format)
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
@@ -102,11 +102,11 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_loop
 @parallel_format_loop
-def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
+def test_MPI_save_cart(tempdir_MPI, dtype_mpi, lshape, procs, format):
 
     comm = get_cart(procs=procs)
     coords = comm.coords
@@ -119,7 +119,7 @@ def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
     if format == "tar":
         ftmp += ".tar/data.npy"
 
-    write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
+    write_global_array(comm, ftmp, lshape, dtype=dtype_mpi, format=format)
     global_array = io.load(ftmp, format=format)
 
     slices = tuple(

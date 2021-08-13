@@ -13,10 +13,8 @@ __all__ = [
     "parallel_format_loop",
 ]
 
-import os
 import re
 import tempfile
-import sys
 from itertools import product
 from pytest import fixture, mark
 import numpy
@@ -62,6 +60,25 @@ shape_loop = mark.parametrize(
     ],
 )
 
+# includes all dtypes as dtype_loop but float16 as it's not supported
+dtype_mpi_loop = mark.parametrize(
+    "dtype_mpi",
+    [
+        "float32",
+        "float64",
+        "float128",
+        "complex64",
+        "complex128",
+        "complex256",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "bool",
+    ],
+)
+
+
 dtype_loop = mark.parametrize(
     "dtype",
     [
@@ -76,7 +93,7 @@ dtype_loop = mark.parametrize(
         "int16",
         "int32",
         "int64",
-        "bool8",
+        "bool",
     ],
 )
 

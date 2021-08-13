@@ -1,5 +1,4 @@
 from pathlib import Path
-import numpy
 from h5py import h5
 import lyncs_io as io
 
@@ -7,7 +6,7 @@ from lyncs_io.testing import (
     mark_mpi,
     tempdir_MPI,
     lshape_loop,
-    dtype_loop,
+    dtype_mpi_loop,
     parallel_loop,
     get_comm,
     get_cart,
@@ -44,14 +43,14 @@ def get_local_array_slice(dims, lshape, dtype, coords):
 
 @skip_hdf5_mpi
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
-def test_MPI_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
+def test_MPI_hdf5_load_dataset_comm(tempdir_MPI, dtype_mpi, lshape):
 
     comm = get_comm()
     rank = comm.rank
 
-    local_slice = get_local_array_slice([comm.size], lshape, dtype, [rank])
+    local_slice = get_local_array_slice([comm.size], lshape, dtype_mpi, [rank])
 
     ftmp = tempdir_MPI + "/test_hdf5_load_comm.h5/random"
     io.save(local_slice, ftmp, comm=comm)
@@ -72,15 +71,15 @@ def test_MPI_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
 
 @skip_hdf5_mpi
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_loop
-def test_MPI_hdf5_load_dataset_cart(tempdir_MPI, dtype, lshape, procs):
+def test_MPI_hdf5_load_dataset_cart(tempdir_MPI, dtype_mpi, lshape, procs):
 
     comm = get_cart(procs=procs)
     dims, _, coords = comm.Get_topo()
 
-    local_slice = get_local_array_slice(dims, lshape, dtype, coords)
+    local_slice = get_local_array_slice(dims, lshape, dtype_mpi, coords)
 
     ftmp = tempdir_MPI + "/test_hdf5_load_cart.h5/random"
     io.save(local_slice, ftmp, comm=comm)

@@ -4,11 +4,11 @@ Parallel IO using MPI
 
 __all__ = ["MpiIO"]
 
-import numpy
-import os
-import tempfile
-
 from contextlib import contextmanager
+import tempfile
+import os
+import numpy
+
 from .decomposition import Decomposition
 
 
@@ -221,12 +221,22 @@ class MpiIO:
         """
 
         if hasattr(self.MPI, "_typedict"):
-            mpi_type = self.MPI._typedict[numpy.dtype(np_type).char]
+            mpi_type = self._get_mpi_type(np_type, self.MPI._typedict.items())
         elif hasattr(self.MPI, "__TypeDict__"):
-            mpi_type = self.MPI.__TypeDict__[numpy.dtype(np_type).char]
+            mpi_type = self._get_mpi_type(np_type, self.MPI.__TypeDict__.items())
         else:
             raise ValueError("cannot convert type")
         return mpi_type
+
+    def _get_mpi_type(self, np_type, items):
+        for key, val in items:
+            try:
+                if numpy.dtype(key) == numpy.dtype(np_type):
+                    return val
+            # for keys that are not understood
+            except TypeError:
+                continue
+        raise TypeError(f"{np_type} is not supported")
 
     class _FileWrapper:
         """
