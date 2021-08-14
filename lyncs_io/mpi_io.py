@@ -34,9 +34,9 @@ def _tempdir_MPI(comm=None):
     Creates a temporary directory to be used during testing
     """
 
-    if comm is None:
-        from mpi4py import MPI
+    from mpi4py import MPI
 
+    if comm is None:
         comm = MPI.COMM_WORLD
     if comm.rank == 0:
         tmp = tempfile.TemporaryDirectory()
@@ -47,7 +47,7 @@ def _tempdir_MPI(comm=None):
 
     # test path exists for all
     has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
-    all_access = comm.allreduce(has_access, op=mpi().LAND)
+    all_access = comm.allreduce(has_access, op=MPI.LAND)
     if not all_access:
         raise ValueError(
             "Some processes are unable to access the temporary directory. \n\
