@@ -13,7 +13,7 @@ __all__ = [
     "parallel_format_loop",
 ]
 
-import os
+import re
 import tempfile
 from itertools import product
 from pytest import fixture, mark
@@ -22,14 +22,19 @@ import numpy
 from lyncs_utils import factors, prod
 from .formats import formats
 from .base import save
+from .mpi_io import _tempdir_MPI, with_mpi
+from .dask_io import with_dask
 
-mark_mpi = mark.mpi(min_size=1)
+mark_mpi = mark.skipif(not with_mpi, reason="mpi not available")
+mark_dask = mark.skipif(not with_dask, reason="dask not available")
 
 parallel_format_loop = mark.parametrize(
     "format",
     [
         "numpy",
         "lime",
+        "tar",
+        "hdf5",
     ],
 )
 
@@ -53,11 +58,40 @@ shape_loop = mark.parametrize(
     ],
 )
 
-dtype_loop = mark.parametrize(
+# includes all dtypes as dtype_loop but float16 as it's not supported
+dtype_mpi_loop = mark.parametrize(
     "dtype",
     [
         "float32",
         "float64",
+        "float128",
+        "complex64",
+        "complex128",
+        "complex256",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "bool",
+    ],
+)
+
+
+dtype_loop = mark.parametrize(
+    "dtype",
+    [
+        "float16",
+        "float32",
+        "float64",
+        "float128",
+        "complex64",
+        "complex128",
+        "complex256",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "bool",
     ],
 )
 
@@ -78,6 +112,58 @@ workers_loop = mark.parametrize(
     "workers",
     [1, 2, 4, 7, 12],
 )
+
+tar_mode_loop = mark.parametrize(
+    "mode",
+    [
+        ".tar.gz",
+        ".taz",
+        ".tgz",
+        ".tar.bz2",
+        ".tb2",
+        ".tbz",
+        ".tbz2",
+        ".tz2",
+        ".tar.xz",
+        ".txz",
+        ".tar",
+    ],
+)
+
+ext_loop = mark.parametrize(
+    "ext",
+    [
+        ".npy",
+        # TODO: ".txt", ".h5"
+    ],
+)
+
+
+def generate_rand_arr(shape, dtype):
+
+    if type(shape) == int:
+        shape = (shape,)
+
+    if dtype != "bool":
+        bits = re.findall("[0-9]+", dtype)[0]
+    fdtype = re.findall("[a-zA-Z]+", dtype)[0]
+
+    if fdtype == "bool":
+        arr = numpy.random.rand(*shape)
+        return numpy.around(arr).astype("bool8")
+
+    if fdtype == "int":
+        high = 2 ** (int(bits) - 1) - 1
+        low = -high - 1
+        return numpy.random.randint(low=low, high=high, size=shape, dtype=dtype)
+
+    if fdtype == "complex":
+        bits = str(round(int(bits) / 2))
+        reals = numpy.random.rand(*shape).astype("float" + bits)
+        imag = numpy.random.rand(*shape).astype("float" + bits) * 1j
+        return reals + imag
+
+    return numpy.random.rand(*shape).astype(dtype)
 
 
 @fixture(scope="session")
@@ -104,37 +190,6 @@ def mpi():
 
 
 @fixture
-def tempdir_MPI():
-    """
-    Creates a temporary directory to be used during testing
-    """
-    comm = get_comm()
-    if comm.rank == 0:
-        tmp = tempfile.TemporaryDirectory()
-        name = tmp.__enter__()
-    else:
-        name = ""
-    path = comm.bcast(name, root=0)
-
-    # test path exists for all
-    has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
-    all_access = comm.allreduce(has_access, op=mpi().LAND)
-    if not all_access:
-        raise ValueError(
-            "Some processes are unable to access the temporary directory. \n\
-                Set TMPDIR, TEMP or TMP environment variables with the temporary \n\
-                directory to be used across processes. "
-        )
-
-    yield path + "/"
-
-    # make sure file exists until everyone is done
-    comm.Barrier()
-    if comm.rank == 0:
-        tmp.__exit__(None, None, None)
-
-
-@fixture
 def tempdir():
     """
     Creates a temporary directory to be used during testing
@@ -146,6 +201,12 @@ def tempdir():
     yield path + "/"
 
     tmp.__exit__(None, None, None)
+
+
+if with_mpi:
+    tempdir_MPI = fixture(_tempdir_MPI)
+else:
+    tempdir_MPI = tempdir
 
 
 def write_global_array(comm, filename, lshape, dtype="int64", format="numpy"):
@@ -209,4 +270,7 @@ def get_procs_list(comm_size=None, max_size=None, repeat=1):
     return procs[:max_size]
 
 
-parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4))
+if with_mpi:
+    parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4, max_size=2))
+else:
+    parallel_loop = mark.skipif(True, reason="MPI not installed")

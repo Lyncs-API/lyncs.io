@@ -5,37 +5,43 @@ from lyncs_io.testing import (
     mark_mpi,
     tempdir_MPI,
     lshape_loop,
-    dtype_loop,
+    dtype_mpi_loop,
     parallel_loop,
     parallel_format_loop,
     get_comm,
     get_cart,
     write_global_array,
+    skip_hdf5_mpi,
 )
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_format_loop
 def test_MPI_load_comm(tempdir_MPI, dtype, lshape, format):
-
     comm = get_comm()
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_load_comm"
     if format == "hdf5":
+        if skip_hdf5_mpi.args[0]:
+            return
         ftmp += ".h5/data"
+
+    if format == "tar":
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
     local_array = io.load(ftmp, comm=comm, format=format)
 
     slc = tuple(slice(rank * lshape[i], (rank + 1) * lshape[i]) for i in range(1))
+    assert global_array[slc].shape == local_array.shape
     assert (global_array[slc] == local_array).all()
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_loop
 @parallel_format_loop
@@ -46,7 +52,12 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_load_cart"
     if format == "hdf5":
+        if skip_hdf5_mpi.args[0]:
+            return
         ftmp += ".h5/data"
+
+    if format == "tar":
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -55,11 +66,12 @@ def test_MPI_load_cart(tempdir_MPI, dtype, lshape, procs, format):
     slices = tuple(
         slice(coord * size, (coord + 1) * size) for coord, size in zip(coords, lshape)
     )
+    assert global_array[slices].shape == local_array.shape
     assert (global_array[slices] == local_array).all()
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_format_loop
 def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
@@ -68,7 +80,12 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
     rank = comm.rank
     ftmp = tempdir_MPI + "/mpiio_save_comm"
     if format == "hdf5":
+        if skip_hdf5_mpi.args[0]:
+            return
         ftmp += ".h5/data"
+
+    if format == "tar":
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)
@@ -83,17 +100,21 @@ def test_MPI_save_comm(tempdir_MPI, dtype, lshape, format):
 
 
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_loop
 @parallel_format_loop
 def test_MPI_save_cart(tempdir_MPI, dtype, lshape, procs, format):
-
     comm = get_cart(procs=procs)
     coords = comm.coords
     ftmp = tempdir_MPI + "/mpiio_save_cart"
     if format == "hdf5":
+        if skip_hdf5_mpi.args[0]:
+            return
         ftmp += ".h5/data"
+
+    if format == "tar":
+        ftmp += ".tar/data.npy"
 
     write_global_array(comm, ftmp, lshape, dtype=dtype, format=format)
     global_array = io.load(ftmp, format=format)

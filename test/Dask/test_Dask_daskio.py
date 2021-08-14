@@ -1,7 +1,5 @@
 import os
 import numpy
-import dask
-import dask.array as da
 import pytest
 
 from lyncs_utils import prod
@@ -17,15 +15,24 @@ from lyncs_io.testing import (
     workers_loop,
     chunksize_loop,
     tempdir,
+    generate_rand_arr,
+    mark_dask,
 )
 
+try:
+    import dask.array as da
+except ImportError:
+    pass
 
+
+@mark_dask
 def test_Dask_daskio_abspath(client, tempdir):
 
     assert os.path.isabs(DaskIO(tempdir + "/foo_daskio_load.npy").filename)
     assert os.path.isabs(DaskIO("./foo_daskio_load.npy").filename)
 
 
+@mark_dask
 @dtype_loop
 @shape_loop
 @chunksize_loop
@@ -33,7 +40,7 @@ def test_Dask_daskio_abspath(client, tempdir):
 def test_Dask_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_daskio_load.npy"
-    x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_ref = generate_rand_arr(shape, dtype)
     io.save(x_ref, ftmp)
 
     daskio = DaskIO(ftmp)
@@ -52,6 +59,7 @@ def test_Dask_daskio_load(client, tempdir, dtype, shape, chunksize, workers):
     assert (x_ref == x_lazy_in.compute(num_workers=workers)).all()
 
 
+@mark_dask
 def test_Dask_daskio_write_exceptions(client, tempdir):
 
     assert not is_dask_array(numpy.zeros(10))
@@ -61,6 +69,7 @@ def test_Dask_daskio_write_exceptions(client, tempdir):
         DaskIO(tempdir + "/foo_daskio_write_exceptions.npy").save(numpy.zeros(10))
 
 
+@mark_dask
 @dtype_loop
 @shape_loop
 @chunksize_loop
@@ -69,7 +78,7 @@ def test_Dask_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
 
     ftmp = tempdir + "/foo_daskio_write.npy"
 
-    x_ref = numpy.random.rand(*shape).astype(dtype)
+    x_ref = generate_rand_arr(shape, dtype)
     x_ref, attrs = to_array(x_ref)
     header = _get_header_bytes(attrs)
     x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunksize)
@@ -88,6 +97,7 @@ def test_Dask_daskio_write(client, tempdir, dtype, shape, chunksize, workers):
     assert (x_ref == x_ref_in).all()
 
 
+@mark_dask
 @dtype_loop
 @workers_loop
 def test_Dask_daskio_write_update(client, tempdir, dtype, workers):
@@ -109,7 +119,7 @@ def test_Dask_daskio_write_update(client, tempdir, dtype, workers):
         # chunks should have the same length as domain
         chunks = tuple(chunksize for a in range(len(domain)))
 
-        x_ref = numpy.random.rand(*domain).astype(dtype).reshape(domain)
+        x_ref = generate_rand_arr(domain, dtype).reshape(domain)
         x_ref, attrs = to_array(x_ref)
         header = _get_header_bytes(attrs)
         x_lazy = da.array(x_ref, dtype=dtype).rechunk(chunks=chunks)

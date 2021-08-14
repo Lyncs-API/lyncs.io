@@ -1,20 +1,18 @@
 from pathlib import Path
 import numpy
-from h5py import h5
 import lyncs_io as io
 
 from lyncs_io.testing import (
     mark_mpi,
     tempdir_MPI,
     lshape_loop,
-    dtype_loop,
+    dtype_mpi_loop,
     parallel_loop,
     get_comm,
     get_cart,
     skip_hdf5_mpi,
+    generate_rand_arr,
 )
-
-mpi = h5.get_config().mpi
 
 
 def construct_global_shape(lshape, mult=None):
@@ -31,7 +29,7 @@ def get_local_array_slice(dims, lshape, dtype, coords):
 
     mult = tuple(dims[i] if i < len(dims) else 1 for i in range(len(lshape)))
     gshape = construct_global_shape(lshape, mult=mult)
-    global_array = numpy.random.rand(*gshape).astype(dtype)
+    global_array = generate_rand_arr(gshape, dtype)
 
     slices = tuple(
         slice(coords[i] * lshape[i], (coords[i] + 1) * lshape[i])
@@ -43,7 +41,7 @@ def get_local_array_slice(dims, lshape, dtype, coords):
 
 @skip_hdf5_mpi
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 def test_MPI_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
 
@@ -71,7 +69,7 @@ def test_MPI_hdf5_load_dataset_comm(tempdir_MPI, dtype, lshape):
 
 @skip_hdf5_mpi
 @mark_mpi
-@dtype_loop
+@dtype_mpi_loop
 @lshape_loop  # enables local domain
 @parallel_loop
 def test_MPI_hdf5_load_dataset_cart(tempdir_MPI, dtype, lshape, procs):

@@ -127,7 +127,7 @@ class Archive(Mapping):
             if val is None:
                 printer.text(f"{key}/...")
                 continue
-            if not isinstance(val, dict):
+            if not isinstance(val, Mapping):
                 raise TypeError(f"Unexpected type {type(val)} for key {key}")
             printer.begin_group(ind, key + "/")
             self[key]._repr_pretty_(printer)

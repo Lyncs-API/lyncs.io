@@ -4,7 +4,19 @@ Parallel IO using MPI
 
 __all__ = ["MpiIO"]
 
+from contextlib import contextmanager
+import tempfile
+import os
 import numpy
+
+# pylint: disable=C0103
+try:
+    import mpi4py
+
+    with_mpi = True
+except ImportError:
+    with_mpi = False
+
 
 from .decomposition import Decomposition
 
@@ -15,6 +27,43 @@ def check_comm(comm):
         raise TypeError(
             "comm variable needs to be a valid MPI communicator with size attribute."
         )
+
+
+def _tempdir_MPI(comm=None):
+    """
+    Creates a temporary directory to be used during testing
+    """
+
+    from mpi4py import MPI
+
+    if comm is None:
+        comm = MPI.COMM_WORLD
+    if comm.rank == 0:
+        tmp = tempfile.TemporaryDirectory()
+        name = tmp.__enter__()
+    else:
+        name = ""
+    path = comm.bcast(name, root=0)
+
+    # test path exists for all
+    has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
+    all_access = comm.allreduce(has_access, op=MPI.LAND)
+    if not all_access:
+        raise ValueError(
+            "Some processes are unable to access the temporary directory. \n\
+                Set TMPDIR, TEMP or TMP environment variables with the temporary \n\
+                directory to be used across processes. "
+        )
+
+    yield path + "/"
+
+    # make sure file exists until everyone is done
+    comm.Barrier()
+    if comm.rank == 0:
+        tmp.__exit__(None, None, None)
+
+
+tempdir_MPI = contextmanager(_tempdir_MPI)
 
 
 class MpiIO:
@@ -29,7 +78,12 @@ class MpiIO:
         Property for importing MPI wherever necessary
         """
         # pylint: disable=C0415
-        from mpi4py import MPI
+        try:
+            from mpi4py import MPI
+        except ImportError as err:
+            raise ImportError(
+                "MPI not available. Consider installing `lyncs_io[mpi]`."
+            ) from err
 
         return MPI
 
@@ -182,12 +236,22 @@ class MpiIO:
         """
 
         if hasattr(self.MPI, "_typedict"):
-            mpi_type = self.MPI._typedict[numpy.dtype(np_type).char]
+            mpi_type = self._get_mpi_type(np_type, self.MPI._typedict.items())
         elif hasattr(self.MPI, "__TypeDict__"):
-            mpi_type = self.MPI.__TypeDict__[numpy.dtype(np_type).char]
+            mpi_type = self._get_mpi_type(np_type, self.MPI.__TypeDict__.items())
         else:
             raise ValueError("cannot convert type")
         return mpi_type
+
+    def _get_mpi_type(self, np_type, items):
+        for key, val in items:
+            try:
+                if numpy.dtype(key) == numpy.dtype(np_type):
+                    return val
+            # for keys that are not understood
+            except TypeError:
+                continue
+        raise TypeError(f"{np_type} is not supported")
 
     class _FileWrapper:
         """

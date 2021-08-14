@@ -1,7 +1,7 @@
 import numpy
 from lyncs_utils import read
 from lyncs_io.convert import to_bytes, from_bytes
-from lyncs_io.testing import tempdir, shape_loop, dtype_loop
+from lyncs_io.testing import tempdir, shape_loop, dtype_loop, generate_rand_arr
 from lyncs_io.lime import (
     write_record_header,
     read_record_header,
@@ -46,7 +46,9 @@ def test_record(tempdir):
     assert rec["end"] == True
 
 
-def test_records(tempdir):
+@shape_loop
+@dtype_loop
+def test_records(tempdir, shape, dtype):
     filename = tempdir + "records"
     records = {
         "foo": numpy.random.rand(100).tobytes(),
@@ -69,8 +71,10 @@ def test_records(tempdir):
             assert rec["data"] == val
 
 
-def test_get_header_bytes(tempdir):
-    arr = numpy.random.rand(10, 10)
+@shape_loop
+@dtype_loop
+def test_get_header_bytes(tempdir, shape, dtype):
+    arr = generate_rand_arr(shape, dtype)
     arr, attrs = to_bytes(arr)
     filename = tempdir + "header"
     write_data(filename, len(arr), metadata=attrs)
@@ -90,7 +94,7 @@ def test_reference():
 @dtype_loop
 def test_save(tempdir, shape, dtype):
     filename = tempdir + "rand"
-    arr = numpy.random.rand(*shape).astype(dtype)
+    arr = generate_rand_arr(shape, dtype)
     save(arr, filename)
     header = head(filename)
     assert header["shape"] == shape
