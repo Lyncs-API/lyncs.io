@@ -1,6 +1,5 @@
 from pathlib import Path
 import numpy
-from h5py import h5
 import lyncs_io as io
 
 from lyncs_io.testing import (
@@ -14,8 +13,6 @@ from lyncs_io.testing import (
     skip_hdf5_mpi,
     generate_rand_arr,
 )
-
-mpi = h5.get_config().mpi
 
 
 def construct_global_shape(lshape, mult=None):

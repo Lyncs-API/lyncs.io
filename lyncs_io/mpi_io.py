@@ -9,6 +9,15 @@ import tempfile
 import os
 import numpy
 
+# pylint: disable=C0103
+try:
+    import mpi4py
+
+    with_mpi = True
+except ImportError:
+    with_mpi = False
+
+
 from .decomposition import Decomposition
 
 
@@ -20,14 +29,15 @@ def check_comm(comm):
         )
 
 
-def _tempdir_MPI():
+def _tempdir_MPI(comm=None):
     """
     Creates a temporary directory to be used during testing
     """
 
-    from .testing import get_comm, mpi
+    from mpi4py import MPI
 
-    comm = get_comm()
+    if comm is None:
+        comm = MPI.COMM_WORLD
     if comm.rank == 0:
         tmp = tempfile.TemporaryDirectory()
         name = tmp.__enter__()
@@ -37,7 +47,7 @@ def _tempdir_MPI():
 
     # test path exists for all
     has_access = os.path.exists(path) and os.access(path, os.R_OK | os.W_OK)
-    all_access = comm.allreduce(has_access, op=mpi().LAND)
+    all_access = comm.allreduce(has_access, op=MPI.LAND)
     if not all_access:
         raise ValueError(
             "Some processes are unable to access the temporary directory. \n\
@@ -68,7 +78,12 @@ class MpiIO:
         Property for importing MPI wherever necessary
         """
         # pylint: disable=C0415
-        from mpi4py import MPI
+        try:
+            from mpi4py import MPI
+        except ImportError as err:
+            raise ImportError(
+                "MPI not available. Consider installing `lyncs_io[mpi]`."
+            ) from err
 
         return MPI
 

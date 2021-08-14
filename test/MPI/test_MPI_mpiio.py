@@ -22,6 +22,7 @@ from lyncs_io.testing import (
 )
 
 
+@mark_mpi
 @dtype_mpi_loop
 def test_dtype_to_mpi(tempdir_MPI, dtype):
     comm = get_comm()
@@ -33,6 +34,7 @@ def test_dtype_to_mpi(tempdir_MPI, dtype):
     assert mpi._dtype_to_mpi(dtype) in objs
 
 
+@mark_mpi
 def test_float16_not_supported(tempdir_MPI):
     comm = get_comm()
     ftmp = tempdir_MPI + "/foo.npy"

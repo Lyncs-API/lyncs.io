@@ -7,6 +7,15 @@ import numpy
 
 from filelock import FileLock, Timeout
 from lyncs_utils import read, write
+
+# pylint: disable=C0103
+try:
+    import dask
+
+    with_dask = True
+except ImportError:
+    with_dask = False
+
 from .convert import from_array
 from .utils import is_dask_array
 
@@ -21,8 +30,10 @@ class DaskIO:
         """
         Property for importing Dask wherever necessary
         """
-        # pylint: disable=C0415
-        import dask
+        if not with_dask:
+            raise ImportError(
+                "Dask not available. Consider installing `lyncs_io[dask]`."
+            )
 
         return dask
 

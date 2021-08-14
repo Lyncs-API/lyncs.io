@@ -70,8 +70,8 @@ def _save(arr, tar, key, **kwargs):
     _format = formats.get_format(filename=basename(key))
     key = key[1:] if key[0] == "/" else key
 
-    if kwargs["comm"]:
-        with tempdir_MPI() as temp:
+    if kwargs.get("comm", None) is not None:
+        with tempdir_MPI(kwargs["comm"]) as temp:
             base.save(arr, temp + "/" + key, format=_format, **kwargs)
             # Only rank 0 does the writing
             if tar is not None:
@@ -247,8 +247,8 @@ def is_dir(tar, key):
 
 @contextmanager
 def _extract(tar, member, get_buff=False, **kwargs):
-    if kwargs.get("comm"):
-        with tempdir_MPI() as temp:
+    if kwargs.get("comm", None) is not None:
+        with tempdir_MPI(kwargs.get("comm")) as temp:
             check_comm(kwargs["comm"])
             if kwargs["comm"].rank == 0:
                 tar.extract(member, path=temp)

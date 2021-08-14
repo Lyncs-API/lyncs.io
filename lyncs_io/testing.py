@@ -22,9 +22,11 @@ import numpy
 from lyncs_utils import factors, prod
 from .formats import formats
 from .base import save
-from .mpi_io import _tempdir_MPI
+from .mpi_io import _tempdir_MPI, with_mpi
+from .dask_io import with_dask
 
-mark_mpi = mark.mpi(min_size=1)
+mark_mpi = mark.skipif(not with_mpi, reason="mpi not available")
+mark_dask = mark.skipif(not with_dask, reason="dask not available")
 
 parallel_format_loop = mark.parametrize(
     "format",
@@ -45,10 +47,6 @@ skip_hdf5_mpi = mark.skipif(
 )
 if not skip_hdf5_mpi.args[0]:
     parallel_format_loop.args[1].append("hdf5")
-
-
-tempdir_MPI = fixture(_tempdir_MPI)
-
 
 shape_loop = mark.parametrize(
     "shape",
@@ -205,6 +203,12 @@ def tempdir():
     tmp.__exit__(None, None, None)
 
 
+if with_mpi:
+    tempdir_MPI = fixture(_tempdir_MPI)
+else:
+    tempdir_MPI = tempdir
+
+
 def write_global_array(comm, filename, lshape, dtype="int64", format="numpy"):
     """
     Writes the global array from a local domain using MPI
@@ -266,4 +270,7 @@ def get_procs_list(comm_size=None, max_size=None, repeat=1):
     return procs[:max_size]
 
 
-parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4, max_size=2))
+if with_mpi:
+    parallel_loop = mark.parametrize("procs", get_procs_list(repeat=4, max_size=2))
+else:
+    parallel_loop = mark.skipif(True, reason="MPI not installed")
