@@ -5,19 +5,44 @@ such that the array buffer can be converted back to the original data objects.
 
 from datetime import datetime
 import numpy
+from pandas import DataFrame
 from .utils import is_dask_array
 from . import __version__
 
 
-def get_attrs(data):
+def array_to_df(data, attrs):
+    
+    # attrs = (
+    #             <function _reconstructor>,
+    #             (
+    #                 <class dataframe>,
+    #                 <class object>,
+    #                 None,
+    #             ),
+    #             {_mgr : BlockManager...}
+    #         )
+
+    instance = attrs[1][0]
+    index = [x for x in attrs[2]['_mgr'].items]
+    df_data = dict(zip(index, data.T))
+    return instance(df_data)
+
+
+def get_attrs(data, flag=False):
     """
     Returns the list of attributes needed for reconstructing a data object
     """
-    return {
+    _dict = {
         "_lyncs_io": __version__,
         "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "type": repr(type(data)),
     }
+
+    if flag:
+        _dict["type"] = type(data)
+
+    if _dict['type'] == DataFrame:
+        return data.__reduce__()
 
 
 def get_array_attrs(data):
@@ -47,9 +72,10 @@ def to_array(data):
     Converts a data object to array. Returns also the list of attributes
     needed for reconstructing it.
     """
-    attrs = get_attrs(data)
+    attrs = get_attrs(data, flag=True)
     data = _to_array(data)
-    attrs.update(get_array_attrs(data))
+    if attrs[1][0] != DataFrame:
+        attrs.update(get_array_attrs(data))
     return data, attrs
 
 
@@ -81,4 +107,5 @@ def from_array(data, attrs=None):
     Converts array to a data object. Undoes to_array.
     """
     # TODO
-    return data
+    if attrs[1][0] == DataFrame:
+        return array_to_df(data, attrs)
