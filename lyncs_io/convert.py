@@ -22,6 +22,7 @@ def array_to_csc(data):
 def array_to_csr(data):
     return sparse.csr_matrix(data)
 
+
 def array_to_df(data, attrs):
     # attrs = (
     #             <function _reconstructor>,
@@ -132,13 +133,13 @@ def from_array(data, attrs=None):
     """
     # TODO
     if type(attrs) == dict:
-        if attrs['type'] == type(sparse.csc_matrix(0)):
+        if attrs["type"] == type(sparse.csc_matrix(0)):
             return array_to_csc(data)
 
-        if attrs['type'] == type(sparse.csr_matrix(0)):
+        if attrs["type"] == type(sparse.csr_matrix(0)):
             return array_to_csr(data)
 
-        if attrs['type'] == type(sparse.coo_matrix(0)):
+        if attrs["type"] == type(sparse.coo_matrix(0)):
             return array_to_coo(data)
 
     else:

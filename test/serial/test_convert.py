@@ -12,9 +12,9 @@ def test_to_from_array():
     assert type(df) == type(new_df)
     assert (df.all() == new_df.all()).all()
 
-    csr = sparse.random(4,4,format='csr')
-    csc = sparse.random(4,4,format='csc')
-    cc = sparse.random(4,4,format='coo')
+    csr = sparse.random(4, 4, format="csr")
+    csc = sparse.random(4, 4, format="csc")
+    cc = sparse.random(4, 4, format="coo")
 
     sparse_matrices = [csr, csc, cc]
 
@@ -24,7 +24,7 @@ def test_to_from_array():
         new_m = from_array(arr, attrs)
 
         assert type(m) == type(new_m)
-        assert (m!=new_m).nnz == 0
+        assert (m != new_m).nnz == 0
 
         # "For dense arrays >>> np.allclose
         # is a good way of testing equality.
