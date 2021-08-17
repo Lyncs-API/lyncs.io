@@ -11,6 +11,21 @@ from .utils import is_dask_array, is_sparse_matrix
 from . import __version__
 
 
+<<<<<<< HEAD
+=======
+def array_to_coo(data):
+    return sparse.coo_matrix(data)
+
+
+def array_to_csc(data):
+    return sparse.csc_matrix(data)
+
+
+def array_to_csr(data):
+    return sparse.csr_matrix(data)
+
+
+>>>>>>> 02b069d08fb1cc443fe80101102701f0e4d56b60
 def array_to_df(data, attrs):
     # attrs = (
     #             <function _reconstructor>,
