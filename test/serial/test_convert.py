@@ -5,6 +5,18 @@ from scipy import sparse
 
 
 def test_to_from_array():
+
+    # TODO: [x] sparse matrices
+    # TODO: [ ] ndarrays
+    # TODO: [ ] built-ins
+    # TODO: [ ] dask
+    # TODO: [ ] torch
+    # TODO: [x] Dataframes
+
+    # ??
+    # TODO: [ ] keras
+    # TODO: [ ] tensorflow
+
     df = DataFrame({"A": [1, 2], "B": [3, 4]})
     arr, attrs = to_array(df)
     new_df = from_array(arr, attrs)

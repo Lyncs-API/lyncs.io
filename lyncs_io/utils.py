@@ -5,7 +5,9 @@ Function utils
 from functools import wraps
 from pathlib import Path
 from os.path import splitext
+from inspect import getmembers
 from collections import defaultdict
+from scipy import sparse
 from lyncs_utils.io import FileLike
 
 
@@ -55,8 +57,12 @@ def is_dask_array(obj):
 
 
 def is_sparse_matrix(obj):
-    pass
+    for item in [x[1] for x in getmembers(sparse)]:
+        if item == obj:
+            return True
 
+def is_dataframe(obj):
+    pass
 
 def swap(fnc):
     "Returns a wrapper that swaps the first two arguments of the function"

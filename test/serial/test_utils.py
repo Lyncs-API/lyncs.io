@@ -7,9 +7,18 @@ Tests for utils.py
 
 import tarfile
 import pytest
-from lyncs_io.utils import find_file, get_depth, find_member, format_key
+from lyncs_io.utils import find_file, get_depth, find_member, format_key, is_sparse_matrix
 from lyncs_io.testing import tempdir
 from lyncs_io.base import save
+from scipy.sparse import (
+    csc_matrix,
+    csr_matrix,
+    coo_matrix,
+    bsr_matrix,
+    dia_matrix,
+    dok_matrix,
+    lil_matrix
+)
 
 
 def test_find_file(tempdir):
@@ -80,3 +89,19 @@ def test_get_depth():
 
     key = "user/bar/.."
     assert get_depth(path, key) == 1
+
+
+def test_is_sparse_matrix():
+
+    l = [
+    csc_matrix,
+    csr_matrix,
+    coo_matrix,
+    bsr_matrix,
+    dia_matrix,
+    dok_matrix,
+    lil_matrix
+    ]
+    
+    for obj in l:
+        assert is_sparse_matrix(obj) == True
