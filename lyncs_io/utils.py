@@ -54,6 +54,10 @@ def is_dask_array(obj):
         return False
 
 
+def is_sparse_matrix(obj):
+    pass
+
+
 def swap(fnc):
     "Returns a wrapper that swaps the first two arguments of the function"
     return wraps(fnc)(

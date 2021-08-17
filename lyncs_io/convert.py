@@ -6,16 +6,23 @@ such that the array buffer can be converted back to the original data objects.
 from datetime import datetime
 import numpy
 from pandas import DataFrame
+from scipy import sparse
 from .utils import is_dask_array
 from . import __version__
 
 
-def array_to_sparse(data, attrs):
-    pass
+def array_to_coo(data):
+    return sparse.coo_matrix(data)
 
+
+def array_to_csc(data):
+    return sparse.csc_matrix(data)
+
+
+def array_to_csr(data):
+    return sparse.csr_matrix(data)
 
 def array_to_df(data, attrs):
-
     # attrs = (
     #             <function _reconstructor>,
     #             (
@@ -48,6 +55,8 @@ def get_attrs(data, flag=False):
     if _dict["type"] == DataFrame:
         return data.__reduce__()
 
+    return _dict
+
 
 def get_array_attrs(data):
     "Returns attributes of an array"
@@ -68,6 +77,15 @@ def _to_array(data):
     "Converts data to array"
     if is_dask_array(data):
         return data
+
+    if type(data) == type(sparse.coo_matrix(0)):
+        return data.toarray()
+
+    if type(data) == type(sparse.csc_matrix(0)):
+        return data.toarray()
+
+    if type(data) == type(sparse.csr_matrix(0)):
+        return data.toarray()
     return numpy.array(data)
 
 
@@ -78,8 +96,10 @@ def to_array(data):
     """
     attrs = get_attrs(data, flag=True)
     data = _to_array(data)
-    if attrs[1][0] != DataFrame:
-        attrs.update(get_array_attrs(data))
+    if type(attrs) != dict:
+        if attrs[1][0] != DataFrame:
+            attrs.update(get_array_attrs(data))
+
     return data, attrs
 
 
@@ -111,5 +131,16 @@ def from_array(data, attrs=None):
     Converts array to a data object. Undoes to_array.
     """
     # TODO
-    if attrs[1][0] == DataFrame:
-        return array_to_df(data, attrs)
+    if type(attrs) == dict:
+        if attrs['type'] == type(sparse.csc_matrix(0)):
+            return array_to_csc(data)
+
+        if attrs['type'] == type(sparse.csr_matrix(0)):
+            return array_to_csr(data)
+
+        if attrs['type'] == type(sparse.coo_matrix(0)):
+            return array_to_coo(data)
+
+    else:
+        if attrs[1][0] == DataFrame:
+            return array_to_df(data, attrs)
