@@ -11,7 +11,7 @@ from . import __version__
 
 
 def array_to_df(data, attrs):
-    
+
     # attrs = (
     #             <function _reconstructor>,
     #             (
@@ -23,7 +23,7 @@ def array_to_df(data, attrs):
     #         )
 
     instance = attrs[1][0]
-    index = [x for x in attrs[2]['_mgr'].items]
+    index = [x for x in attrs[2]["_mgr"].items]
     df_data = dict(zip(index, data.T))
     return instance(df_data)
 
@@ -41,7 +41,7 @@ def get_attrs(data, flag=False):
     if flag:
         _dict["type"] = type(data)
 
-    if _dict['type'] == DataFrame:
+    if _dict["type"] == DataFrame:
         return data.__reduce__()
 
 
