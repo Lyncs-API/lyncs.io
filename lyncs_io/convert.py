@@ -10,6 +10,10 @@ from .utils import is_dask_array
 from . import __version__
 
 
+def array_to_sparse(data, attrs):
+    pass
+
+
 def array_to_df(data, attrs):
     
     # attrs = (
