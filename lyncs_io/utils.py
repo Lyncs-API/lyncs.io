@@ -2,13 +2,22 @@
 Function utils
 """
 
+import torch.nn
 from functools import wraps
 from pathlib import Path
 from os.path import splitext
 from inspect import getmembers
 from collections import defaultdict
-from scipy import sparse
 from lyncs_utils.io import FileLike
+from scipy.sparse import (
+    csc_matrix,
+    csr_matrix,
+    coo_matrix,
+    bsr_matrix,
+    dia_matrix,
+    dok_matrix,
+    lil_matrix,
+)
 
 
 def find_file(filename):
@@ -56,13 +65,65 @@ def is_dask_array(obj):
         return False
 
 
-def is_sparse_matrix(obj):
-    for item in [x[1] for x in getmembers(sparse)]:
-        if item == obj:
-            return True
+""" !!!!!!!!!!! """
 
-def is_dataframe(obj):
-    pass
+
+def in_torch_nn(obj):
+    return obj in getmembers(torch.nn)
+
+
+def layer_to_tensor(layer):
+    fnc, args, kwargs = layer.__reduce__()
+    params = kwargs["_parameters"]
+    items = list(params.items())
+    param = items[0][1]
+    return param[:]
+
+
+def layers_are_equal(l1, l2):
+    "Compare two layers. Using double equals is inappropriate"
+    return l1.__reduce__() == l2.__reduce__()
+
+
+def tensor_to_numpy(tensor):
+    return tensor.detach().numpy()
+
+
+def is_sparse_matrix(obj):
+    "Check whether an object is a sparse matrix"
+    return obj in (
+        csc_matrix,
+        csr_matrix,
+        coo_matrix,
+        bsr_matrix,
+        dia_matrix,
+        dok_matrix,
+        lil_matrix,
+    )
+
+
+def from_state(attrs):
+    return (
+        type(attrs) == tuple
+        and len(attrs) == 2
+        and callable(attrs[0])
+        and isinstance(type(attrs[1]), dict)
+    )
+
+
+def from_reduced(attrs):
+    "Returns whether an object matches the tuple's format returned by __reduce__"
+    return (
+        type(attrs) == tuple
+        and len(attrs) == 3
+        and callable(attrs[0])
+        and isinstance(attrs[1], tuple)
+        and isinstance(attrs[2], dict)
+    )
+
+
+""" !!!!!!!!!!! """
+
 
 def swap(fnc):
     "Returns a wrapper that swaps the first two arguments of the function"

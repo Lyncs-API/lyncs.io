@@ -5,42 +5,31 @@ such that the array buffer can be converted back to the original data objects.
 
 from datetime import datetime
 import numpy
+from dask.array.core import Array as darr
 from pandas import DataFrame
 from scipy import sparse
-from .utils import is_dask_array, is_sparse_matrix
+from .utils import (
+    is_dask_array,
+    is_sparse_matrix,
+    from_reduced,
+    in_torch_nn,
+    layer_to_tensor,
+    tensor_to_numpy,
+)
+from torch import Tensor, tensor
 from . import __version__
 
 
-<<<<<<< HEAD
-=======
-def array_to_coo(data):
-    return sparse.coo_matrix(data)
+def reconstruct_reduced(data, attrs):
+    fnc, args, kwargs = attrs
+    obj = fnc(*args)
 
+    if hasattr(obj, "__setstate__"):
+        obj.__setstate__(kwargs)
+    else:
+        obj.__dict__.update(kwargs)
 
-def array_to_csc(data):
-    return sparse.csc_matrix(data)
-
-
-def array_to_csr(data):
-    return sparse.csr_matrix(data)
-
-
->>>>>>> 02b069d08fb1cc443fe80101102701f0e4d56b60
-def array_to_df(data, attrs):
-    # attrs = (
-    #             <function _reconstructor>,
-    #             (
-    #                 <class dataframe>,
-    #                 <class object>,
-    #                 None,
-    #             ),
-    #             {_mgr : BlockManager...}
-    #         )
-
-    instance = attrs[1][0]
-    index = [x for x in attrs[2]["_mgr"].items]
-    df_data = dict(zip(index, data.T))
-    return instance(df_data)
+    return obj
 
 
 def get_attrs(data, flag=False):
@@ -53,11 +42,17 @@ def get_attrs(data, flag=False):
         "type": repr(type(data)),
     }
 
-    if flag:
-        _dict["type"] = type(data)
+    _dict["type"] = type(data) if flag else _dict["type"]
 
-    if _dict["type"] == DataFrame:
-        return data.__reduce__()
+    if _dict["type"] not in (Tensor, numpy.ndarray, darr, type(None)):
+
+        if hasattr(data, "__reduce__"):
+            return data.__reduce__()
+        if hasattr(data, "__getstate__"):
+            return _dict["type"], data.__getstate__()
+
+        # No need for __dict__:
+        # "If the method is absent, the instance’s __dict__ is pickled as usual"
 
     return _dict
 
@@ -85,6 +80,12 @@ def _to_array(data):
     if is_sparse_matrix(type(data)):
         return data.toarray()
 
+    if in_torch_nn(type(data)):
+        return layer_to_tensor(tensor_to_numpy(data))
+
+    if isinstance(data, Tensor):
+        return tensor_to_numpy(data)
+
     return numpy.array(data)
 
 
@@ -95,7 +96,8 @@ def to_array(data):
     """
     attrs = get_attrs(data, flag=True)
     data = _to_array(data)
-    if type(attrs) != dict and attrs[1][0] != DataFrame:
+
+    if isinstance(attrs, dict):
         attrs.update(get_array_attrs(data))
 
     return data, attrs
@@ -128,10 +130,12 @@ def from_array(data, attrs=None):
     """
     Converts array to a data object. Undoes to_array.
     """
-    # TODO
-    if type(attrs) == dict and attrs.get('type') is not None:
-        if is_sparse_matrix(attrs['type']):
-            return attrs['type'](data)
 
-    if attrs[1][0] == DataFrame:
-        return array_to_df(data, attrs)
+    if from_reduced(attrs):
+        return reconstruct_reduced(data, attrs)
+
+    if isinstance(attrs, dict):
+        if attrs["type"] == Tensor:
+            return tensor(data)
+
+    return data
