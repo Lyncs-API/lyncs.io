@@ -2,12 +2,13 @@
 Function utils
 """
 
-import torch.nn
 from functools import wraps
 from pathlib import Path
 from os.path import splitext
 from inspect import getmembers
 from collections import defaultdict
+from warnings import warn
+import torch.nn
 from lyncs_utils.io import FileLike
 from scipy.sparse import (
     csc_matrix,
@@ -68,24 +69,31 @@ def is_dask_array(obj):
 """ !!!!!!!!!!! """
 
 
+# def check_suport(obj):
+#     "Checks whether the object's type is supported"
+
+
 def in_torch_nn(obj):
+    "Checks if an object belongs in the torch.nn module (Layers)"
     return obj in getmembers(torch.nn)
 
 
 def layer_to_tensor(layer):
-    fnc, args, kwargs = layer.__reduce__()
+    "Converts a torch layer to a tensor"
+    _, _, kwargs = layer.__reduce__()
     params = kwargs["_parameters"]
     items = list(params.items())
     param = items[0][1]
     return param[:]
 
 
-def layers_are_equal(l1, l2):
+def layers_are_equal(layer1, layer2):
     "Compare two layers. Using double equals is inappropriate"
-    return l1.__reduce__() == l2.__reduce__()
+    return layer1.__reduce__() == layer2.__reduce__()
 
 
 def tensor_to_numpy(tensor):
+    "Converts a tensor to a numpy array"
     return tensor.detach().numpy()
 
 
@@ -103,8 +111,9 @@ def is_sparse_matrix(obj):
 
 
 def from_state(attrs):
+    "Check whether an object matches the tuple's format returned by __getstate__"
     return (
-        type(attrs) == tuple
+        isinstance(attrs, tuple)
         and len(attrs) == 2
         and callable(attrs[0])
         and isinstance(type(attrs[1]), dict)
@@ -114,7 +123,7 @@ def from_state(attrs):
 def from_reduced(attrs):
     "Returns whether an object matches the tuple's format returned by __reduce__"
     return (
-        type(attrs) == tuple
+        isinstance(attrs, tuple)
         and len(attrs) == 3
         and callable(attrs[0])
         and isinstance(attrs[1], tuple)

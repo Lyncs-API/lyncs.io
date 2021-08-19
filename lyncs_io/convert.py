@@ -6,8 +6,7 @@ such that the array buffer can be converted back to the original data objects.
 from datetime import datetime
 import numpy
 from dask.array.core import Array as darr
-from pandas import DataFrame
-from scipy import sparse
+from torch import Tensor, tensor
 from .utils import (
     is_dask_array,
     is_sparse_matrix,
@@ -16,11 +15,11 @@ from .utils import (
     layer_to_tensor,
     tensor_to_numpy,
 )
-from torch import Tensor, tensor
 from . import __version__
 
 
-def reconstruct_reduced(data, attrs):
+def reconstruct_reduced(attrs):
+    "Reconstructs an object from the tuple returned by __reduce__"
     fnc, args, kwargs = attrs
     obj = fnc(*args)
 
@@ -132,7 +131,7 @@ def from_array(data, attrs=None):
     """
 
     if from_reduced(attrs):
-        return reconstruct_reduced(data, attrs)
+        return reconstruct_reduced(attrs)
 
     if isinstance(attrs, dict):
         if attrs["type"] == Tensor:

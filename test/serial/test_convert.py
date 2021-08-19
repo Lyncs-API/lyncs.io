@@ -12,9 +12,9 @@ def test_to_from_array():
 
     # TODO: [x] sparse matrices
     # TODO: [x] ndarrays
-    # TODO: [ ] built-ins
+    # TODO: [x] built-ins
     # TODO: [x] dask
-    # TODO: [ ] torch
+    # TODO: [x] torch
     # TODO: [x] Dataframes
 
     # ??
@@ -69,10 +69,12 @@ def test_to_from_array():
     arr, attrs = to_array(conv1d)
     new_conv = from_array(arr, attrs)
     # assert numpy array
+    assert isinstance(arr, np.ndarray)
     assert layers_are_equal(conv1d, new_conv)
 
     tensor = Tensor(4, 4, 3)
     arr, attrs = to_array(tensor)
     new_tens = from_array(arr, attrs)
     # assert numpy array
+    assert isinstance(arr, np.ndarray)
     assert (tensor == new_tens).all()
