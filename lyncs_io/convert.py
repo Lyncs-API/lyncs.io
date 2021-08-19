@@ -14,6 +14,7 @@ from .utils import (
     in_torch_nn,
     layer_to_tensor,
     tensor_to_numpy,
+    check_support,
 )
 from . import __version__
 
@@ -76,11 +77,11 @@ def _to_array(data):
     if is_dask_array(data):
         return data
 
-    if is_sparse_matrix(type(data)):
+    if is_sparse_matrix(data):
         return data.toarray()
 
-    if in_torch_nn(type(data)):
-        return layer_to_tensor(tensor_to_numpy(data))
+    if in_torch_nn(data):
+        return tensor_to_numpy(layer_to_tensor(data))
 
     if isinstance(data, Tensor):
         return tensor_to_numpy(data)
@@ -93,6 +94,8 @@ def to_array(data):
     Converts a data object to array. Returns also the list of attributes
     needed for reconstructing it.
     """
+    check_support(data)
+
     attrs = get_attrs(data, flag=True)
     data = _to_array(data)
 

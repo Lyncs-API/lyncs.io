@@ -103,19 +103,11 @@ def test_get_depth():
 
 
 def test_is_sparse_matrix():
+    formats = ["csr", "csc", "coo", "bsr", "dia", "dok", "lil"]
 
-    matrix_types = [
-        csc_matrix,
-        csr_matrix,
-        coo_matrix,
-        bsr_matrix,
-        dia_matrix,
-        dok_matrix,
-        lil_matrix,
-    ]
-
-    for obj in matrix_types:
-        assert is_sparse_matrix(obj) == True
+    for f in formats:
+        matrix = sparse.random(4, 4, format=f)
+        assert is_sparse_matrix(matrix) == True
 
 
 def test_from_reduced():

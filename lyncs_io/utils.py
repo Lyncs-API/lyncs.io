@@ -9,6 +9,9 @@ from inspect import getmembers
 from collections import defaultdict
 from warnings import warn
 import torch.nn
+from pandas import DataFrame
+from numpy import ndarray
+from torch import Tensor
 from lyncs_utils.io import FileLike
 from scipy.sparse import (
     csc_matrix,
@@ -69,13 +72,21 @@ def is_dask_array(obj):
 """ !!!!!!!!!!! """
 
 
-# def check_suport(obj):
-#     "Checks whether the object's type is supported"
+def check_support(obj):
+    "Checks whether the object's type is supported"
+    if not (
+        is_sparse_matrix(obj)
+        or is_dask_array(obj)
+        or in_torch_nn(obj)
+        or isinstance(obj, (ndarray, DataFrame, Tensor, type(None)))
+    ):
+        raise TypeError(f"{obj} {type(obj)} is not supported yet")
 
 
 def in_torch_nn(obj):
     "Checks if an object belongs in the torch.nn module (Layers)"
-    return obj in getmembers(torch.nn)
+    members = tuple([m[1] for m in getmembers(torch.nn) if isinstance(m[1], type)])
+    return isinstance(obj, members)
 
 
 def layer_to_tensor(layer):
@@ -99,14 +110,17 @@ def tensor_to_numpy(tensor):
 
 def is_sparse_matrix(obj):
     "Check whether an object is a sparse matrix"
-    return obj in (
-        csc_matrix,
-        csr_matrix,
-        coo_matrix,
-        bsr_matrix,
-        dia_matrix,
-        dok_matrix,
-        lil_matrix,
+    return isinstance(
+        obj,
+        (
+            csc_matrix,
+            csr_matrix,
+            coo_matrix,
+            bsr_matrix,
+            dia_matrix,
+            dok_matrix,
+            lil_matrix,
+        ),
     )
 
 
