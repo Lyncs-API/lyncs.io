@@ -5,8 +5,23 @@ Function utils
 from functools import wraps
 from pathlib import Path
 from os.path import splitext
+from inspect import getmembers
 from collections import defaultdict
+from warnings import warn
+import torch.nn
+from pandas import DataFrame
+from numpy import ndarray
+from torch import Tensor
 from lyncs_utils.io import FileLike
+from scipy.sparse import (
+    csc_matrix,
+    csr_matrix,
+    coo_matrix,
+    bsr_matrix,
+    dia_matrix,
+    dok_matrix,
+    lil_matrix,
+)
 
 
 def find_file(filename):
@@ -52,6 +67,85 @@ def is_dask_array(obj):
         return isinstance(obj, Array)
     except ImportError:
         return False
+
+
+""" !!!!!!!!!!! """
+
+
+def check_support(obj):
+    "Checks whether the object's type is supported"
+    if not (
+        is_sparse_matrix(obj)
+        or is_dask_array(obj)
+        or in_torch_nn(obj)
+        or isinstance(obj, (ndarray, DataFrame, Tensor, type(None)))
+    ):
+        raise TypeError(f"{obj} {type(obj)} is not supported yet")
+
+
+def in_torch_nn(obj):
+    "Checks if an object belongs in the torch.nn module (Layers)"
+    members = tuple([m[1] for m in getmembers(torch.nn) if isinstance(m[1], type)])
+    return isinstance(obj, members)
+
+
+def layer_to_tensor(layer):
+    "Converts a torch layer to a tensor"
+    _, _, kwargs = layer.__reduce__()
+    params = kwargs["_parameters"]
+    items = list(params.items())
+    param = items[0][1]
+    return param[:]
+
+
+def layers_are_equal(layer1, layer2):
+    "Compare two layers. Using double equals is inappropriate"
+    return layer1.__reduce__() == layer2.__reduce__()
+
+
+def tensor_to_numpy(tensor):
+    "Converts a tensor to a numpy array"
+    return tensor.detach().numpy()
+
+
+def is_sparse_matrix(obj):
+    "Check whether an object is a sparse matrix"
+    return isinstance(
+        obj,
+        (
+            csc_matrix,
+            csr_matrix,
+            coo_matrix,
+            bsr_matrix,
+            dia_matrix,
+            dok_matrix,
+            lil_matrix,
+        ),
+    )
+
+
+def from_state(attrs):
+    "Check whether an object matches the tuple's format returned by __getstate__"
+    return (
+        isinstance(attrs, tuple)
+        and len(attrs) == 2
+        and callable(attrs[0])
+        and isinstance(type(attrs[1]), dict)
+    )
+
+
+def from_reduced(attrs):
+    "Returns whether an object matches the tuple's format returned by __reduce__"
+    return (
+        isinstance(attrs, tuple)
+        and len(attrs) == 3
+        and callable(attrs[0])
+        and isinstance(attrs[1], tuple)
+        and isinstance(attrs[2], dict)
+    )
+
+
+""" !!!!!!!!!!! """
 
 
 def swap(fnc):

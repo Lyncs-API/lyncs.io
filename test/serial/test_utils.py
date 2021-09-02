@@ -7,9 +7,29 @@ Tests for utils.py
 
 import tarfile
 import pytest
-from lyncs_io.utils import find_file, get_depth, find_member, format_key
+import numpy as np
+from pandas import DataFrame
+from scipy import sparse
+from lyncs_io.utils import (
+    find_file,
+    get_depth,
+    find_member,
+    format_key,
+    is_sparse_matrix,
+    from_reduced,
+    from_state,
+)
 from lyncs_io.testing import tempdir
 from lyncs_io.base import save
+from scipy.sparse import (
+    csc_matrix,
+    csr_matrix,
+    coo_matrix,
+    bsr_matrix,
+    dia_matrix,
+    dok_matrix,
+    lil_matrix,
+)
 
 
 def test_find_file(tempdir):
@@ -80,3 +100,22 @@ def test_get_depth():
 
     key = "user/bar/.."
     assert get_depth(path, key) == 1
+
+
+def test_is_sparse_matrix():
+    formats = ["csr", "csc", "coo", "bsr", "dia", "dok", "lil"]
+
+    for f in formats:
+        matrix = sparse.random(4, 4, format=f)
+        assert is_sparse_matrix(matrix) == True
+
+
+def test_from_reduced():
+    objs = [
+        DataFrame({}),
+        # np.ndarray,
+        sparse.random(1, 1),
+    ]
+
+    for obj in objs:
+        assert from_reduced(obj.__reduce__()) == True
