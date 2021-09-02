@@ -35,7 +35,7 @@ def find_file(filename):
 
     if isinstance(filename, FileLike):
         return filename
-    
+
     path = Path(filename)
     if path.exists():
         return filename

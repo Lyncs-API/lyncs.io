@@ -18,6 +18,7 @@ def from_dummy(ds):
         ds = tuple(ds)
     return ds
 
+
 def to_dummy(ds):
     if isinstance(ds, tuple):
         ds = Dummy(ds)
@@ -40,28 +41,27 @@ global_dict = {}
 
 def fnc(s, reverse=False, gen=gen):
     global global_dict
-    
+
     if isinstance(s, (dict, OrderedDict)):
-        x = {key : fnc(value, reverse) for key, value in s.items()}
+        x = {key: fnc(value, reverse) for key, value in s.items()}
         return OrderedDict(x) if isinstance(s, OrderedDict) else x
     elif isinstance(s, (list, tuple)):
         x = [fnc(e, reverse) for e in s]
         return tuple(x) if isinstance(s, tuple) else x
     elif isinstance(s, torch.nn.Parameter):
         placeholder_no = str(next(gen))
-        global_dict['placeholder' + placeholder_no] = s
-        return 'placeholder' + str(placeholder_no)
+        global_dict["placeholder" + placeholder_no] = s
+        return "placeholder" + str(placeholder_no)
     elif isinstance(s, str) and reverse and s in global_dict.keys():
         return global_dict[s]
     return s
 
 
-c = Conv1d(4,4,3)
+c = Conv1d(4, 4, 3)
 reduced = c.__reduce__()
 
-result= fnc(reduced)
+result = fnc(reduced)
 after = fnc(result, reverse=True)
 
 test = reduced == after and reduced != result
 print(test)
-
