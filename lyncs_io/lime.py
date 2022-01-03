@@ -47,7 +47,7 @@ def parse_ildg(info):
     info = xmltodict.parse(info)["ildgFormat"]
     info = {k: parse_num(v) for k, v in info.items()}
     info["dtype"] = ">c%d" % (info["precision"] / 4)
-    info["shape"] = tuple(info[key] for key in ("lx", "ly", "lz", "lt"))
+    info["shape"] = tuple(info[key] for key in ("lt", "lz", "ly", "lx"))
     if info["field"] == "su3gauge":
         info["shape"] += (4, 3, 3)
     return info
@@ -176,13 +176,23 @@ def write_record_header(_fp, lime_type, nbytes, begin=False, end=False):
 @open_file(flag="wb")
 def write_record(_fp, lime_type, data, begin=False, end=False):
     "Writes a record to file"
-    if not isinstance(data, (bytes, int)):
+    if isinstance(data, bytes):
+        nbytes = len(data)
+    elif isinstance(data, numpy.ndarray):
+        nbytes = data.nbytes
+        if not data.dtype.byteorder == ">":
+            data = data.astype(data.dtype.newbyteorder(">"))
+    elif isinstance(data, int):
+        # Considering as number of bytes to skip
+        nbytes = data
+    else:
         raise TypeError(f"expected bytes or int, got {type(data)}")
-    nbytes = len(data) if isinstance(data, bytes) else data
     size = nbytes + (8 - nbytes % 8) % 8
     write_record_header(_fp, lime_type, nbytes, begin=begin, end=end)
     if isinstance(data, bytes):
         write_struct(_fp, "%ds" % size, data)
+    elif isinstance(data, numpy.ndarray):
+        numpy.tofile(_fp, data)
     else:
         _fp.seek(size, SEEK_CUR)
 
@@ -199,10 +209,8 @@ def write_records(_fp, records):
 
 def write_data(_fp, data, metadata=None, lime_type=None):
     "Writes a data object to file and its metadata"
-    if not isinstance(data, (bytes, int)):
-        raise TypeError(f"expected bytes or int, got {type(data)}")
     if lime_type is None:
-        lime_type = datas[0]
+        lime_type = datas[-1]
     records = {}
     if metadata:
         for key, fnc in write_metadatas.items():
@@ -356,4 +364,4 @@ def save(array, filename, comm=None, metadata=None):
             header = get_header_bytes(attrs)
             return mpiio.save(array, header=header)
 
-    write_data(filename, array.newbyteorder(">").tobytes(), attrs)
+    write_data(filename, array, attrs)
