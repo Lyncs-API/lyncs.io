@@ -346,7 +346,10 @@ def save(array, filename, comm=None, metadata=None):
     array, attrs = to_array(array)
     if not array.dtype.byteorder == ">":
         attrs["dtype"] = array.dtype.newbyteorder(">")
-        array = array.astype(attrs["dtype"])
+        array.byteswap(inplace=True)
+    else:
+        # MPI only supports "<" byteorder
+        array = array.view(array.dtype.newbyteorder("<"))
 
     if metadata:
         attrs.update(metadata)
