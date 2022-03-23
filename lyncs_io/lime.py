@@ -192,7 +192,7 @@ def write_record(_fp, lime_type, data, begin=False, end=False):
     if isinstance(data, bytes):
         write_struct(_fp, "%ds" % size, data)
     elif isinstance(data, numpy.ndarray):
-        numpy.tofile(_fp, data)
+        data.tofile(_fp)
     else:
         _fp.seek(size, SEEK_CUR)
 
