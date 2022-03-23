@@ -39,7 +39,7 @@ def _to_array(data):
     "Converts data to array"
     if is_dask_array(data):
         return data
-    return numpy.array(data)
+    return numpy.array(data, copy=False, order="C")
 
 
 def to_array(data):

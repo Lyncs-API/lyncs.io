@@ -99,5 +99,5 @@ def test_save(tempdir, shape, dtype):
     header = head(filename)
     assert header["shape"] == shape
     assert header["nbytes"] == arr.nbytes
-    assert header["dtype"] == dtype
+    assert header["dtype"] == numpy.dtype(dtype).newbyteorder(">")
     assert (arr == load(filename)).all()

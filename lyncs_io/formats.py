@@ -9,7 +9,7 @@ import pickle
 import json
 from lyncs_utils import open_file
 from .format import Formats
-from . import numpy, lime, tar
+from . import numpy, lime, tar, openqcd
 
 formats = Formats()
 register = formats.register
@@ -120,5 +120,15 @@ register(
     head=lime.head,
     load=lime.load,
     save=lime.save,
+    # archive=True, # Supporting single dataset for now
+)
+
+register(
+    "openqcd",
+    extensions=["oqcd"],
+    description="OpenQCD file format",
+    head=openqcd.head,
+    load=openqcd.load,
+    save=openqcd.save,
     # archive=True, # Supporting single dataset for now
 )
