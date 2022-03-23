@@ -73,7 +73,9 @@ jobs:
       - name: Install OpenMPI Parallel HDF5
         run: bash .bash/install-hdf5.sh
 
+      # Skipping for now because not working TODO
       - name: Install h5py
+        if: false
         run: |
           CC=mpicc HDF5_MPI="ON" HDF5_DIR="${LIO_HDF5_PATH}" pip install --no-binary=h5py h5py
 

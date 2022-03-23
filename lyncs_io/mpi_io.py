@@ -244,9 +244,12 @@ class MpiIO:
         return mpi_type
 
     def _get_mpi_type(self, np_type, items):
+        np_type = numpy.dtype(np_type)
+        if np_type.byteorder == ">":
+            np_type = np_type.newbyteorder("<")
         for key, val in items:
             try:
-                if numpy.dtype(key) == numpy.dtype(np_type):
+                if numpy.dtype(key) == np_type:
                     return val
             # for keys that are not understood
             except TypeError:
