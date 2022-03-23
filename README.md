@@ -95,17 +95,18 @@ argument of `save`.
 
 ### Supported file formats
 
-Format | Extensions | Binary | Archive | Parallel MPI | Parallel Dask
--------|------------|--------|---------|--------------|--------------
-pickle | pkl        | yes    | no      | no           | no
-dill   | dll        | yes    | no      | no           | no
-JSON   | json       | no     | no      | no           | no
-ASCII  | txt        | no     | no      | no           | no
-Numpy  | npy        | yes    | no      | yes          | yes
-Numpyz | npz        | yes    | yes     | TODO         | TODO
-HDF5   | hdf5,h5    | yes    | yes     | yes          | TODO
-lime   | lime       | yes    | TODO    | yes          | yes
-Tar    | tar, tar.* |    -   | yes     | yes          | no
+Format  | Extensions | Binary | Archive | Parallel MPI | Parallel Dask
+--------|------------|--------|---------|--------------|--------------
+pickle  | pkl        | yes    | no      | no           | no
+dill    | dll        | yes    | no      | no           | no
+JSON    | json       | no     | no      | no           | no
+ASCII   | txt        | no     | no      | no           | no
+Numpy   | npy        | yes    | no      | yes          | yes
+Numpyz  | npz        | yes    | yes     | TODO         | TODO
+HDF5    | hdf5,h5    | yes    | yes     | yes          | TODO
+lime    | lime       | yes    | TODO    | yes          | yes
+Tar     | tar, tar.* |    -   | yes     | yes          | no
+openqcd | oqcd       | yes    | no      | TODO         | TODO
 
 ### IO with HDF5
 
