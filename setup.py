@@ -3,7 +3,7 @@ from lyncs_setuptools import setup
 setup(
     "lyncs_io",
     install_requires=[
-        "lyncs_utils",
+        "lyncs_utils>=0.3.5",
         "numpy",
         "dataclasses",
         "xmltodict",
