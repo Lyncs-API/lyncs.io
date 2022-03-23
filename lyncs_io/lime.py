@@ -180,8 +180,6 @@ def write_record(_fp, lime_type, data, begin=False, end=False):
         nbytes = len(data)
     elif isinstance(data, numpy.ndarray):
         nbytes = data.nbytes
-        if not data.dtype.byteorder == ">":
-            data = data.astype(data.dtype.newbyteorder(">"))
     elif isinstance(data, int):
         # Considering as number of bytes to skip
         nbytes = data
@@ -346,6 +344,10 @@ def save(array, filename, comm=None, metadata=None):
     """
 
     array, attrs = to_array(array)
+    if not array.dtype.byteorder == ">":
+        attrs["dtype"] = array.dtype.newbyteorder(">")
+        array = array.astype(attrs["dtype"])
+
     if metadata:
         attrs.update(metadata)
 
