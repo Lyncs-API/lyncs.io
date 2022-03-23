@@ -15,6 +15,7 @@ setup(
         "hdf5": ["h5py"],
         "mpi": ["mpi4py"],
         "dask": ["dask", "distributed"],
+        "openqcd": ["lyncs_cppyy"],
         "test": ["pytest", "pytest-cov", "ipython", "pytest-mpi"],
     },
 )
