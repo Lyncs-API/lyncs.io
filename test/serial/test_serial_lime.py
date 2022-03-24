@@ -84,7 +84,7 @@ def test_get_header_bytes(tempdir, shape, dtype):
 
 
 def test_reference():
-    arr = load("test/conf.unity")
+    arr = load("test/unity.lime")
     assert arr.shape == (4, 4, 4, 4, 4, 3, 3)
     assert (arr == [[1, 0, 0], [0, 1, 0], [0, 0, 1]]).all()
     assert arr.dtype == ">c16"

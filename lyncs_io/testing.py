@@ -24,6 +24,7 @@ from .formats import formats
 from .base import save
 from .mpi_io import _tempdir_MPI, with_mpi
 from .dask_io import with_dask
+from .openqcd import with_openqcd
 
 mark_mpi = mark.skipif(not with_mpi, reason="mpi not available")
 mark_dask = mark.skipif(not with_dask, reason="dask not available")
@@ -47,6 +48,8 @@ skip_hdf5_mpi = mark.skipif(
 )
 if not skip_hdf5_mpi.args[0]:
     parallel_format_loop.args[1].append("hdf5")
+
+skip_openqcd = mark.skipif(not with_openqcd, reason="openqcd not available")
 
 shape_loop = mark.parametrize(
     "shape",

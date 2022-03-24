@@ -10,7 +10,7 @@ from lyncs_utils import (
     file_size,
 )
 from .convert import from_array, to_array
-from .lib import lib
+from .lib import lib, with_lib as with_openqcd
 
 
 @open_file
