@@ -72,7 +72,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -v
+          pytest
 
       - name: Upload if not up to date
         if: ${{ steps.check-version.outcome == 'failure' }}
