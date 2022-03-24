@@ -137,7 +137,7 @@ class MpiIO:
         _, subsizes, _ = self.decomposition.decompose(domain)
         local_array = numpy.empty(subsizes, dtype=dtype, order=order.upper())
 
-        self.handler.Read_all(local_array)
+        self.handler.Read_all(self._array_view(local_array))
 
         return local_array
 
@@ -165,10 +165,10 @@ class MpiIO:
         if self.rank == 0 and header:
             self.handler.Write(header)
 
-        self._set_view(array.shape, numpy.array(array).dtype, "C", offset, compose=True)
+        self._set_view(array.shape, array.dtype, "C", offset, compose=True)
 
         # collectively write the array to file
-        self.handler.Write_all(array)
+        self.handler.Write_all(self._array_view(array))
 
     def _file_open(self, mode=None):
         if mode is None:
@@ -220,7 +220,11 @@ class MpiIO:
 
         return switcher.get(mode)
 
-    def _dtype_to_mpi(self, np_type):
+    def _array_view(self, array):
+        "Array view for MPI functions"
+        return array.view(self._dtype_to_mpi(array.dtype, get_key=True))
+
+    def _dtype_to_mpi(self, np_type, get_key=False):
         """
         Convert Numpy data type to MPI type
 
@@ -235,25 +239,25 @@ class MpiIO:
             MPI data type corresponding to `np_type`.
         """
 
-        if hasattr(self.MPI, "_typedict"):
-            mpi_type = self._get_mpi_type(np_type, self.MPI._typedict.items())
-        elif hasattr(self.MPI, "__TypeDict__"):
-            mpi_type = self._get_mpi_type(np_type, self.MPI.__TypeDict__.items())
-        else:
-            raise ValueError("cannot convert type")
-        return mpi_type
-
-    def _get_mpi_type(self, np_type, items):
         np_type = numpy.dtype(np_type)
         if np_type.byteorder == ">":
             np_type = np_type.newbyteorder("<")
-        for key, val in items:
+
+        if hasattr(self.MPI, "_typedict"):
+            types = self.MPI._typedict
+        elif hasattr(self.MPI, "__TypeDict__"):
+            types = self.MPI.__TypeDict__
+        else:
+            raise RuntimeError("Types dict not found")
+
+        for key, val in types.items():
             try:
                 if numpy.dtype(key) == np_type:
-                    return val
+                    return key if get_key else val
             # for keys that are not understood
             except TypeError:
                 continue
+
         raise TypeError(f"{np_type} is not supported")
 
     class _FileWrapper:
