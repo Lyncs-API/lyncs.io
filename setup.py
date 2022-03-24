@@ -1,3 +1,4 @@
+from glob import glob
 from lyncs_setuptools import setup
 
 setup(
@@ -18,4 +19,9 @@ setup(
         "openqcd": ["lyncs_cppyy"],
         "test": ["pytest", "pytest-cov", "ipython", "pytest-mpi"],
     },
+    data_files=[
+        ("lyncs_io/include", glob("lyncs_io/include/*.h")),
+    ],
+    package_data={"lyncs_cppyy": ["include/*.h"]},
+    include_package_data=True,
 )
