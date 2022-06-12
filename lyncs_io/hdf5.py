@@ -25,8 +25,8 @@ def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     assert not kwargs, f"Unknown parameters {kwargs}"
 
     attrs = Header(dts.attrs)
-    attrs["shape"] = dts.shape
-    attrs["dtype"] = dts.dtype
+    attrs.setdefault("shape", dts.shape)
+    attrs.setdefault("dtype", dts.dtype)
 
     if header_only:
         return attrs, None
@@ -126,6 +126,8 @@ def _write_dataset(grp, key, data, comm=None, **kwargs):
         del grp[key]
 
     data, attrs = to_array(data)
+    if data.dtype.char == "U":
+        data = data.astype("S")
 
     if comm is not None:
         global_shape, subsizes, starts = Decomposition(comm=comm).compose(data.shape)

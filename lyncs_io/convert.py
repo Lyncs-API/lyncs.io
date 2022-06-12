@@ -80,5 +80,11 @@ def from_array(data, attrs=None):
     """
     Converts array to a data object. Undoes to_array.
     """
+    attrs = attrs or dict()
+    dtype = attrs.get("dtype", data.dtype)
+
+    if data.dtype != dtype:
+        data = data.astype(dtype)
+
     # TODO
     return data
