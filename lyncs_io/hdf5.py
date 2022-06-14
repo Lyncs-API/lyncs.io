@@ -27,6 +27,7 @@ def _load_dataset(dts, header_only=False, comm=None, **kwargs):
     attrs = Header(dts.attrs)
     attrs.setdefault("shape", dts.shape)
     attrs.setdefault("dtype", dts.dtype)
+    attrs["shape"] = tuple(attrs["shape"])
 
     if header_only:
         return attrs, None
