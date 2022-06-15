@@ -72,7 +72,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest
+          pytest test/serial
 
       - name: Upload if not up to date
         if: ${{ steps.check-version.outcome == 'failure' }}
@@ -137,4 +137,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -v --import-mode=importlib
+          pytest -v --import-mode=importlib test/serial

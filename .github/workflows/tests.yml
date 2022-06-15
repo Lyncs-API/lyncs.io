@@ -95,6 +95,7 @@ jobs:
           done
 
       - name: Run Dask tests
+        if: false
         run: |
           coverage run --rcfile=setup.cfg -m pytest test/Dask
 
