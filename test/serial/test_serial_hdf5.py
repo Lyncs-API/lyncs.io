@@ -25,8 +25,6 @@ def test_serial_hdf5(dtype, shape):
         ftmp = tmp + "/foo.h5"
         io.save(arr, ftmp)
         assert (arr == io.load(ftmp)["arr0"]).all()
-        io.save(arr * 2, ftmp)
-        assert (arr * 2 == io.load(ftmp)["arr1"]).all()
 
         # Testing Head
         assert list(io.load(ftmp).keys()) == list(io.head(ftmp).keys())

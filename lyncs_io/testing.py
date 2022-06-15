@@ -95,6 +95,8 @@ dtype_loop = mark.parametrize(
         "int32",
         "int64",
         "bool",
+        "U8",
+        "S8",
     ],
 )
 
@@ -147,20 +149,19 @@ def generate_rand_arr(shape, dtype):
     if type(shape) == int:
         shape = (shape,)
 
-    if dtype != "bool":
-        bits = re.findall("[0-9]+", dtype)[0]
-    fdtype = re.findall("[a-zA-Z]+", dtype)[0]
+    dtype = numpy.dtype(dtype)
+    bits = 8 * dtype.itemsize
 
-    if fdtype == "bool":
+    if dtype.char in "?":
         arr = numpy.random.rand(*shape)
         return numpy.around(arr).astype("bool8")
 
-    if fdtype == "int":
+    if dtype.char in "bhil":
         high = 2 ** (int(bits) - 1) - 1
         low = -high - 1
         return numpy.random.randint(low=low, high=high, size=shape, dtype=dtype)
 
-    if fdtype == "complex":
+    if dtype.char == "FDG":
         bits = str(round(int(bits) / 2))
         reals = numpy.random.rand(*shape).astype("float" + bits)
         imag = numpy.random.rand(*shape).astype("float" + bits) * 1j

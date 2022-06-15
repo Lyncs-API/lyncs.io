@@ -46,7 +46,7 @@ def test_serial_numpy_with_txt(tempdir, dtype, shape):
 
     # skip txt for now
     # 1D or 2D arrays only for savetxt
-    if len(arr.shape) <= 2 and dtype not in ["bool", "int64"]:
+    if len(arr.shape) <= 2 and dtype not in ["bool", "int64", "S8", "U8"]:
         ftmp = tempdir + "/foo.txt"
         io.save(arr, ftmp)
         assert np.allclose(arr, io.load(ftmp, dtype=dtype))
