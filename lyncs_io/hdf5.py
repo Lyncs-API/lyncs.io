@@ -161,6 +161,8 @@ def _write(h5f, data, key, **kwargs):
 def _write_dispatch(h5f, data, key, **kwargs):
     if isinstance(data, Mapping):
         for map_key, val in data.items():
+            if isinstance(map_key, tuple):
+                map_key = "/".join(map_key)
             _write_dispatch(h5f, val, key + "/" + map_key, **kwargs)
     else:
         _write(h5f, data, key, **kwargs)
