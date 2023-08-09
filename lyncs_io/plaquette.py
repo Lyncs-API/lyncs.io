@@ -1,94 +1,94 @@
 """
 Calculates the plaquette value
 """
-import numpy as np  # type: ignore
 from time import time
 from typing import Tuple
+import numpy as np  # type: ignore
 
 
-def MultiplyMatMat(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+def multiply_mat_mat(left: np.ndarray, right: np.ndarray) -> np.ndarray:
     """
     Multiple left by right. Assumes 3x3 (colour) (complex) matrices
     """
-    MM = np.empty([3, 3], dtype="complex")
+    mat_mat = np.empty([3, 3], dtype="complex")
     # do the maths for the colour matrices
-    MM[0, 0] = (
+    mat_mat[0, 0] = (
         left[0, 0] * right[0, 0] + left[0, 1] * right[1, 0] + left[0, 2] * right[2, 0]
     )
-    MM[1, 0] = (
+    mat_mat[1, 0] = (
         left[1, 0] * right[0, 0] + left[1, 1] * right[1, 0] + left[1, 2] * right[2, 0]
     )
-    MM[2, 0] = (
+    mat_mat[2, 0] = (
         left[2, 0] * right[0, 0] + left[2, 1] * right[1, 0] + left[2, 2] * right[2, 0]
     )
     # second index
-    MM[0, 1] = (
+    mat_mat[0, 1] = (
         left[0, 0] * right[0, 1] + left[0, 1] * right[1, 1] + left[0, 2] * right[2, 1]
     )
-    MM[1, 1] = (
+    mat_mat[1, 1] = (
         left[1, 0] * right[0, 1] + left[1, 1] * right[1, 1] + left[1, 2] * right[2, 1]
     )
-    MM[2, 1] = (
+    mat_mat[2, 1] = (
         left[2, 0] * right[0, 1] + left[2, 1] * right[1, 1] + left[2, 2] * right[2, 1]
     )
     # third index
-    MM[0, 2] = (
+    mat_mat[0, 2] = (
         left[0, 0] * right[0, 2] + left[0, 1] * right[1, 2] + left[0, 2] * right[2, 2]
     )
-    MM[1, 2] = (
+    mat_mat[1, 2] = (
         left[1, 0] * right[0, 2] + left[1, 1] * right[1, 2] + left[1, 2] * right[2, 2]
     )
-    MM[2, 2] = (
+    mat_mat[2, 2] = (
         left[2, 0] * right[0, 2] + left[2, 1] * right[1, 2] + left[2, 2] * right[2, 2]
     )
-    return MM
+    return mat_mat
 
 
-def MultiplyMatdagMatdag(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+def multiply_matdag_matdag(left: np.ndarray, right: np.ndarray) -> np.ndarray:
     """
     #!Multiplies two (3,3) complex matrices together. Takes conjugate
     Does (left*right)^dagger
     """
-    MM = np.empty([3, 3], dtype="complex")
+    mat_mat = np.empty([3, 3], dtype="complex")
     # take transpose manually
-    MM[0, 0] = np.conj(
+    mat_mat[0, 0] = np.conj(
         left[0, 0] * right[0, 0] + left[1, 0] * right[0, 1] + left[2, 0] * right[0, 2]
     )
-    MM[1, 0] = np.conj(
+    mat_mat[1, 0] = np.conj(
         left[0, 1] * right[0, 0] + left[1, 1] * right[0, 1] + left[2, 1] * right[0, 2]
     )
-    MM[2, 0] = np.conj(
+    mat_mat[2, 0] = np.conj(
         left[0, 2] * right[0, 0] + left[1, 2] * right[0, 1] + left[2, 2] * right[0, 2]
     )
     # but take conjugate using np
-    MM[0, 1] = np.conj(
+    mat_mat[0, 1] = np.conj(
         left[0, 0] * right[1, 0] + left[1, 0] * right[1, 1] + left[2, 0] * right[1, 2]
     )
-    MM[1, 1] = np.conj(
+    mat_mat[1, 1] = np.conj(
         left[0, 1] * right[1, 0] + left[1, 1] * right[1, 1] + left[2, 1] * right[1, 2]
     )
-    MM[2, 1] = np.conj(
+    mat_mat[2, 1] = np.conj(
         left[0, 2] * right[1, 0] + left[1, 2] * right[1, 1] + left[2, 2] * right[1, 2]
     )
     # last index
-    MM[0, 2] = np.conj(
+    mat_mat[0, 2] = np.conj(
         left[0, 0] * right[2, 0] + left[1, 0] * right[2, 1] + left[2, 0] * right[2, 2]
     )
-    MM[1, 2] = np.conj(
+    mat_mat[1, 2] = np.conj(
         left[0, 1] * right[2, 0] + left[1, 1] * right[2, 1] + left[2, 1] * right[2, 2]
     )
-    MM[2, 2] = np.conj(
+    mat_mat[2, 2] = np.conj(
         left[0, 2] * right[2, 0] + left[1, 2] * right[2, 1] + left[2, 2] * right[2, 2]
     )
-    return MM
+    return mat_mat
 
 
-def RealTraceMultMatMat(left: np.ndarray, right: np.ndarray) -> float:
+def real_trace_mult_mat_mat(left: np.ndarray, right: np.ndarray) -> float:
     """
     # !Takes the real trace of (3,3) complex numbers left, right multiplied together
     Tr(left*right)
     """
-    TrMM = np.real(
+    tr_mat_mat = np.real(
         left[0, 0] * right[0, 0]
         + left[0, 1] * right[1, 0]
         + left[0, 2] * right[2, 0]
@@ -99,75 +99,75 @@ def RealTraceMultMatMat(left: np.ndarray, right: np.ndarray) -> float:
         + left[2, 1] * right[1, 2]
         + left[2, 2] * right[2, 2]
     )
-    return TrMM
+    return tr_mat_mat
 
 
 def plaquette(
-    data: np.ndarray, muStart: int = 0, muEnd: int = 4, nuEnd: int = 4
+    data: np.ndarray, mu_start: int = 0, mu_end: int = 4, nu_end: int = 4
 ) -> Tuple[float, int, float, float]:
     """
-    Calculates the plaquette over muStart to muEnd
+    Calculates the plaquette over mu_start to mu_end
     data is [nt, nx, ny, nz, mu, colour, colour] complex
-    the plaquette over all lattice is muStart=0, muEnd=4
-    the spatial plaquette is muStart=1, muEnd=4, nuEnd=4
-    the temporal plaquette is muStart=0, muEnd=1, nuEnd=4
+    the plaquette over all lattice is mu_start=0, mu_end=4
+    the spatial plaquette is mu_start=1, mu_end=4, nu_end=4
+    the temporal plaquette is mu_start=0, mu_end=1, nu_end=4
     returns the sum of plaquettes, number of plaquettes measured,
     the average plaquette and the time taken to calculate it
     """
     start = time()
     shape = np.shape(data)
     # hold the sum
-    sumTrP = 0.0
+    sum_tr_plaq = 0.0
     # hold the number measured
-    nP = 0
-    for mu in range(muStart, muEnd):
-        muCoord = [0] * 4
+    num_plaq = 0
+    for mu in range(mu_start, mu_end):
+        mu_coord = [0] * 4
         # This is the shift in mu
-        muCoord[mu] = 1
-        for nu in range(mu + 1, nuEnd):
-            nuCoord = [0] * 4
+        mu_coord[mu] = 1
+        for nu in range(mu + 1, nu_end):
+            nu_coord = [0] * 4
             # This is the shift in nu
-            nuCoord[nu] = 1
+            nu_coord[nu] = 1
             # loop over all sites
             for nx in range(0, shape[1]):
                 for ny in range(0, shape[2]):
                     for nz in range(0, shape[3]):
                         for nt in range(0, shape[0]):
                             # U_mu(x)
-                            coordBase = np.asarray([nt, nx, ny, nz])
-                            coord = coordBase
-                            Umu_x = data[
+                            coord_base = np.asarray([nt, nx, ny, nz])
+                            coord = coord_base
+                            umu_x = data[
                                 coord[0], coord[1], coord[2], coord[3], mu, :, :
                             ]
                             # U_nu(x + amu)
-                            coord = coordBase + muCoord
+                            coord = coord_base + mu_coord
                             # respect periodic boundary conditions
                             for cc, co in enumerate(coord):
                                 if co >= shape[cc]:
                                     coord[cc] = 0
-                            Unu_xmu = data[
+                            unu_xmu = data[
                                 coord[0], coord[1], coord[2], coord[3], nu, :, :
                             ]
                             # U_mu(x + anu)
-                            coord = coordBase + nuCoord
+                            coord = coord_base + nu_coord
                             for cc, co in enumerate(coord):
                                 if co >= shape[cc]:
                                     coord[cc] = 0
-                            Umu_xnu = data[
+                            umu_xnu = data[
                                 coord[0], coord[1], coord[2], coord[3], mu, :, :
                             ]
                             # U_nu(x)
-                            coord = coordBase
-                            Unu_x = data[
+                            coord = coord_base
+                            unu_x = data[
                                 coord[0], coord[1], coord[2], coord[3], nu, :, :
                             ]
                             # Multiply bottom, right together
-                            UmuUnu = MultiplyMatMat(Umu_x, Unu_xmu)
+                            umu_unu = multiply_mat_mat(umu_x, unu_xmu)
                             # Multiply left, top together, take dagger
-                            UmudagUnudag = MultiplyMatdagMatdag(Umu_xnu, Unu_x)
+                            umudag_unudag = multiply_matdag_matdag(umu_xnu, unu_x)
                             # multiply two halves together, take trace
-                            P = RealTraceMultMatMat(UmuUnu, UmudagUnudag)
-                            sumTrP = sumTrP + P
-                            nP = nP + 1
+                            plaq = real_trace_mult_mat_mat(umu_unu, umudag_unudag)
+                            sum_tr_plaq = sum_tr_plaq + plaq
+                            num_plaq = num_plaq + 1
     end = time()
-    return sumTrP, nP, sumTrP / float(nP), end - start
+    return sum_tr_plaq, num_plaq, sum_tr_plaq / float(num_plaq), end - start
