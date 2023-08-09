@@ -60,7 +60,7 @@ def multiply_matdag_matdag(left: np.ndarray, right: np.ndarray) -> np.ndarray:
     mat_mat[2, 0] = np.conj(
         left[0, 2] * right[0, 0] + left[1, 2] * right[0, 1] + left[2, 2] * right[0, 2]
     )
-    # but take conjugate using np
+    # but take conjugate using numpy
     mat_mat[0, 1] = np.conj(
         left[0, 0] * right[1, 0] + left[1, 0] * right[1, 1] + left[2, 0] * right[1, 2]
     )
@@ -107,7 +107,7 @@ def plaquette(
 ) -> Tuple[float, int, float, float]:
     """
     Calculates the plaquette over mu_start to mu_end
-    data is [nt, nx, ny, nz, mu, colour, colour] complex
+    data is [NT, NX, NY, NZ, mu, colour, colour] complex
     the plaquette over all lattice is mu_start=0, mu_end=4
     the spatial plaquette is mu_start=1, mu_end=4, nu_end=4
     the temporal plaquette is mu_start=0, mu_end=1, nu_end=4
@@ -129,12 +129,12 @@ def plaquette(
             # This is the shift in nu
             nu_coord[nu] = 1
             # loop over all sites
-            for nx in range(0, shape[1]):
-                for ny in range(0, shape[2]):
-                    for nz in range(0, shape[3]):
-                        for nt in range(0, shape[0]):
+            for NX in range(0, shape[1]):
+                for NY in range(0, shape[2]):
+                    for NZ in range(0, shape[3]):
+                        for NT in range(0, shape[0]):
                             # U_mu(x)
-                            coord_base = np.asarray([nt, nx, ny, nz])
+                            coord_base = np.asarray([NT, NX, NY, NZ])
                             coord = coord_base
                             umu_x = data[
                                 coord[0], coord[1], coord[2], coord[3], mu, :, :
