@@ -9,7 +9,6 @@ from lyncs_utils import (
     file_size,
 )
 import numpy
-import plaquette
 from .convert import from_array, to_array
 from .lib import lib, with_lib as with_openqcd
 from .utils import is_dask_array
@@ -131,7 +130,7 @@ def save(arr, filename, comm=None, metadata=None):
     # raise NotImplementedError("Missing reordering")
     arr, attrs = to_array(arr)
     # OpenQcd format saves plaquette i
-    attrs.update({"plaquette": plaquette.plaquette(arr)[2]})
+    attrs.update({"plaquette": plaquette(arr)})
     if metadata:
         attrs.update(metadata)
     if is_dask_array(arr):
@@ -151,3 +150,40 @@ def save(arr, filename, comm=None, metadata=None):
     #         return mpiio.save(arr, header=header)
     # arr is in internal rep
     write_data(filename, arr, attrs)
+
+
+def plaquette(arr, ndims=None, ncol=None):
+    """
+    Calculates the average value of the real part of the trace of the
+    plaquette.
+
+    Parameters
+    ----------
+    arr : numpy.ndarray
+        Numpy array containing the lattice data.
+    ndims: int (default=None)
+        Number of spacetime dimensions.
+    ncol: int (default=None)
+        Number of colors.
+
+    Returns:
+    --------
+    plaq : float
+        Returns a float containing the average value of the real part of the
+        trace of the plaquette.
+    """
+
+    shape = numpy.asarray(numpy.shape(arr))
+
+    if ndims is None:
+        # Infer ndims from shape
+        ndims = int(shape[4])
+    if ncol is None:
+        # Infer ncol from shape
+        ncol = int(shape[-1])
+
+    dims = array("i", shape[:4])
+
+    plaq = lib.plaquette(arr, ndims, dims, ncol)
+
+    return plaq
