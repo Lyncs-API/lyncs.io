@@ -259,6 +259,8 @@ register(
 - Simone Bacchio (sbacchio)
 - Christodoulos Stylianou (cstyl)
 - Alexandros Angeli (alexandrosangeli)
+- Ryan Bignell (RJaBi)
+- Ben Page (jadot-bp)
 
 ### Fundings
 - PRACE-6IP, Grant agreement ID: 823767, Project name: LyNcs.
