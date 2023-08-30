@@ -1,7 +1,6 @@
-"Functions for openqcd file format"
+"Functions for OpenQcd file format"
 
 from array import array
-import numpy
 from lyncs_utils import (
     prod,
     open_file,
@@ -9,8 +8,10 @@ from lyncs_utils import (
     write_struct,
     file_size,
 )
+import numpy
 from .convert import from_array, to_array
 from .lib import lib, with_lib as with_openqcd
+from .utils import is_dask_array
 
 
 @open_file
@@ -48,7 +49,6 @@ def load(filename, chunks=None, comm=None, **kwargs):
     local_array : list
         Returns a numpy array representing the local elements of the domain.
     """
-
     if comm is not None and chunks is not None:
         raise ValueError("chunks and comm parameters cannot be both set")
 
@@ -87,7 +87,29 @@ def load(filename, chunks=None, comm=None, **kwargs):
     )
 
 
-def save(array, filename, comm=None, metadata=None):
+@open_file(flag="wb")
+def write_data(filename, arr, attrs):
+    """
+    Save function for OpenQCD file Format
+    Saves a numpy array to file with appropriate header metadata
+    """
+    shape = attrs["shape"]
+    plaq = attrs["plaquette"]
+    out = numpy.empty_like(arr) + 55
+    lib.to_openqcd(arr, out, 4, array("i", shape[:4]))
+    write_struct(
+        filename,
+        "<iiiid",
+        shape[0],
+        shape[1],
+        shape[2],
+        shape[3],
+        plaq,
+    )
+    out.tofile(filename)
+
+
+def save(arr, filename, comm=None, metadata=None):
     """
     High level interface function for lime load.
     Loads a numpy array from file either in serial or parallel.
@@ -105,24 +127,63 @@ def save(array, filename, comm=None, metadata=None):
         Additional metadata to write in the header
     """
 
-    raise NotImplementedError("Missing reordering")
-    array, attrs = to_array(array)
+    # raise NotImplementedError("Missing reordering")
+    arr, attrs = to_array(arr)
+    # OpenQcd format saves plaquette i
+    attrs.update({"plaquette": plaquette(arr)})
     if metadata:
         attrs.update(metadata)
-
-    if is_dask_array(array):
-        daskio = DaskIO(filename)
-        header = get_header_bytes(attrs)
-        return daskio.save(array, header=header)
+    if is_dask_array(arr):
+        raise NotImplementedError("dask IO not implemented for openqcd")
+    #    daskio = DaskIO(filename)
+    #    header = get_header_bytes(attrs)
+    #    return daskio.save(arr, header=header)
 
     if comm is not None:
-        check_comm(comm)
+        raise NotImplementedError("MPI IO not implemented for openqcd")
+    #     check_comm(comm)
+    #     with MpiIO(comm, filename, mode="w") as mpiio:
+    #         global_shape, _, _ = mpiio.decomposition.compose(arr.shape)
+    #         attrs["shape"] = tuple(global_shape)
+    #         attrs["nbytes"] = prod(global_shape) * attrs["dtype"].itemsize
+    #         header = get_header_bytes(attrs)
+    #         return mpiio.save(arr, header=header)
+    # arr is in internal rep
+    write_data(filename, arr, attrs)
 
-        with MpiIO(comm, filename, mode="w") as mpiio:
-            global_shape, _, _ = mpiio.decomposition.compose(array.shape)
-            attrs["shape"] = tuple(global_shape)
-            attrs["nbytes"] = prod(global_shape) * attrs["dtype"].itemsize
-            header = get_header_bytes(attrs)
-            return mpiio.save(array, header=header)
 
-    write_data(filename, array, attrs)
+def plaquette(arr, ndims=None, ncol=None):
+    """
+    Calculates the average value of the real part of the trace of the
+    plaquette.
+
+    Parameters
+    ----------
+    arr : numpy.ndarray
+        Numpy array containing the lattice data.
+    ndims: int (default=None)
+        Number of spacetime dimensions.
+    ncol: int (default=None)
+        Number of colors.
+
+    Returns:
+    --------
+    plaq : float
+        Returns a float containing the average value of the real part of the
+        trace of the plaquette.
+    """
+
+    shape = numpy.asarray(numpy.shape(arr))
+
+    if ndims is None:
+        # Infer ndims from shape
+        ndims = int(shape[4])
+    if ncol is None:
+        # Infer ncol from shape
+        ncol = int(shape[-1])
+
+    dims = array("i", shape[:4])
+
+    plaq = lib.plaquette(arr, ndims, dims, ncol)
+
+    return plaq
