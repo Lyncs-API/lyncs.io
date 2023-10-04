@@ -50,6 +50,10 @@ def parse_ildg(info):
     info["shape"] = tuple(info[key] for key in ("lt", "lz", "ly", "lx"))
     if info["field"] == "su3gauge":
         info["shape"] += (4, 3, 3)
+    elif info["field"] == "PLEGMA_VECTOR":
+        info["shape"] += (4, 3)
+    else:
+        raise ValueError(f"Unknown field type {info['field']}")
     return info
 
 
